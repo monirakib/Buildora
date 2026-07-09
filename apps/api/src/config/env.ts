@@ -1,0 +1,26 @@
+import "dotenv/config";
+import { z } from "zod";
+
+const envSchema = z.object({
+  NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+  PORT: z.coerce.number().default(4000),
+  MONGODB_URI: z.string().optional(),
+  // Optional override for DNS servers (comma-separated). Needed on networks where
+  // Node can't resolve the mongodb+srv SRV records via the default resolver.
+  DNS_SERVERS: z.string().optional(),
+  JWT_SECRET: z.string().default("dev-secret-change-me"),
+  JWT_EXPIRES_IN: z.string().default("7d"),
+  CORS_ORIGIN: z.string().default("http://localhost:3000"),
+  // Cloudinary image hosting (profile photos, certificates, portfolio). All
+  // three come from the Cloudinary dashboard; uploads 503 until they're set.
+  CLOUDINARY_CLOUD_NAME: z.string().optional(),
+  CLOUDINARY_API_KEY: z.string().optional(),
+  CLOUDINARY_API_SECRET: z.string().optional(),
+  // Supervisor account created by `pnpm seed:admin` (see scripts/seed-admin.ts).
+  ADMIN_NAME: z.string().default("Platform Supervisor"),
+  ADMIN_USERNAME: z.string().default("supervisor"),
+  ADMIN_EMAIL: z.string().optional(),
+  ADMIN_PASSWORD: z.string().optional(),
+});
+
+export const env = envSchema.parse(process.env);

@@ -1,0 +1,13 @@
+# Optional: local MongoDB via Docker (Docker is not currently installed on this machine).
+# Alternative: use MongoDB Atlas (free tier) and set MONGODB_URI in apps/api/.env.
+services:
+  mongo:
+    image: mongo:8
+    container_name: buildora-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+
+volumes:
+  mongo-data:
