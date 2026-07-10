@@ -88,7 +88,14 @@ const userSchema = new Schema<UserDoc>(
   {
     name: { type: String, required: true, trim: true },
     // Chosen once at signup; unique and never updated (no setter path exists).
-    username: { type: String, required: true, unique: true, lowercase: true, trim: true, immutable: true },
+    username: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true,
+      immutable: true,
+    },
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     phone: { type: String, trim: true },
     passwordHash: { type: String, required: true },

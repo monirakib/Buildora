@@ -1,4 +1,18 @@
-import type { BuildingType, InquiryStatus, UserRole, VerificationStatus } from "./enums";
+import type {
+  BuildingType,
+  ContractStatus,
+  DeliverableKind,
+  DeliverableStatus,
+  DocumentCategory,
+  InquiryStatus,
+  LandUse,
+  PaymentKind,
+  PaymentMethod,
+  ProjectStatus,
+  ProposalStatus,
+  UserRole,
+  VerificationStatus,
+} from "./enums";
 
 /**
  * Optional profile a land owner fills in after signup. Every field is
@@ -142,6 +156,190 @@ export interface Inquiry {
   status: InquiryStatus;
   createdAt: string;
   updatedAt: string;
+}
+
+/** Minimal user reference embedded in project/contract/message DTOs. */
+export interface UserRef {
+  id: string;
+  name: string;
+  username: string;
+  company?: string;
+}
+
+/**
+ * A land owner's construction project. Starts life as a posted brief that
+ * architects respond to; `status` then tracks it through concept, design,
+ * permits, and construction. `architect` is set once a proposal is accepted.
+ */
+export interface Project {
+  id: string;
+  owner: UserRef;
+  architect?: UserRef;
+  title: string;
+  description: string;
+  /** Plot address, e.g. "House 12, Road 5". */
+  address: string;
+  /** Locality used to match a DAP zone, e.g. "Dhanmondi". */
+  areaName: string;
+  landAreaKatha: number;
+  buildingType: BuildingType;
+  floors: number;
+  budgetMinBdt?: number;
+  budgetMaxBdt?: number;
+  status: ProjectStatus;
+  /** Number of pending proposals — only filled in for the owner's own list. */
+  pendingProposals?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** An architect's response to a posted brief: pitch + fee quote. */
+export interface Proposal {
+  id: string;
+  project: { id: string; title: string };
+  architect: UserRef & { verificationStatus: VerificationStatus; avatarUrl?: string };
+  coverLetter: string;
+  /** Fee for the initial concept brief (500–1000 BDT per the plan). */
+  conceptFeeBdt: number;
+  /** Full design fee, held in escrow once the client proceeds. */
+  designFeeBdt: number;
+  estimatedWeeks?: number;
+  status: ProposalStatus;
+  createdAt: string;
+}
+
+/** One ledger entry on a contract (payments are simulated sandbox entries). */
+export interface PaymentEntry {
+  kind: PaymentKind;
+  amountBdt: number;
+  method?: PaymentMethod;
+  /** Transaction reference the payer typed in, e.g. a bKash TrxID. */
+  reference?: string;
+  at: string;
+}
+
+/** A concept or design submission awaiting the client's review. */
+export interface Deliverable {
+  title: string;
+  note?: string;
+  fileUrl?: string;
+  kind: DeliverableKind;
+  status: DeliverableStatus;
+  /** Client's feedback when requesting changes. */
+  clientNote?: string;
+  submittedAt: string;
+  decidedAt?: string;
+}
+
+/**
+ * The design contract between client and architect created when a proposal is
+ * accepted. Carries the escrow ledger, deliverables, and revision counter.
+ */
+export interface Contract {
+  id: string;
+  project: { id: string; title: string };
+  client: UserRef;
+  architect: UserRef;
+  status: ContractStatus;
+  conceptFeeBdt: number;
+  designFeeBdt: number;
+  /** Platform commission taken from the escrow on release (0.10–0.15). */
+  commissionRate: number;
+  revisionsUsed: number;
+  maxRevisions: number;
+  payments: PaymentEntry[];
+  deliverables: Deliverable[];
+  /** Filled in at design approval. */
+  commissionBdt?: number;
+  releasedToArchitectBdt?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** A two-person message thread, shaped for the caller ("other" = the other side). */
+export interface Conversation {
+  id: string;
+  other: { id: string; name: string; username: string; role: UserRole; avatarUrl?: string };
+  lastMessage?: { body: string; at: string; mine: boolean };
+  unreadCount: number;
+  updatedAt: string;
+}
+
+/** One chat message; compare `senderId` with the session user to align bubbles. */
+export interface ChatMessage {
+  id: string;
+  senderId: string;
+  senderName: string;
+  body: string;
+  createdAt: string;
+}
+
+/** An admin-maintained DAP zone record (the rules, not hardcoded). */
+export interface DapZone {
+  id: string;
+  /** Locality the zone covers, e.g. "Dhanmondi". */
+  areaName: string;
+  zoneCode: string;
+  landUse: LandUse;
+  /** Maximum floor-area ratio allowed on a plot. */
+  maxFar: number;
+  /** Maximum ground coverage as a percentage of the plot. */
+  maxGroundCoveragePct: number;
+  maxFloors?: number;
+  notes?: string;
+}
+
+/** Admin-maintained RAJUK fee rate for one land-use category. */
+export interface FeeRule {
+  id: string;
+  category: LandUse;
+  label: string;
+  baseFeeBdt: number;
+  ratePerSqmBdt: number;
+  notes?: string;
+}
+
+/** Server-computed RAJUK fee estimate. */
+export interface FeeEstimate {
+  category: LandUse;
+  floorAreaSqm: number;
+  baseFeeBdt: number;
+  ratePerSqmBdt: number;
+  areaFeeBdt: number;
+  totalBdt: number;
+}
+
+/** One step of the ECPS permit process (admin-editable guide content). */
+export interface EcpsStep {
+  id: string;
+  /** 1-based position in the process. */
+  order: number;
+  title: string;
+  description: string;
+  requiredDocuments: string[];
+}
+
+/** A project's progress through the ECPS steps. */
+export interface EcpsApplication {
+  id: string;
+  projectId: string;
+  /** Order of the step the application currently sits on. */
+  currentStepOrder: number;
+  /** True once the final step is marked done. */
+  completed: boolean;
+  history: { stepOrder: number; note?: string; at: string }[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** One archived file on a project (uploaded image or an external link). */
+export interface ProjectDocument {
+  id: string;
+  title: string;
+  category: DocumentCategory;
+  fileUrl: string;
+  uploader: { id: string; name: string };
+  createdAt: string;
 }
 
 /** Cursor-free paginated list wrapper for directory results. */

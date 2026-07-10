@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { UserRole } from "@buildora/shared";
 import { smoothScrollToId } from "@/lib/smoothScroll";
 import { useSession } from "@/store/useSession";
 import { ThemeToggle } from "./ThemeToggle";
@@ -166,6 +167,7 @@ export function Navbar({ showGetStarted = true }: { showGetStarted?: boolean }) 
       <SideMenu
         open={menuOpen}
         loggedIn={loggedIn}
+        role={loggedIn ? (user?.role ?? null) : null}
         onClose={() => setMenuOpen(false)}
         onLogout={() => {
           clearSession();
@@ -184,14 +186,19 @@ export function Navbar({ showGetStarted = true }: { showGetStarted?: boolean }) 
 function SideMenu({
   open,
   loggedIn,
+  role,
   onClose,
   onLogout,
 }: {
   open: boolean;
   loggedIn: boolean;
+  role: UserRole | null;
   onClose: () => void;
   onLogout: () => void;
 }) {
+  const isLandOwner = role === UserRole.LAND_OWNER;
+  const isAdmin = role === UserRole.ADMIN;
+  const isProfessional = loggedIn && !isLandOwner && !isAdmin;
   const itemClass =
     "flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-stone-700 transition hover:bg-stone-100 hover:text-stone-900 dark:text-white/85 dark:hover:bg-white/10 dark:hover:text-white";
 
@@ -262,17 +269,47 @@ function SideMenu({
               <Link href="/dashboard" onClick={onClose} className={itemClass}>
                 Dashboard
               </Link>
-              <Link href="/architects" onClick={onClose} className={itemClass}>
-                Find an architect
+              {!isAdmin && (
+                <Link href="/projects" onClick={onClose} className={itemClass}>
+                  Projects
+                </Link>
+              )}
+              {isProfessional && (
+                <Link href="/briefs" onClick={onClose} className={itemClass}>
+                  Open briefs
+                </Link>
+              )}
+              {isLandOwner && (
+                <Link href="/architects" onClick={onClose} className={itemClass}>
+                  Find an architect
+                </Link>
+              )}
+              <Link href="/messages" onClick={onClose} className={itemClass}>
+                Messages
               </Link>
-              <Link href="/inquiries" onClick={onClose} className={itemClass}>
-                Requests
-              </Link>
+              {!isAdmin && (
+                <Link href="/inquiries" onClick={onClose} className={itemClass}>
+                  Requests
+                </Link>
+              )}
+              {isAdmin && (
+                <>
+                  <Link href="/supervisor" onClick={onClose} className={itemClass}>
+                    Verification queue
+                  </Link>
+                  <Link href="/admin/permits" onClick={onClose} className={itemClass}>
+                    Permit data
+                  </Link>
+                </>
+              )}
               <Link href="/profile" onClick={onClose} className={itemClass}>
                 Profile
               </Link>
             </>
           )}
+          <Link href="/permits" onClick={onClose} className={itemClass}>
+            Permit tools
+          </Link>
         </nav>
 
         <div className="relative z-10 mt-auto border-t border-black/10 pt-4 dark:border-white/15">
@@ -283,19 +320,19 @@ function SideMenu({
               className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-stone-700 transition hover:bg-red-500/10 hover:text-red-600 dark:text-white/85 dark:hover:bg-red-500/15 dark:hover:text-red-300"
             >
               {/* Door frame with an arrow leaving it */}
-                <svg
-                  viewBox="0 0 24 24"
-                  className="h-4 w-4"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                  <path d="M16 17l5-5-5-5" />
-                  <path d="M21 12H9" />
-                </svg>
+              <svg
+                viewBox="0 0 24 24"
+                className="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <path d="M16 17l5-5-5-5" />
+                <path d="M21 12H9" />
+              </svg>
               Log out
             </button>
           ) : (

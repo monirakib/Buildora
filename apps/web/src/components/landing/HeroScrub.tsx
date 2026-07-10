@@ -39,7 +39,6 @@ const STAGES: { start: number; end: number; eyebrow: string; title: string; sub:
 const FADE = 0.06;
 const CROSSFADE_MS = 400;
 
-
 function stageOpacity(p: number, start: number, end: number): number {
   if (start === 0 && p < start + FADE) return 1; // first stage starts visible
   const fadeIn = Math.min(1, Math.max(0, (p - start) / FADE));

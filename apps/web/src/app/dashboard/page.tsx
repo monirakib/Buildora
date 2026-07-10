@@ -59,6 +59,66 @@ export default function DashboardPage() {
           </p>
 
           <div className="mt-10 grid gap-5 sm:grid-cols-2">
+            {!isAdmin && (
+              <Link href="/projects" className={cardClass}>
+                <span className="grid h-11 w-11 place-items-center rounded-2xl bg-amber-400 text-stone-950">
+                  {/* Building / project */}
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="h-5.5 w-5.5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M4 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16" />
+                    <path d="M16 9h3a1 1 0 0 1 1 1v11" />
+                    <path d="M2 21h20" />
+                    <path d="M8 7h2M8 11h2M8 15h2" />
+                  </svg>
+                </span>
+                <h2 className="mt-4 text-lg font-bold">
+                  {isLandOwner ? "Your projects" : "Your engagements"}
+                </h2>
+                <p className="mt-1 text-sm text-stone-600 dark:text-slate-400">
+                  {isLandOwner
+                    ? "Post a brief, review proposals, and drive your build from concept to handover."
+                    : "The projects you've been engaged on — contracts, submissions, and escrow."}
+                </p>
+                <span className="mt-4 inline-block text-sm font-bold text-amber-600 dark:text-amber-400">
+                  Open projects →
+                </span>
+              </Link>
+            )}
+
+            {isProfessional && (
+              <Link href="/briefs" className={cardClass}>
+                <span className="grid h-11 w-11 place-items-center rounded-2xl bg-amber-400 text-stone-950">
+                  {/* Document search */}
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="h-5.5 w-5.5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-6-6Z" />
+                    <path d="M14 3v6h6" />
+                  </svg>
+                </span>
+                <h2 className="mt-4 text-lg font-bold">Open briefs</h2>
+                <p className="mt-1 text-sm text-stone-600 dark:text-slate-400">
+                  Browse client briefs and send proposals with your concept and design fees.
+                </p>
+                <span className="mt-4 inline-block text-sm font-bold text-amber-600 dark:text-amber-400">
+                  Browse briefs →
+                </span>
+              </Link>
+            )}
+
             {isLandOwner && (
               <Link href="/architects" className={cardClass}>
                 <span className="grid h-11 w-11 place-items-center rounded-2xl bg-amber-400 text-stone-950">
@@ -85,6 +145,57 @@ export default function DashboardPage() {
                 </span>
               </Link>
             )}
+
+            <Link href="/messages" className={cardClass}>
+              <span className="grid h-11 w-11 place-items-center rounded-2xl bg-stone-900 text-white dark:bg-white/15">
+                {/* Paper plane */}
+                <svg
+                  viewBox="0 0 24 24"
+                  className="h-5.5 w-5.5"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M22 2 11 13" />
+                  <path d="M22 2 15 22l-4-9-9-4 20-7Z" />
+                </svg>
+              </span>
+              <h2 className="mt-4 text-lg font-bold">Messages</h2>
+              <p className="mt-1 text-sm text-stone-600 dark:text-slate-400">
+                Chat with the people on your projects — everything stays on the platform.
+              </p>
+              <span className="mt-4 inline-block text-sm font-bold text-amber-600 dark:text-amber-400">
+                Open inbox →
+              </span>
+            </Link>
+
+            <Link href="/permits" className={cardClass}>
+              <span className="grid h-11 w-11 place-items-center rounded-2xl bg-stone-900 text-white dark:bg-white/15">
+                {/* Stamp / permit */}
+                <svg
+                  viewBox="0 0 24 24"
+                  className="h-5.5 w-5.5"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M5 22h14" />
+                  <path d="M5 18h14v4H5z" />
+                  <path d="M14 13.5V18h-4v-4.5a5 5 0 1 1 4 0Z" />
+                </svg>
+              </span>
+              <h2 className="mt-4 text-lg font-bold">Permit toolkit</h2>
+              <p className="mt-1 text-sm text-stone-600 dark:text-slate-400">
+                DAP zone checker, RAJUK fee calculator, and the ECPS process guide.
+              </p>
+              <span className="mt-4 inline-block text-sm font-bold text-amber-600 dark:text-amber-400">
+                Check the rules →
+              </span>
+            </Link>
 
             {isAdmin && (
               <Link href="/supervisor" className={cardClass}>
@@ -113,38 +224,69 @@ export default function DashboardPage() {
               </Link>
             )}
 
+            {isAdmin && (
+              <Link href="/admin/permits" className={cardClass}>
+                <span className="grid h-11 w-11 place-items-center rounded-2xl bg-amber-400 text-stone-950">
+                  {/* Database / records */}
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="h-5.5 w-5.5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <ellipse cx="12" cy="5" rx="8" ry="3" />
+                    <path d="M4 5v14c0 1.66 3.58 3 8 3s8-1.34 8-3V5" />
+                    <path d="M4 12c0 1.66 3.58 3 8 3s8-1.34 8-3" />
+                  </svg>
+                </span>
+                <h2 className="mt-4 text-lg font-bold">Permit reference data</h2>
+                <p className="mt-1 text-sm text-stone-600 dark:text-slate-400">
+                  Maintain DAP zones, RAJUK fee rates, and the ECPS process steps.
+                </p>
+                <span className="mt-4 inline-block text-sm font-bold text-amber-600 dark:text-amber-400">
+                  Manage records →
+                </span>
+              </Link>
+            )}
+
             {!isAdmin && (
-            <Link href="/inquiries" className={cardClass}>
-              <span className="grid h-11 w-11 place-items-center rounded-2xl bg-stone-900 text-white dark:bg-white/15">
-                {/* Chat */}
-                <svg
-                  viewBox="0 0 24 24"
-                  className="h-5.5 w-5.5"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z" />
-                </svg>
-              </span>
-              <h2 className="mt-4 text-lg font-bold">
-                {isLandOwner ? "Your requests" : "Client requests"}
-              </h2>
-              <p className="mt-1 text-sm text-stone-600 dark:text-slate-400">
-                {isLandOwner
-                  ? "Track the architects you've contacted and their replies."
-                  : "See land owners who've reached out to you."}
-              </p>
-              <span className="mt-4 inline-block text-sm font-bold text-amber-600 dark:text-amber-400">
-                View requests →
-              </span>
-            </Link>
+              <Link href="/inquiries" className={cardClass}>
+                <span className="grid h-11 w-11 place-items-center rounded-2xl bg-stone-900 text-white dark:bg-white/15">
+                  {/* Chat */}
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="h-5.5 w-5.5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z" />
+                  </svg>
+                </span>
+                <h2 className="mt-4 text-lg font-bold">
+                  {isLandOwner ? "Your requests" : "Client requests"}
+                </h2>
+                <p className="mt-1 text-sm text-stone-600 dark:text-slate-400">
+                  {isLandOwner
+                    ? "Track the architects you've contacted and their replies."
+                    : "See land owners who've reached out to you."}
+                </p>
+                <span className="mt-4 inline-block text-sm font-bold text-amber-600 dark:text-amber-400">
+                  View requests →
+                </span>
+              </Link>
             )}
 
             {/* Professionals get the richer editor with credentials + portfolio. */}
-            <Link href={isProfessional ? "/profile/professional" : "/profile"} className={cardClass}>
+            <Link
+              href={isProfessional ? "/profile/professional" : "/profile"}
+              className={cardClass}
+            >
               <span className="grid h-11 w-11 place-items-center rounded-2xl bg-stone-900 text-white dark:bg-white/15">
                 {/* Person */}
                 <svg

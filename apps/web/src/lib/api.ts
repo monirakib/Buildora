@@ -26,7 +26,9 @@ export interface AuthResult {
   token: string;
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+// Exported so the domain modules (apiProjects, apiMessages, apiPermits) share
+// the same fetch + error-shaping behaviour.
+export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
     headers: { "Content-Type": "application/json", ...init?.headers },

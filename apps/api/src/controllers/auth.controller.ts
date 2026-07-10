@@ -95,8 +95,7 @@ const profileSchema = z
     floors: optionalPositive,
   })
   .refine(
-    (d) =>
-      d.budgetMinBdt == null || d.budgetMaxBdt == null || d.budgetMaxBdt >= d.budgetMinBdt,
+    (d) => d.budgetMinBdt == null || d.budgetMaxBdt == null || d.budgetMaxBdt >= d.budgetMinBdt,
     { message: "Maximum budget must be greater than the minimum", path: ["budgetMaxBdt"] }
   );
 
@@ -136,7 +135,10 @@ export async function register(req: Request, res: Response) {
   const parsed = registerSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({
-      error: { message: parsed.error.issues[0]?.message ?? "Invalid input", details: parsed.error.issues },
+      error: {
+        message: parsed.error.issues[0]?.message ?? "Invalid input",
+        details: parsed.error.issues,
+      },
     });
   }
   const { name, username, email, phone, password } = parsed.data;
@@ -178,7 +180,10 @@ export async function registerProfessional(req: Request, res: Response) {
   const parsed = registerProfessionalSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({
-      error: { message: parsed.error.issues[0]?.message ?? "Invalid input", details: parsed.error.issues },
+      error: {
+        message: parsed.error.issues[0]?.message ?? "Invalid input",
+        details: parsed.error.issues,
+      },
     });
   }
   const { name, username, email, phone, password, role, ...profile } = parsed.data;
@@ -212,7 +217,10 @@ export async function login(req: Request, res: Response) {
   const parsed = loginSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({
-      error: { message: parsed.error.issues[0]?.message ?? "Invalid input", details: parsed.error.issues },
+      error: {
+        message: parsed.error.issues[0]?.message ?? "Invalid input",
+        details: parsed.error.issues,
+      },
     });
   }
   const { identifier, password } = parsed.data;
@@ -238,7 +246,10 @@ export async function updateProfile(req: Request, res: Response) {
   const parsed = profileSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({
-      error: { message: parsed.error.issues[0]?.message ?? "Invalid input", details: parsed.error.issues },
+      error: {
+        message: parsed.error.issues[0]?.message ?? "Invalid input",
+        details: parsed.error.issues,
+      },
     });
   }
 

@@ -13,4 +13,10 @@ export const CONCEPT_FEE_BDT = { MIN: 500, MAX: 1000 } as const;
 /** Included revision rounds per design contract (plan §3.1). */
 export const DESIGN_REVISION_ROUNDS = 3;
 
+/** Commission rate applied to escrow releases until tiers exist. */
+export const DEFAULT_COMMISSION_RATE = 0.1;
+
+/** 1 katha = 720 sq ft ≈ 66.89 m² — used to turn plot size into floor area. */
+export const KATHA_TO_SQM = 66.89;
+
 export const DEFAULT_PAGE_SIZE = 20;

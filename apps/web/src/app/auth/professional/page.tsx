@@ -169,8 +169,7 @@ export default function ProfessionalAuthPage() {
   }, [mounted, user, router]);
 
   const set =
-    (field: keyof typeof form) =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+    (field: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
       setForm({ ...form, [field]: e.target.value });
 
   async function handleSubmit(e: React.FormEvent) {
@@ -260,9 +259,8 @@ export default function ProfessionalAuthPage() {
               {mode === "signup" ? "Grow your practice on Buildora." : "Welcome back."}
             </h1>
             <p className="mt-3 max-w-xl font-medium text-stone-700 dark:text-slate-300">
-              Architects, structural engineers, contractors, and material suppliers — meet
-              serious clients, get paid through protected escrow, and carry a badge people
-              trust.
+              Architects, structural engineers, contractors, and material suppliers — meet serious
+              clients, get paid through protected escrow, and carry a badge people trust.
             </p>
 
             <ul className="mt-8 flex flex-col gap-5">
@@ -634,8 +632,8 @@ export default function ProfessionalAuthPage() {
 
                   {mode === "signup" && (
                     <p className="rounded-xl border border-amber-500/25 bg-amber-400/10 px-4 py-2.5 text-xs font-medium text-stone-700 dark:border-amber-300/15 dark:text-slate-300">
-                      Your account starts unverified — submit your documents afterwards to earn
-                      the Platform Verified badge.
+                      Your account starts unverified — submit your documents afterwards to earn the
+                      Platform Verified badge.
                     </p>
                   )}
 

@@ -15,7 +15,12 @@ const createInquirySchema = z.object({
 });
 
 // A populated inquiry has its landOwner/architect refs replaced by user docs.
-type PopulatedRef = { _id: unknown; name: string; username: string; profile?: { company?: string } };
+type PopulatedRef = {
+  _id: unknown;
+  name: string;
+  username: string;
+  profile?: { company?: string };
+};
 
 /** Shapes an inquiry (with landOwner + architect populated) for the client. */
 function toInquiryDto(doc: HydratedDocument<InquiryDoc>): InquiryDto {
@@ -58,7 +63,10 @@ export async function createInquiry(req: Request, res: Response) {
   const parsed = createInquirySchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({
-      error: { message: parsed.error.issues[0]?.message ?? "Invalid input", details: parsed.error.issues },
+      error: {
+        message: parsed.error.issues[0]?.message ?? "Invalid input",
+        details: parsed.error.issues,
+      },
     });
   }
   const { architectId, message } = parsed.data;

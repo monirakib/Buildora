@@ -160,8 +160,8 @@ export default function SupervisorPage() {
             Verification requests
           </h1>
           <p className="mt-3 max-w-xl text-stone-600 dark:text-slate-400">
-            Review each professional&apos;s credentials, education, and portfolio, then approve
-            or reject with a note.
+            Review each professional&apos;s credentials, education, and portfolio, then approve or
+            reject with a note.
           </p>
 
           {/* Status tabs */}
@@ -225,9 +225,7 @@ export default function SupervisorPage() {
                   Select a request to review the professional&apos;s full profile.
                 </p>
               ) : detailLoading || !detail ? (
-                <p className="text-sm text-stone-500 dark:text-slate-500">
-                  {error ?? "Loading…"}
-                </p>
+                <p className="text-sm text-stone-500 dark:text-slate-500">{error ?? "Loading…"}</p>
               ) : (
                 <div className="flex flex-col gap-6">
                   {/* Who */}
@@ -338,7 +336,10 @@ export default function SupervisorPage() {
                           >
                             <span className="font-semibold">{a.title}</span>
                             {a.year ? (
-                              <span className="text-stone-600 dark:text-slate-400"> ({a.year})</span>
+                              <span className="text-stone-600 dark:text-slate-400">
+                                {" "}
+                                ({a.year})
+                              </span>
                             ) : null}
                             {a.description && (
                               <p className="mt-0.5 text-stone-600 dark:text-slate-400">

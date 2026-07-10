@@ -150,8 +150,7 @@ export function Features() {
           Everything your build needs
         </h2>
         <p className="mt-4 max-w-2xl text-lg text-stone-600 dark:text-slate-400">
-          One trusted home for the entire journey — from an empty plot to the occupancy
-          certificate.
+          One trusted home for the entire journey — from an empty plot to the occupancy certificate.
         </p>
       </Reveal>
 
@@ -312,8 +311,8 @@ export function CtaSection() {
             Ready to build?
           </h2>
           <p className="mx-auto mt-4 max-w-xl text-lg text-stone-300 dark:text-slate-400">
-            Post your project brief and meet verified professionals — starting in Dhaka, under
-            RAJUK jurisdiction.
+            Post your project brief and meet verified professionals — starting in Dhaka, under RAJUK
+            jurisdiction.
           </p>
           <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
             <Link

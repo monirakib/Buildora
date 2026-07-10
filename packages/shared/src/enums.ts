@@ -55,3 +55,71 @@ export enum ProjectStatus {
   COMPLETED = "COMPLETED",
   ARCHIVED = "ARCHIVED",
 }
+
+/** Lifecycle of an architect's proposal on a posted brief. */
+export enum ProposalStatus {
+  PENDING = "PENDING",
+  ACCEPTED = "ACCEPTED",
+  DECLINED = "DECLINED",
+  WITHDRAWN = "WITHDRAWN",
+}
+
+/**
+ * Lifecycle of a design contract (§4.1 steps 04–07): the client pays the
+ * concept fee, reviews the concept, funds escrow, then reviews the full
+ * design (≤3 revision rounds) — approval releases the escrow to the architect.
+ */
+export enum ContractStatus {
+  AWAITING_CONCEPT_FEE = "AWAITING_CONCEPT_FEE",
+  CONCEPT_IN_PROGRESS = "CONCEPT_IN_PROGRESS",
+  AWAITING_ESCROW = "AWAITING_ESCROW",
+  DESIGN_IN_PROGRESS = "DESIGN_IN_PROGRESS",
+  COMPLETED = "COMPLETED",
+  CANCELLED = "CANCELLED",
+}
+
+/** What a ledger entry on a contract represents. */
+export enum PaymentKind {
+  CONCEPT_FEE = "CONCEPT_FEE",
+  ESCROW_DEPOSIT = "ESCROW_DEPOSIT",
+  ESCROW_RELEASE = "ESCROW_RELEASE",
+  REFUND = "REFUND",
+}
+
+/** Payment channels named in the plan (§9.2). */
+export enum PaymentMethod {
+  BKASH = "BKASH",
+  NAGAD = "NAGAD",
+  BANK = "BANK",
+}
+
+/** Which phase of the contract a deliverable belongs to. */
+export enum DeliverableKind {
+  CONCEPT = "CONCEPT",
+  DESIGN = "DESIGN",
+}
+
+/** Client review outcome for a submitted deliverable. */
+export enum DeliverableStatus {
+  PENDING_REVIEW = "PENDING_REVIEW",
+  CHANGES_REQUESTED = "CHANGES_REQUESTED",
+  APPROVED = "APPROVED",
+}
+
+/** DAP land-use classification for a zone (drives FAR/coverage rules). */
+export enum LandUse {
+  RESIDENTIAL = "RESIDENTIAL",
+  COMMERCIAL = "COMMERCIAL",
+  MIXED_USE = "MIXED_USE",
+  INDUSTRIAL = "INDUSTRIAL",
+  INSTITUTIONAL = "INSTITUTIONAL",
+}
+
+/** Filing category for the project document archive. */
+export enum DocumentCategory {
+  DESIGN = "DESIGN",
+  PERMIT = "PERMIT",
+  CONTRACT = "CONTRACT",
+  SITE = "SITE",
+  OTHER = "OTHER",
+}

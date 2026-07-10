@@ -33,10 +33,7 @@ export function ThemeToggle() {
         fill="none"
         className="absolute right-2 h-4 w-4 text-white/40 dark:text-sky-200"
       >
-        <path
-          d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z"
-          fill="currentColor"
-        />
+        <path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z" fill="currentColor" />
       </svg>
       {/* Knob */}
       <span className="absolute left-1 h-7 w-7 rounded-full bg-white shadow-md transition-transform duration-300 dark:translate-x-[1.95rem] dark:bg-slate-800" />

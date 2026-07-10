@@ -42,11 +42,23 @@ const addButtonClass =
 // converted right before the save request.
 const emptyEducation = { degree: "", institution: "", year: "", certificateUrl: "" };
 const emptyAchievement = { title: "", year: "", description: "" };
-const emptyProject = { title: "", description: "", year: "", location: "", imageUrls: [] as string[] };
+const emptyProject = {
+  title: "",
+  description: "",
+  year: "",
+  location: "",
+  imageUrls: [] as string[],
+};
 
 type EducationForm = typeof emptyEducation;
 type AchievementForm = typeof emptyAchievement;
-type ProjectForm = { title: string; description: string; year: string; location: string; imageUrls: string[] };
+type ProjectForm = {
+  title: string;
+  description: string;
+  year: string;
+  location: string;
+  imageUrls: string[];
+};
 
 function formFromUser(user: SessionUser) {
   const p = (user.profile ?? {}) as ProfessionalProfile;
@@ -254,8 +266,9 @@ export default function ProfessionalProfilePage() {
     index: number,
     patch: Partial<FormState[K][number]>
   ) {
-    updateList(key, (list) =>
-      list.map((item, i) => (i === index ? { ...item, ...patch } : item)) as FormState[K]
+    updateList(
+      key,
+      (list) => list.map((item, i) => (i === index ? { ...item, ...patch } : item)) as FormState[K]
     );
   }
 
@@ -325,11 +338,7 @@ export default function ProfessionalProfilePage() {
           <div className="flex items-center gap-4">
             {form.avatarUrl ? (
               // eslint-disable-next-line @next/next/no-img-element -- user-hosted Cloudinary image
-              <img
-                src={form.avatarUrl}
-                alt=""
-                className="h-16 w-16 rounded-3xl object-cover"
-              />
+              <img src={form.avatarUrl} alt="" className="h-16 w-16 rounded-3xl object-cover" />
             ) : (
               <span className="grid h-16 w-16 place-items-center rounded-3xl bg-amber-400 text-xl font-extrabold text-stone-950">
                 {user.name
@@ -355,26 +364,28 @@ export default function ProfessionalProfilePage() {
 
               {approved ? (
                 <p className="mt-2 text-sm text-stone-600 dark:text-slate-400">
-                  You&apos;re Platform Verified — clients see the badge on your profile and in
-                  the directory.
+                  You&apos;re Platform Verified — clients see the badge on your profile and in the
+                  directory.
                 </p>
               ) : underReview ? (
                 <p className="mt-2 text-sm text-stone-600 dark:text-slate-400">
-                  Your request is with a supervisor. You&apos;ll see the outcome here once
-                  it&apos;s reviewed.
+                  Your request is with a supervisor. You&apos;ll see the outcome here once it&apos;s
+                  reviewed.
                 </p>
               ) : (
                 <>
                   {request?.status === VerificationStatus.REJECTED && (
                     <div className="mt-3 rounded-xl bg-rose-100 px-4 py-3 text-sm text-rose-800 dark:bg-rose-400/15 dark:text-rose-300">
                       <p className="font-bold">Your last request was rejected.</p>
-                      {request.note && <p className="mt-1">Supervisor&apos;s note: {request.note}</p>}
+                      {request.note && (
+                        <p className="mt-1">Supervisor&apos;s note: {request.note}</p>
+                      )}
                       <p className="mt-1">Update your profile and submit again.</p>
                     </div>
                   )}
                   <p className="mt-2 text-sm text-stone-600 dark:text-slate-400">
-                    Fill in your license body and number (plus education and portfolio — the
-                    more complete, the better), save, then send your profile for review.
+                    Fill in your license body and number (plus education and portfolio — the more
+                    complete, the better), save, then send your profile for review.
                   </p>
                   {!hasLicense && (
                     <p className="mt-2 text-xs font-semibold text-amber-700 dark:text-amber-400">
@@ -592,9 +603,7 @@ export default function ProfessionalProfilePage() {
                       <p className="text-sm font-bold">Qualification {i + 1}</p>
                       <button
                         type="button"
-                        onClick={() =>
-                          updateList("education", (l) => l.filter((_, j) => j !== i))
-                        }
+                        onClick={() => updateList("education", (l) => l.filter((_, j) => j !== i))}
                         className={removeButtonClass}
                       >
                         Remove
@@ -614,9 +623,7 @@ export default function ProfessionalProfilePage() {
                         required
                         placeholder="Institution — e.g. BUET"
                         value={entry.institution}
-                        onChange={(e) =>
-                          setEntry("education", i, { institution: e.target.value })
-                        }
+                        onChange={(e) => setEntry("education", i, { institution: e.target.value })}
                         className={inputClass}
                       />
                       <input
@@ -630,10 +637,10 @@ export default function ProfessionalProfilePage() {
                       />
                       <div className="flex items-center gap-2">
                         <UploadButton
-                          label={entry.certificateUrl ? "Replace certificate" : "Upload certificate"}
-                          onUploaded={(url) =>
-                            setEntry("education", i, { certificateUrl: url })
+                          label={
+                            entry.certificateUrl ? "Replace certificate" : "Upload certificate"
                           }
+                          onUploaded={(url) => setEntry("education", i, { certificateUrl: url })}
                           onError={setError}
                         />
                         {entry.certificateUrl && (
@@ -654,9 +661,7 @@ export default function ProfessionalProfilePage() {
                 {form.education.length < 10 && (
                   <button
                     type="button"
-                    onClick={() =>
-                      updateList("education", (l) => [...l, { ...emptyEducation }])
-                    }
+                    onClick={() => updateList("education", (l) => [...l, { ...emptyEducation }])}
                     className={addButtonClass}
                   >
                     + Add qualification
@@ -713,9 +718,7 @@ export default function ProfessionalProfilePage() {
                       maxLength={500}
                       placeholder="Short description (optional)"
                       value={entry.description}
-                      onChange={(e) =>
-                        setEntry("achievements", i, { description: e.target.value })
-                      }
+                      onChange={(e) => setEntry("achievements", i, { description: e.target.value })}
                       className={`${inputClass} mt-3`}
                     />
                   </div>
@@ -751,9 +754,7 @@ export default function ProfessionalProfilePage() {
                       <p className="text-sm font-bold">Project {i + 1}</p>
                       <button
                         type="button"
-                        onClick={() =>
-                          updateList("portfolio", (l) => l.filter((_, j) => j !== i))
-                        }
+                        onClick={() => updateList("portfolio", (l) => l.filter((_, j) => j !== i))}
                         className={removeButtonClass}
                       >
                         Remove
@@ -790,9 +791,7 @@ export default function ProfessionalProfilePage() {
                       maxLength={1000}
                       placeholder="What was the brief, and what did you design?"
                       value={project.description}
-                      onChange={(e) =>
-                        setEntry("portfolio", i, { description: e.target.value })
-                      }
+                      onChange={(e) => setEntry("portfolio", i, { description: e.target.value })}
                       className={`${inputClass} mt-3`}
                     />
 
@@ -801,11 +800,7 @@ export default function ProfessionalProfilePage() {
                       {project.imageUrls.map((url) => (
                         <div key={url} className="group relative">
                           {/* eslint-disable-next-line @next/next/no-img-element -- Cloudinary-hosted */}
-                          <img
-                            src={url}
-                            alt=""
-                            className="h-20 w-20 rounded-xl object-cover"
-                          />
+                          <img src={url} alt="" className="h-20 w-20 rounded-xl object-cover" />
                           <button
                             type="button"
                             aria-label="Remove image"

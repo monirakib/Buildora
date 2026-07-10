@@ -6,14 +6,14 @@ Every professional verified, every payment protected, every permit tracked.
 
 ## Stack
 
-| Layer      | Technology                                      |
-| ---------- | ----------------------------------------------- |
-| Web        | Next.js 16 (React 19), Tailwind CSS 4, Zustand  |
-| API        | Node.js, Express 5, TypeScript                  |
-| Database   | MongoDB (Mongoose ODM)                          |
-| Shared     | `@buildora/shared` — types, enums, constants    |
-| Monorepo   | pnpm workspaces + Turborepo                     |
-| CI         | GitHub Actions (typecheck + build)              |
+| Layer    | Technology                                     |
+| -------- | ---------------------------------------------- |
+| Web      | Next.js 16 (React 19), Tailwind CSS 4, Zustand |
+| API      | Node.js, Express 5, TypeScript                 |
+| Database | MongoDB (Mongoose ODM)                         |
+| Shared   | `@buildora/shared` — types, enums, constants   |
+| Monorepo | pnpm workspaces + Turborepo                    |
+| CI       | GitHub Actions (typecheck + build)             |
 
 ## Structure
 
@@ -51,12 +51,12 @@ explored before MongoDB is configured.
 
 ## Scripts
 
-| Command          | Description                              |
-| ---------------- | ---------------------------------------- |
-| `pnpm dev`       | Run all apps in dev mode (Turborepo)     |
-| `pnpm build`     | Production build of all packages         |
-| `pnpm typecheck` | TypeScript checks across the workspace   |
-| `pnpm format`    | Prettier over the whole repo             |
+| Command          | Description                            |
+| ---------------- | -------------------------------------- |
+| `pnpm dev`       | Run all apps in dev mode (Turborepo)   |
+| `pnpm build`     | Production build of all packages       |
+| `pnpm typecheck` | TypeScript checks across the workspace |
+| `pnpm format`    | Prettier over the whole repo           |
 
 ## Roadmap (Phase 1 MVP)
 

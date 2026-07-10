@@ -8,10 +8,7 @@ import {
   type VerificationRequest as VerificationRequestShape,
 } from "@buildora/shared";
 import { User, type UserDoc } from "../models/User";
-import {
-  VerificationRequest,
-  type VerificationRequestDoc,
-} from "../models/VerificationRequest";
+import { VerificationRequest, type VerificationRequestDoc } from "../models/VerificationRequest";
 
 // The professional field is populated on every query in this file, so the
 // document's ObjectId ref has been replaced by the actual user document.
@@ -41,10 +38,7 @@ function toVerificationRequest(doc: PopulatedRequest): VerificationRequestShape 
 }
 
 const submitSchema = z.object({
-  message: z.preprocess(
-    (v) => (v === "" ? undefined : v),
-    z.string().trim().max(1000).optional()
-  ),
+  message: z.preprocess((v) => (v === "" ? undefined : v), z.string().trim().max(1000).optional()),
 });
 
 /**
@@ -74,9 +68,7 @@ export async function submitVerification(req: Request, res: Response) {
     status: VerificationStatus.UNDER_REVIEW,
   });
   if (open) {
-    return res
-      .status(409)
-      .json({ error: { message: "Your request is already under review" } });
+    return res.status(409).json({ error: { message: "Your request is already under review" } });
   }
 
   const profile = (user.profile ?? {}) as ProfessionalProfile;

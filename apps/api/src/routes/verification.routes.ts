@@ -26,12 +26,7 @@ verificationRouter.post(
   requireRole(...PROFESSIONAL_ROLES),
   submitVerification
 );
-verificationRouter.get(
-  "/mine",
-  requireAuth,
-  requireRole(...PROFESSIONAL_ROLES),
-  getMyVerification
-);
+verificationRouter.get("/mine", requireAuth, requireRole(...PROFESSIONAL_ROLES), getMyVerification);
 
 // Supervisor side — review queue and decisions.
 verificationRouter.get(
