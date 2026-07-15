@@ -1,0 +1,6 @@
+# Generated files — let their tools own the formatting
+pnpm-lock.yaml
+*.tsbuildinfo
+.next/
+dist/
+.turbo/
