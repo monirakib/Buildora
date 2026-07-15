@@ -1,0 +1,125 @@
+/** The six platform actors defined in the product plan (§3.1). */
+export enum UserRole {
+  LAND_OWNER = "LAND_OWNER",
+  ARCHITECT = "ARCHITECT",
+  STRUCTURAL_ENGINEER = "STRUCTURAL_ENGINEER",
+  CONTRACTOR = "CONTRACTOR",
+  SUPPLIER = "SUPPLIER",
+  ADMIN = "ADMIN",
+}
+
+/** Professional verification pipeline stages (§5.1). */
+export enum VerificationStatus {
+  PENDING_VERIFICATION = "PENDING_VERIFICATION",
+  DOCUMENTS_SUBMITTED = "DOCUMENTS_SUBMITTED",
+  UNDER_REVIEW = "UNDER_REVIEW",
+  APPROVED = "APPROVED",
+  REJECTED = "REJECTED",
+}
+
+/** Verification badge tiers (§5.2). */
+export enum BadgeTier {
+  DOCUMENT_VERIFIED = "DOCUMENT_VERIFIED",
+  PLATFORM_VERIFIED = "PLATFORM_VERIFIED",
+  TOP_PROFESSIONAL = "TOP_PROFESSIONAL",
+}
+
+/** Building type a land owner intends to construct (used in profile + briefs). */
+export enum BuildingType {
+  RESIDENTIAL = "RESIDENTIAL",
+  COMMERCIAL = "COMMERCIAL",
+  MIXED_USE = "MIXED_USE",
+}
+
+/** Lifecycle of a land owner's contact request to a professional. */
+export enum InquiryStatus {
+  /** Sent by the land owner, not yet opened by the professional. */
+  SENT = "SENT",
+  /** The professional has opened it. */
+  READ = "READ",
+  /** The professional is interested and wants to proceed. */
+  ACCEPTED = "ACCEPTED",
+  /** The professional declined. */
+  DECLINED = "DECLINED",
+}
+
+/** High-level lifecycle of a construction project (§4.1 customer journey). */
+export enum ProjectStatus {
+  DRAFT = "DRAFT",
+  BRIEF_POSTED = "BRIEF_POSTED",
+  CONCEPT_STAGE = "CONCEPT_STAGE",
+  DESIGN_IN_PROGRESS = "DESIGN_IN_PROGRESS",
+  PERMIT_STAGE = "PERMIT_STAGE",
+  BIDDING = "BIDDING",
+  UNDER_CONSTRUCTION = "UNDER_CONSTRUCTION",
+  COMPLETED = "COMPLETED",
+  ARCHIVED = "ARCHIVED",
+}
+
+/** Lifecycle of an architect's proposal on a posted brief. */
+export enum ProposalStatus {
+  PENDING = "PENDING",
+  ACCEPTED = "ACCEPTED",
+  DECLINED = "DECLINED",
+  WITHDRAWN = "WITHDRAWN",
+}
+
+/**
+ * Lifecycle of a design contract (§4.1 steps 04–07): the client pays the
+ * concept fee, reviews the concept, funds escrow, then reviews the full
+ * design (≤3 revision rounds) — approval releases the escrow to the architect.
+ */
+export enum ContractStatus {
+  AWAITING_CONCEPT_FEE = "AWAITING_CONCEPT_FEE",
+  CONCEPT_IN_PROGRESS = "CONCEPT_IN_PROGRESS",
+  AWAITING_ESCROW = "AWAITING_ESCROW",
+  DESIGN_IN_PROGRESS = "DESIGN_IN_PROGRESS",
+  COMPLETED = "COMPLETED",
+  CANCELLED = "CANCELLED",
+}
+
+/** What a ledger entry on a contract represents. */
+export enum PaymentKind {
+  CONCEPT_FEE = "CONCEPT_FEE",
+  ESCROW_DEPOSIT = "ESCROW_DEPOSIT",
+  ESCROW_RELEASE = "ESCROW_RELEASE",
+  REFUND = "REFUND",
+}
+
+/** Payment channels named in the plan (§9.2). */
+export enum PaymentMethod {
+  BKASH = "BKASH",
+  NAGAD = "NAGAD",
+  BANK = "BANK",
+}
+
+/** Which phase of the contract a deliverable belongs to. */
+export enum DeliverableKind {
+  CONCEPT = "CONCEPT",
+  DESIGN = "DESIGN",
+}
+
+/** Client review outcome for a submitted deliverable. */
+export enum DeliverableStatus {
+  PENDING_REVIEW = "PENDING_REVIEW",
+  CHANGES_REQUESTED = "CHANGES_REQUESTED",
+  APPROVED = "APPROVED",
+}
+
+/** DAP land-use classification for a zone (drives FAR/coverage rules). */
+export enum LandUse {
+  RESIDENTIAL = "RESIDENTIAL",
+  COMMERCIAL = "COMMERCIAL",
+  MIXED_USE = "MIXED_USE",
+  INDUSTRIAL = "INDUSTRIAL",
+  INSTITUTIONAL = "INSTITUTIONAL",
+}
+
+/** Filing category for the project document archive. */
+export enum DocumentCategory {
+  DESIGN = "DESIGN",
+  PERMIT = "PERMIT",
+  CONTRACT = "CONTRACT",
+  SITE = "SITE",
+  OTHER = "OTHER",
+}
