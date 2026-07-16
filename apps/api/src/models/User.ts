@@ -27,8 +27,37 @@ const educationSchema = new Schema(
   {
     degree: { type: String, required: true, trim: true },
     institution: { type: String, required: true, trim: true },
+    department: { type: String, trim: true },
     year: { type: Number, min: 1950, max: 2100 },
+    cgpa: { type: String, trim: true },
     certificateUrl: { type: String, trim: true },
+    transcriptUrl: { type: String, trim: true },
+  },
+  { _id: false }
+);
+
+const experienceSchema = new Schema(
+  {
+    company: { type: String, required: true, trim: true },
+    designation: { type: String, required: true, trim: true },
+    employmentType: { type: String, trim: true },
+    // Kept as "YYYY-MM" strings straight from <input type="month">.
+    startDate: { type: String, trim: true },
+    endDate: { type: String, trim: true },
+    isCurrent: { type: Boolean },
+    description: { type: String, trim: true },
+  },
+  { _id: false }
+);
+
+const skillSchema = new Schema(
+  {
+    name: { type: String, required: true, trim: true },
+    level: {
+      type: String,
+      enum: ["BEGINNER", "INTERMEDIATE", "ADVANCED", "EXPERT"],
+      required: true,
+    },
   },
   { _id: false }
 );
@@ -48,6 +77,11 @@ const portfolioProjectSchema = new Schema(
     description: { type: String, trim: true },
     year: { type: Number, min: 1950, max: 2100 },
     location: { type: String, trim: true },
+    buildingType: { type: String, trim: true },
+    client: { type: String, trim: true },
+    areaSqft: { type: Number, min: 0 },
+    budgetBdt: { type: Number, min: 0 },
+    role: { type: String, trim: true },
     imageUrls: { type: [String], default: [] },
   },
   { _id: false }
@@ -76,8 +110,37 @@ const profileSchema = new Schema<UserProfile>(
     specialties: { type: String, trim: true },
     yearsExperience: { type: Number, min: 0 },
     website: { type: String, trim: true },
+    // Identity (architect verification wizard) — supervisor-only fields,
+    // excluded from the public projection in professionals.controller.
+    dateOfBirth: { type: String, trim: true },
+    gender: { type: String, trim: true },
+    currentAddress: { type: String, trim: true },
+    permanentAddress: { type: String, trim: true },
+    nidFrontUrl: { type: String, trim: true },
+    nidBackUrl: { type: String, trim: true },
+    // Professional details
+    professionalTitle: { type: String, trim: true },
+    isIndependent: { type: Boolean },
+    officeAddress: { type: String, trim: true },
+    languages: { type: String, trim: true },
+    linkedin: { type: String, trim: true },
+    // License / membership
+    membershipStatus: { type: String, trim: true },
+    licenseIssueDate: { type: String, trim: true },
+    licenseExpiryDate: { type: String, trim: true },
+    iabCertificateUrl: { type: String, trim: true },
+    membershipCardUrl: { type: String, trim: true },
+    rajukEnlistmentNo: { type: String, trim: true },
+    rajukCertificateUrl: { type: String, trim: true },
+    // Final declaration
+    declarationAgreed: { type: Boolean },
+    declarationSignature: { type: String, trim: true },
+    declarationSignedAt: { type: String, trim: true },
     // `default: undefined` keeps empty arrays out of land-owner documents.
     education: { type: [educationSchema], default: undefined },
+    experience: { type: [experienceSchema], default: undefined },
+    expertise: { type: [String], default: undefined },
+    skills: { type: [skillSchema], default: undefined },
     achievements: { type: [achievementSchema], default: undefined },
     portfolio: { type: [portfolioProjectSchema], default: undefined },
   },

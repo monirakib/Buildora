@@ -5,6 +5,7 @@ import { z } from "zod";
 import {
   DEFAULT_PAGE_SIZE,
   UserRole,
+  VerificationStatus,
   type Paginated,
   type ProfessionalProfile,
   type PublicProfessional,
@@ -108,8 +109,26 @@ const optionalYear = z.preprocess(
 const educationEntrySchema = z.object({
   degree: z.string().trim().min(2, "Enter the degree name").max(120),
   institution: z.string().trim().min(2, "Enter the institution").max(160),
+  department: optionalText(120),
   year: optionalYear,
+  cgpa: optionalText(20),
   certificateUrl: optionalUrl,
+  transcriptUrl: optionalUrl,
+});
+
+const experienceEntrySchema = z.object({
+  company: z.string().trim().min(2, "Enter the company name").max(160),
+  designation: z.string().trim().min(2, "Enter the designation").max(120),
+  employmentType: optionalText(40),
+  startDate: optionalText(10),
+  endDate: optionalText(10),
+  isCurrent: z.boolean().optional(),
+  description: optionalText(1000),
+});
+
+const skillEntrySchema = z.object({
+  name: z.string().trim().min(1, "Enter the skill name").max(60),
+  level: z.enum(["BEGINNER", "INTERMEDIATE", "ADVANCED", "EXPERT"]),
 });
 
 const achievementEntrySchema = z.object({
@@ -118,11 +137,19 @@ const achievementEntrySchema = z.object({
   description: optionalText(500),
 });
 
+const optionalNonNegative = (max: number) =>
+  z.preprocess(emptyToUndef, z.coerce.number().min(0, "Must be zero or more").max(max).optional());
+
 const portfolioProjectSchema = z.object({
   title: z.string().trim().min(2, "Enter the project title").max(160),
   description: optionalText(1000),
   year: optionalYear,
   location: optionalText(120),
+  buildingType: optionalText(60),
+  client: optionalText(120),
+  areaSqft: optionalNonNegative(10_000_000),
+  budgetBdt: optionalNonNegative(100_000_000_000),
+  role: optionalText(120),
   imageUrls: z.array(z.url()).max(8, "At most 8 images per project").default([]),
 });
 
@@ -145,7 +172,33 @@ const professionalProfileSchema = z.object({
     z.coerce.number().min(0, "Must be zero or more").max(80).optional()
   ),
   website: optionalUrl,
+  // ---- Architect verification wizard fields (all optional) ----
+  dateOfBirth: optionalText(10),
+  gender: optionalText(20),
+  currentAddress: optionalText(300),
+  permanentAddress: optionalText(300),
+  nid: optionalText(20),
+  nidFrontUrl: optionalUrl,
+  nidBackUrl: optionalUrl,
+  professionalTitle: optionalText(120),
+  isIndependent: z.boolean().optional(),
+  officeAddress: optionalText(300),
+  languages: optionalText(160),
+  linkedin: optionalUrl,
+  membershipStatus: optionalText(30),
+  licenseIssueDate: optionalText(10),
+  licenseExpiryDate: optionalText(10),
+  iabCertificateUrl: optionalUrl,
+  membershipCardUrl: optionalUrl,
+  rajukEnlistmentNo: optionalText(60),
+  rajukCertificateUrl: optionalUrl,
+  declarationAgreed: z.boolean().optional(),
+  declarationSignature: optionalText(120),
+  declarationSignedAt: optionalText(30),
   education: z.array(educationEntrySchema).max(10, "At most 10 education entries").default([]),
+  experience: z.array(experienceEntrySchema).max(15, "At most 15 experience entries").default([]),
+  expertise: z.array(z.string().trim().min(1).max(60)).max(20, "Too many expertise areas").default([]),
+  skills: z.array(skillEntrySchema).max(20, "At most 20 skills").default([]),
   achievements: z.array(achievementEntrySchema).max(15, "At most 15 achievements").default([]),
   portfolio: z.array(portfolioProjectSchema).max(12, "At most 12 projects").default([]),
 });
@@ -185,6 +238,17 @@ export async function updateMyProfessionalProfile(req: Request, res: Response) {
   const user = await User.findById(req.auth!.sub);
   if (!user) {
     return res.status(401).json({ error: { message: "Account no longer exists" } });
+  }
+
+  // The supervisor reviews the live profile, so it's frozen while a request
+  // is open — editable again after a decision (approved or rejected).
+  if (
+    user.verificationStatus === VerificationStatus.DOCUMENTS_SUBMITTED ||
+    user.verificationStatus === VerificationStatus.UNDER_REVIEW
+  ) {
+    return res.status(409).json({
+      error: { message: "Your profile is locked while it's being reviewed" },
+    });
   }
 
   const { name, phone, ...profile } = parsed.data;

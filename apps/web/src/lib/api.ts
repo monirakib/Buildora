@@ -4,6 +4,7 @@ import type {
   Inquiry,
   Paginated,
   PortfolioProject,
+  ProfessionalProfile,
   PublicProfessional,
   SessionUser,
   UserRole,
@@ -154,22 +155,19 @@ export async function listMyInquiries(token: string): Promise<Inquiry[]> {
   return res.data.inquiries;
 }
 
-/** Structured payload for the professional profile editor. */
-export interface ProfessionalProfileInput {
+/**
+ * Structured payload for the professional profile editor and the architect
+ * verification wizard. Numeric fields may arrive as raw form strings — the
+ * API's zod schema coerces them.
+ */
+export type ProfessionalProfileInput = Omit<Partial<ProfessionalProfile>, "yearsExperience"> & {
   name: string;
   phone: string;
-  avatarUrl: string;
-  company: string;
-  bio: string;
-  licenseAuthority: string;
-  licenseNumber: string;
-  specialties: string;
-  yearsExperience: string;
-  website: string;
+  yearsExperience?: string | number;
   education: EducationEntry[];
   achievements: AchievementEntry[];
   portfolio: PortfolioProject[];
-}
+};
 
 /** PATCH /api/professionals/me/profile — the professional's own editor. */
 export async function updateProfessionalProfile(

@@ -36,10 +36,40 @@ export interface EducationEntry {
   /** e.g. "B.Arch", "M.Sc in Structural Engineering". */
   degree: string;
   institution: string;
+  department?: string;
   /** Graduation year. */
   year?: number;
-  /** Uploaded certificate/transcript image. */
+  /** e.g. "3.75 / 4.00" — kept as text so any grading scale fits. */
+  cgpa?: string;
+  /** Uploaded certificate image. */
   certificateUrl?: string;
+  /** Uploaded transcript image. */
+  transcriptUrl?: string;
+}
+
+/** One job/engagement in a professional's work history. */
+export interface ExperienceEntry {
+  company: string;
+  designation: string;
+  /** e.g. "Full-time", "Part-time", "Contract", "Freelance". */
+  employmentType?: string;
+  /** ISO date string "YYYY-MM" or "YYYY-MM-DD". */
+  startDate?: string;
+  endDate?: string;
+  /** True while this is their current position (endDate ignored). */
+  isCurrent?: boolean;
+  /** Responsibilities and major projects handled in this role. */
+  description?: string;
+}
+
+/** Proficiency levels for the technical-skill cards. */
+export type SkillLevel = "BEGINNER" | "INTERMEDIATE" | "ADVANCED" | "EXPERT";
+
+/** One design/engineering tool the professional works with. */
+export interface SkillEntry {
+  /** e.g. "AutoCAD", "Revit". */
+  name: string;
+  level: SkillLevel;
 }
 
 /** A notable award, publication, or milestone. */
@@ -56,7 +86,16 @@ export interface PortfolioProject {
   year?: number;
   /** e.g. "Dhanmondi, Dhaka". */
   location?: string;
-  /** Uploaded photos/renders of the design. */
+  /** e.g. "Residential", "Commercial", "Hospital". */
+  buildingType?: string;
+  client?: string;
+  /** Built area in square feet. */
+  areaSqft?: number;
+  /** Approximate project budget in BDT. */
+  budgetBdt?: number;
+  /** The professional's role, e.g. "Lead Architect". */
+  role?: string;
+  /** Uploaded photos/renders; the first image is used as the cover. */
   imageUrls: string[];
 }
 
@@ -72,15 +111,61 @@ export interface ProfessionalProfile {
   bio?: string;
   /** Registration body, e.g. "IAB", "IEB", "RAJUK". */
   licenseAuthority?: string;
-  /** Professional registration / license number. */
+  /** Professional registration / license number (IAB membership no. for architects). */
   licenseNumber?: string;
   /** Free-text specialties, e.g. "Residential, RCC design". */
   specialties?: string;
   yearsExperience?: number;
   website?: string;
+
+  // ---- Identity (supervisor-only; never in the public projection) ----
+  /** ISO date "YYYY-MM-DD". */
+  dateOfBirth?: string;
+  gender?: string;
+  currentAddress?: string;
+  permanentAddress?: string;
+  /** National ID number. */
+  nid?: string;
+  nidFrontUrl?: string;
+  nidBackUrl?: string;
+
+  // ---- Professional details ----
+  /** e.g. "Principal Architect". */
+  professionalTitle?: string;
+  /** True when practising independently rather than under a firm. */
+  isIndependent?: boolean;
+  officeAddress?: string;
+  /** Comma-separated, e.g. "Bangla, English". */
+  languages?: string;
+  linkedin?: string;
+
+  // ---- License / membership ----
+  /** e.g. "Active", "Provisional", "Expired". */
+  membershipStatus?: string;
+  /** ISO dates "YYYY-MM-DD". */
+  licenseIssueDate?: string;
+  licenseExpiryDate?: string;
+  iabCertificateUrl?: string;
+  membershipCardUrl?: string;
+  rajukEnlistmentNo?: string;
+  rajukCertificateUrl?: string;
+
+  // ---- Structured sections ----
   education?: EducationEntry[];
+  experience?: ExperienceEntry[];
+  /** Selected chips from EXPERTISE_AREAS. */
+  expertise?: string[];
+  skills?: SkillEntry[];
   achievements?: AchievementEntry[];
   portfolio?: PortfolioProject[];
+
+  // ---- Final declaration ----
+  /** True once all declaration checkboxes were ticked at submission. */
+  declarationAgreed?: boolean;
+  /** Typed full-name signature. */
+  declarationSignature?: string;
+  /** ISO timestamp of when the declaration was signed. */
+  declarationSignedAt?: string;
 }
 
 /** Either profile shape — which one applies is determined by `role`. */

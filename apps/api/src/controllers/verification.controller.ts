@@ -3,7 +3,9 @@ import { isValidObjectId } from "mongoose";
 import type { HydratedDocument } from "mongoose";
 import { z } from "zod";
 import {
+  UserRole,
   VerificationStatus,
+  computeCompletion,
   type ProfessionalProfile,
   type VerificationRequest as VerificationRequestShape,
 } from "@buildora/shared";
@@ -65,14 +67,25 @@ export async function submitVerification(req: Request, res: Response) {
 
   const open = await VerificationRequest.findOne({
     professional: user._id,
-    status: VerificationStatus.UNDER_REVIEW,
+    status: { $in: [VerificationStatus.DOCUMENTS_SUBMITTED, VerificationStatus.UNDER_REVIEW] },
   });
   if (open) {
     return res.status(409).json({ error: { message: "Your request is already under review" } });
   }
 
   const profile = (user.profile ?? {}) as ProfessionalProfile;
-  if (!profile.licenseAuthority || !profile.licenseNumber) {
+  if (user.role === UserRole.ARCHITECT) {
+    // Architects go through the full verification wizard — the same mandatory
+    // checklist the wizard shows is enforced here so it can't be bypassed.
+    const completion = computeCompletion(profile);
+    if (!completion.mandatoryComplete) {
+      return res.status(400).json({
+        error: {
+          message: `Complete the mandatory items first: ${completion.missingMandatory.join(", ")}`,
+        },
+      });
+    }
+  } else if (!profile.licenseAuthority || !profile.licenseNumber) {
     return res.status(400).json({
       error: {
         message:
@@ -81,12 +94,15 @@ export async function submitVerification(req: Request, res: Response) {
     });
   }
 
+  // Submission lands as DOCUMENTS_SUBMITTED; it becomes UNDER_REVIEW when a
+  // supervisor actually opens the request.
   const request = await VerificationRequest.create({
     professional: user._id,
+    status: VerificationStatus.DOCUMENTS_SUBMITTED,
     message: parsed.data.message,
   });
 
-  user.verificationStatus = VerificationStatus.UNDER_REVIEW;
+  user.verificationStatus = VerificationStatus.DOCUMENTS_SUBMITTED;
   await user.save();
 
   await request.populate("professional");
@@ -119,7 +135,14 @@ export async function listVerificationRequests(req: Request, res: Response) {
     ? (statusParam as VerificationStatus)
     : VerificationStatus.UNDER_REVIEW;
 
-  const docs = await VerificationRequest.find({ status })
+  // The open queue covers both pre-review stages: freshly submitted requests
+  // and ones a supervisor has already opened.
+  const filter =
+    status === VerificationStatus.UNDER_REVIEW
+      ? { status: { $in: [VerificationStatus.DOCUMENTS_SUBMITTED, VerificationStatus.UNDER_REVIEW] } }
+      : { status };
+
+  const docs = await VerificationRequest.find(filter)
     .sort({ createdAt: -1 })
     .limit(100)
     .populate<{ professional: HydratedDocument<UserDoc> }>("professional");
@@ -143,6 +166,15 @@ export async function getVerificationRequest(req: Request, res: Response) {
   }>("professional");
   if (!doc || !doc.professional) {
     return res.status(404).json({ error: { message: "Request not found" } });
+  }
+
+  // A supervisor opening a fresh submission moves it into UNDER_REVIEW — the
+  // professional sees their badge advance from "Submitted" to "In review".
+  if (doc.status === VerificationStatus.DOCUMENTS_SUBMITTED) {
+    doc.status = VerificationStatus.UNDER_REVIEW;
+    await doc.save();
+    doc.professional.verificationStatus = VerificationStatus.UNDER_REVIEW;
+    await doc.professional.save();
   }
 
   const professional = doc.professional.toObject();
@@ -191,7 +223,10 @@ export async function decideVerificationRequest(req: Request, res: Response) {
   if (!doc || !doc.professional) {
     return res.status(404).json({ error: { message: "Request not found" } });
   }
-  if (doc.status !== VerificationStatus.UNDER_REVIEW) {
+  if (
+    doc.status !== VerificationStatus.UNDER_REVIEW &&
+    doc.status !== VerificationStatus.DOCUMENTS_SUBMITTED
+  ) {
     return res.status(409).json({ error: { message: "This request has already been decided" } });
   }
 

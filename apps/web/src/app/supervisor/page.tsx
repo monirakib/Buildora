@@ -289,6 +289,144 @@ export default function SupervisorPage() {
 
                   {profile.bio && <Field label="About">{profile.bio}</Field>}
 
+                  {/* Identity documents (architect verification wizard) */}
+                  {(profile.nid || profile.nidFrontUrl || profile.dateOfBirth) && (
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <Field label="NID number">{profile.nid || "—"}</Field>
+                      <Field label="Date of birth">{profile.dateOfBirth || "—"}</Field>
+                      {profile.gender && <Field label="Gender">{profile.gender}</Field>}
+                      {profile.currentAddress && (
+                        <Field label="Current address">{profile.currentAddress}</Field>
+                      )}
+                      {profile.permanentAddress && (
+                        <Field label="Permanent address">{profile.permanentAddress}</Field>
+                      )}
+                      <Field label="NID card">
+                        <span className="flex gap-3">
+                          {profile.nidFrontUrl ? (
+                            <a
+                              href={profile.nidFrontUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="font-bold text-amber-600 underline underline-offset-2 dark:text-amber-400"
+                            >
+                              Front
+                            </a>
+                          ) : (
+                            "Front missing"
+                          )}
+                          {profile.nidBackUrl ? (
+                            <a
+                              href={profile.nidBackUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="font-bold text-amber-600 underline underline-offset-2 dark:text-amber-400"
+                            >
+                              Back
+                            </a>
+                          ) : (
+                            "Back missing"
+                          )}
+                        </span>
+                      </Field>
+                    </div>
+                  )}
+
+                  {/* License documents */}
+                  {(profile.iabCertificateUrl || profile.membershipStatus) && (
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      {profile.membershipStatus && (
+                        <Field label="Membership status">{profile.membershipStatus}</Field>
+                      )}
+                      {(profile.licenseIssueDate || profile.licenseExpiryDate) && (
+                        <Field label="Validity">
+                          {profile.licenseIssueDate || "?"} → {profile.licenseExpiryDate || "?"}
+                        </Field>
+                      )}
+                      <Field label="License documents">
+                        <span className="flex flex-wrap gap-3">
+                          {[
+                            { url: profile.iabCertificateUrl, label: "IAB certificate" },
+                            { url: profile.membershipCardUrl, label: "Membership card" },
+                            { url: profile.rajukCertificateUrl, label: "RAJUK certificate" },
+                          ]
+                            .filter((d) => d.url)
+                            .map((d) => (
+                              <a
+                                key={d.label}
+                                href={d.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="font-bold text-amber-600 underline underline-offset-2 dark:text-amber-400"
+                              >
+                                {d.label}
+                              </a>
+                            ))}
+                        </span>
+                      </Field>
+                      {profile.rajukEnlistmentNo && (
+                        <Field label="RAJUK enlistment no.">{profile.rajukEnlistmentNo}</Field>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Expertise + skills */}
+                  {((profile.expertise?.length ?? 0) > 0 || (profile.skills?.length ?? 0) > 0) && (
+                    <div>
+                      <p className="text-xs font-bold tracking-wider text-stone-500 uppercase dark:text-slate-400">
+                        Expertise &amp; skills
+                      </p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {(profile.expertise ?? []).map((area) => (
+                          <span
+                            key={area}
+                            className="rounded-full bg-amber-400/15 px-3 py-1 text-xs font-bold text-amber-700 dark:text-amber-300"
+                          >
+                            {area}
+                          </span>
+                        ))}
+                        {(profile.skills ?? []).map((s) => (
+                          <span
+                            key={s.name}
+                            className="rounded-full border border-stone-300/60 px-3 py-1 text-xs font-semibold dark:border-white/15"
+                          >
+                            {s.name} · {s.level.toLowerCase()}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Work experience */}
+                  {(profile.experience?.length ?? 0) > 0 && (
+                    <div>
+                      <p className="text-xs font-bold tracking-wider text-stone-500 uppercase dark:text-slate-400">
+                        Experience
+                      </p>
+                      <ul className="mt-2 flex flex-col gap-2">
+                        {profile.experience!.map((x, i) => (
+                          <li
+                            key={i}
+                            className="rounded-xl border border-stone-300/60 px-4 py-2.5 text-sm dark:border-white/10"
+                          >
+                            <span className="font-semibold">{x.designation}</span>
+                            <span className="text-stone-600 dark:text-slate-400">
+                              {" "}
+                              — {x.company}
+                              {x.startDate ? ` · ${x.startDate}` : ""}
+                              {x.isCurrent ? " – present" : x.endDate ? ` – ${x.endDate}` : ""}
+                            </span>
+                            {x.description && (
+                              <p className="mt-0.5 text-stone-600 dark:text-slate-400">
+                                {x.description}
+                              </p>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
                   {/* Education with certificates */}
                   {(profile.education?.length ?? 0) > 0 && (
                     <div>
@@ -304,7 +442,9 @@ export default function SupervisorPage() {
                             <span className="font-semibold">{e.degree}</span>
                             <span className="text-stone-600 dark:text-slate-400">
                               — {e.institution}
+                              {e.department ? `, ${e.department}` : ""}
                               {e.year ? `, ${e.year}` : ""}
+                              {e.cgpa ? ` · CGPA ${e.cgpa}` : ""}
                             </span>
                             {e.certificateUrl && (
                               <a
@@ -314,6 +454,16 @@ export default function SupervisorPage() {
                                 className="ml-auto text-xs font-bold text-amber-600 underline underline-offset-2 dark:text-amber-400"
                               >
                                 View certificate
+                              </a>
+                            )}
+                            {e.transcriptUrl && (
+                              <a
+                                href={e.transcriptUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs font-bold text-amber-600 underline underline-offset-2 dark:text-amber-400"
+                              >
+                                Transcript
                               </a>
                             )}
                           </li>
@@ -393,6 +543,15 @@ export default function SupervisorPage() {
                           </div>
                         ))}
                       </div>
+                    </div>
+                  )}
+
+                  {/* Signed declaration */}
+                  {profile.declarationSignature && (
+                    <div className="rounded-xl bg-emerald-400/10 px-4 py-3 text-sm">
+                      <span className="font-bold">Declaration signed:</span>{" "}
+                      <span className="font-serif italic">{profile.declarationSignature}</span>
+                      {profile.declarationSignedAt ? ` — ${profile.declarationSignedAt}` : ""}
                     </div>
                   )}
 
