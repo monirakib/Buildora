@@ -34,6 +34,44 @@ const briefSchema = z
       (v) => (v === "" || v == null ? undefined : v),
       z.coerce.number().min(0).optional()
     ),
+    // ---- Plot details (all optional) ----
+    roadWidthFt: z.preprocess(
+      (v) => (v === "" || v == null ? undefined : v),
+      z.coerce.number().min(1).max(200).optional()
+    ),
+    plotFacing: z.preprocess(
+      (v) => (v === "" ? undefined : v),
+      z.string().trim().max(40).optional()
+    ),
+    existingStructure: z.boolean().optional(),
+    soilTestDone: z.boolean().optional(),
+    // ---- Building requirements ----
+    unitsPerFloor: z.preprocess(
+      (v) => (v === "" || v == null ? undefined : v),
+      z.coerce.number().int().min(1).max(20).optional()
+    ),
+    bedroomsPerUnit: z.preprocess(
+      (v) => (v === "" || v == null ? undefined : v),
+      z.coerce.number().int().min(1).max(20).optional()
+    ),
+    parkingSpaces: z.preprocess(
+      (v) => (v === "" || v == null ? undefined : v),
+      z.coerce.number().int().min(0).max(200).optional()
+    ),
+    hasLift: z.boolean().optional(),
+    hasBasement: z.boolean().optional(),
+    hasRooftopAmenities: z.boolean().optional(),
+    // ---- Preferences & readiness ----
+    designStyle: z.preprocess(
+      (v) => (v === "" ? undefined : v),
+      z.string().trim().max(60).optional()
+    ),
+    timeline: z.preprocess(
+      (v) => (v === "" ? undefined : v),
+      z.string().trim().max(40).optional()
+    ),
+    ownershipDocsReady: z.boolean().optional(),
+    photoUrls: z.array(z.url()).max(6, "At most 6 plot photos").optional(),
   })
   .refine(
     (d) => d.budgetMinBdt == null || d.budgetMaxBdt == null || d.budgetMaxBdt >= d.budgetMinBdt,
@@ -80,6 +118,20 @@ export function toProjectDto(
     floors: doc.floors,
     budgetMinBdt: doc.budgetMinBdt,
     budgetMaxBdt: doc.budgetMaxBdt,
+    roadWidthFt: doc.roadWidthFt,
+    plotFacing: doc.plotFacing,
+    existingStructure: doc.existingStructure,
+    soilTestDone: doc.soilTestDone,
+    unitsPerFloor: doc.unitsPerFloor,
+    bedroomsPerUnit: doc.bedroomsPerUnit,
+    parkingSpaces: doc.parkingSpaces,
+    hasLift: doc.hasLift,
+    hasBasement: doc.hasBasement,
+    hasRooftopAmenities: doc.hasRooftopAmenities,
+    designStyle: doc.designStyle,
+    timeline: doc.timeline,
+    ownershipDocsReady: doc.ownershipDocsReady,
+    photoUrls: doc.photoUrls,
     status: doc.status,
     pendingProposals: extra?.pendingProposals,
     createdAt: doc.createdAt.toISOString(),

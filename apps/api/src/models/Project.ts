@@ -20,6 +20,23 @@ export interface ProjectDoc {
   floors: number;
   budgetMinBdt?: number;
   budgetMaxBdt?: number;
+  // Plot details (all optional — older briefs won't have them)
+  roadWidthFt?: number;
+  plotFacing?: string;
+  existingStructure?: boolean;
+  soilTestDone?: boolean;
+  // Building requirements
+  unitsPerFloor?: number;
+  bedroomsPerUnit?: number;
+  parkingSpaces?: number;
+  hasLift?: boolean;
+  hasBasement?: boolean;
+  hasRooftopAmenities?: boolean;
+  // Preferences & readiness
+  designStyle?: string;
+  timeline?: string;
+  ownershipDocsReady?: boolean;
+  photoUrls?: string[];
   status: ProjectStatus;
   createdAt: Date;
   updatedAt: Date;
@@ -38,6 +55,20 @@ const projectSchema = new Schema<ProjectDoc>(
     floors: { type: Number, required: true, min: 1, max: 50 },
     budgetMinBdt: { type: Number, min: 0 },
     budgetMaxBdt: { type: Number, min: 0 },
+    roadWidthFt: { type: Number, min: 1, max: 200 },
+    plotFacing: { type: String, trim: true, maxlength: 40 },
+    existingStructure: { type: Boolean },
+    soilTestDone: { type: Boolean },
+    unitsPerFloor: { type: Number, min: 1, max: 20 },
+    bedroomsPerUnit: { type: Number, min: 1, max: 20 },
+    parkingSpaces: { type: Number, min: 0, max: 200 },
+    hasLift: { type: Boolean },
+    hasBasement: { type: Boolean },
+    hasRooftopAmenities: { type: Boolean },
+    designStyle: { type: String, trim: true, maxlength: 60 },
+    timeline: { type: String, trim: true, maxlength: 40 },
+    ownershipDocsReady: { type: Boolean },
+    photoUrls: { type: [String], default: undefined },
     status: {
       type: String,
       enum: Object.values(ProjectStatus),

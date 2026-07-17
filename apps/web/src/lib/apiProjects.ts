@@ -27,6 +27,23 @@ export interface BriefInput {
   floors: string;
   budgetMinBdt?: string;
   budgetMaxBdt?: string;
+  // Plot details
+  roadWidthFt?: string;
+  plotFacing?: string;
+  existingStructure?: boolean;
+  soilTestDone?: boolean;
+  // Building requirements
+  unitsPerFloor?: string;
+  bedroomsPerUnit?: string;
+  parkingSpaces?: string;
+  hasLift?: boolean;
+  hasBasement?: boolean;
+  hasRooftopAmenities?: boolean;
+  // Preferences & readiness
+  designStyle?: string;
+  timeline?: string;
+  ownershipDocsReady?: boolean;
+  photoUrls?: string[];
   /** true = post to architects right away; false/absent = keep as a draft. */
   publish?: boolean;
 }
