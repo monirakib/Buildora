@@ -52,7 +52,10 @@ export function IntroScrub() {
   });
 
   return (
-    <section className="relative overflow-hidden border-b border-stone-200 py-24 transition-colors duration-500 sm:py-32 dark:border-white/10">
+    <section
+      id="intro"
+      className="relative overflow-hidden border-b border-stone-200 py-24 transition-colors duration-500 sm:py-32 dark:border-white/10"
+    >
       {/* Quiet backdrop: the photo is softened and veiled by a heavy scrim so
           it reads as texture behind the words, not a second hero. */}
       {/* eslint-disable-next-line @next/next/no-img-element -- local asset */}

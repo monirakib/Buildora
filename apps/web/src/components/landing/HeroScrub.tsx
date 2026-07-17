@@ -234,8 +234,8 @@ export function HeroScrub() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Same behavior as the nav buttons: smooth-scroll to the first section.
-  const skipToContent = () => smoothScrollToId("features");
+  // Skips past the hero scrub only, landing on the very next section.
+  const skipToContent = () => smoothScrollToId("intro");
 
   return (
     <section ref={sectionRef} id="hero" className="relative h-[320vh]">
