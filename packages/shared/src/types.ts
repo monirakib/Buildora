@@ -285,6 +285,29 @@ export interface Project {
   floors: number;
   budgetMinBdt?: number;
   budgetMaxBdt?: number;
+  // ---- Plot details ----
+  /** Width of the fronting road in feet — drives the allowed FAR at RAJUK. */
+  roadWidthFt?: number;
+  /** Which way the plot faces, e.g. "South", "South-East corner". */
+  plotFacing?: string;
+  /** True when an old structure must be demolished first. */
+  existingStructure?: boolean;
+  soilTestDone?: boolean;
+  // ---- Building requirements ----
+  unitsPerFloor?: number;
+  bedroomsPerUnit?: number;
+  parkingSpaces?: number;
+  hasLift?: boolean;
+  hasBasement?: boolean;
+  hasRooftopAmenities?: boolean;
+  // ---- Preferences & readiness ----
+  /** e.g. "Modern", "Traditional", "Minimalist". */
+  designStyle?: string;
+  /** When they want to start, e.g. "Within 3 months". */
+  timeline?: string;
+  ownershipDocsReady?: boolean;
+  /** Plot photos uploaded with the brief. */
+  photoUrls?: string[];
   status: ProjectStatus;
   /** Number of pending proposals — only filled in for the owner's own list. */
   pendingProposals?: number;
@@ -483,6 +506,86 @@ export interface MarketOrder {
   note?: string;
   status: OrderStatus;
   createdAt: string;
+}
+
+/* ---------- Admin console ---------- */
+
+/** One point of a per-day time series (date is "YYYY-MM-DD", Dhaka time). */
+export interface DayPoint {
+  date: string;
+  count: number;
+  /** Only on money series (e.g. marketplace order value that day). */
+  totalBdt?: number;
+}
+
+/**
+ * Everything the admin overview dashboard shows, computed server-side in one
+ * request. All numbers come from live MongoDB aggregations — nothing cached
+ * or hardcoded.
+ */
+export interface AdminOverview {
+  totals: {
+    users: number;
+    landOwners: number;
+    professionals: number;
+    verifiedProfessionals: number;
+    projects: number;
+    proposals: number;
+    contracts: number;
+    inquiries: number;
+    messages: number;
+    products: number;
+    activeProducts: number;
+    orders: number;
+    /** Verification requests currently waiting on a supervisor. */
+    pendingVerifications: number;
+    /** Sessions seen in the last 15 minutes and not logged out. */
+    activeSessions: number;
+    /** Logins in the last 24 hours. */
+    logins24h: number;
+  };
+  finance: {
+    conceptFeesBdt: number;
+    /** Deposits minus releases and refunds — money currently held in escrow. */
+    escrowHeldBdt: number;
+    releasedToArchitectsBdt: number;
+    commissionBdt: number;
+    /** Marketplace order value, cancelled orders excluded. */
+    marketplaceGmvBdt: number;
+  };
+  usersByRole: { role: UserRole; count: number }[];
+  projectsByStatus: { status: ProjectStatus; count: number }[];
+  ordersByStatus: { status: OrderStatus; count: number }[];
+  /** Last 30 days, oldest first, zero-filled. */
+  signupsByDay: DayPoint[];
+  ordersByDay: DayPoint[];
+  /** Newest first, mixed: signups, orders, briefs, verification requests. */
+  activity: AdminActivityItem[];
+}
+
+/** One row of the overview's recent-activity feed. */
+export interface AdminActivityItem {
+  kind: "signup" | "order" | "project" | "verification";
+  /** e.g. "Rafiq Ahmed joined as Architect". */
+  text: string;
+  at: string;
+}
+
+/** One row of the admin user-management table. */
+export interface AdminUserRow {
+  id: string;
+  name: string;
+  username: string;
+  email: string;
+  phone?: string;
+  role: UserRole;
+  verificationStatus: VerificationStatus;
+  avatarUrl?: string;
+  createdAt: string;
+  /** Most recent session activity, if the user has ever logged in. */
+  lastActiveAt?: string;
+  /** Logins that are still valid (not logged out). */
+  activeSessions: number;
 }
 
 /** Cursor-free paginated list wrapper for directory results. */

@@ -101,6 +101,17 @@ export async function updateProfile(
   return res.data.user;
 }
 
+/**
+ * POST /api/auth/logout — revoke this login's session server-side so the JWT
+ * stops working everywhere, not just in this browser's localStorage.
+ */
+export async function logoutUser(token: string): Promise<void> {
+  await request<{ data: { ok: boolean } }>("/api/auth/logout", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
 export async function getMe(token: string): Promise<SessionUser> {
   const res = await request<{ data: { user: SessionUser } }>("/api/auth/me", {
     headers: { Authorization: `Bearer ${token}` },

@@ -25,7 +25,8 @@ type UserRef = {
   profile?: { company?: string };
 };
 
-function toProduct(doc: InstanceType<typeof Product>): ProductShape {
+// Exported for reuse by the admin console's marketplace moderation views.
+export function toProduct(doc: InstanceType<typeof Product>): ProductShape {
   const seller = doc.seller as unknown as UserRef;
   return {
     id: String(doc._id),
@@ -48,7 +49,7 @@ function toProduct(doc: InstanceType<typeof Product>): ProductShape {
   };
 }
 
-function toOrder(doc: InstanceType<typeof MarketOrder>): MarketOrderShape {
+export function toOrder(doc: InstanceType<typeof MarketOrder>): MarketOrderShape {
   const buyer = doc.buyer as unknown as UserRef;
   const seller = doc.seller as unknown as UserRef;
   return {
@@ -76,7 +77,7 @@ function toOrder(doc: InstanceType<typeof MarketOrder>): MarketOrderShape {
   };
 }
 
-const sellerSelect = "name role verificationStatus profile.company";
+export const sellerSelect = "name role verificationStatus profile.company";
 
 /* ---------- Public browsing ---------- */
 

@@ -6,6 +6,7 @@ import type { HydratedDocument } from "mongoose";
 import { BuildingType, UserRole, type SessionUser } from "@buildora/shared";
 import { env } from "../config/env";
 import { User, type UserDoc } from "../models/User";
+import { Session } from "../models/Session";
 
 // Account fields every signup shares (land owner and professional alike).
 const accountFields = {
@@ -117,12 +118,25 @@ function toSessionUser(user: HydratedDocument<UserDoc>): SessionUser {
   };
 }
 
-function signToken(user: HydratedDocument<UserDoc>): string {
-  // Payload matches AuthPayload in middleware/auth.ts: `sub` is the user id.
-  return jwt.sign({ sub: user._id.toString(), role: user.role }, env.JWT_SECRET, {
-    // Cast: jsonwebtoken's types want a "1h"/"7d"-style literal, env gives a plain string.
-    expiresIn: env.JWT_EXPIRES_IN as jwt.SignOptions["expiresIn"],
+/**
+ * Records this login as a Session document and returns a JWT carrying both the
+ * user id (`sub`) and the session id (`sid`). requireAuth later checks the
+ * session is still alive, so logging out actually kills the token server-side.
+ */
+async function startSession(user: HydratedDocument<UserDoc>, req: Request): Promise<string> {
+  const session = await Session.create({
+    user: user._id,
+    userAgent: req.headers["user-agent"],
   });
+  // Payload matches AuthPayload in middleware/auth.ts.
+  return jwt.sign(
+    { sub: user._id.toString(), role: user.role, sid: session._id.toString() },
+    env.JWT_SECRET,
+    {
+      // Cast: jsonwebtoken's types want a "1h"/"7d"-style literal, env gives a plain string.
+      expiresIn: env.JWT_EXPIRES_IN as jwt.SignOptions["expiresIn"],
+    }
+  );
 }
 
 /**
@@ -164,7 +178,8 @@ export async function register(req: Request, res: Response) {
     role: UserRole.LAND_OWNER,
   });
 
-  return res.status(201).json({ data: { user: toSessionUser(user), token: signToken(user) } });
+  const token = await startSession(user, req);
+  return res.status(201).json({ data: { user: toSessionUser(user), token } });
 }
 
 /**
@@ -209,7 +224,8 @@ export async function registerProfessional(req: Request, res: Response) {
     profile: Object.fromEntries(Object.entries(profile).filter(([, v]) => v !== undefined)),
   });
 
-  return res.status(201).json({ data: { user: toSessionUser(user), token: signToken(user) } });
+  const token = await startSession(user, req);
+  return res.status(201).json({ data: { user: toSessionUser(user), token } });
 }
 
 /** POST /api/auth/login — verify credentials, issue a JWT. */
@@ -235,7 +251,26 @@ export async function login(req: Request, res: Response) {
     return res.status(401).json({ error: { message: "Invalid credentials" } });
   }
 
-  return res.json({ data: { user: toSessionUser(user), token: signToken(user) } });
+  const token = await startSession(user, req);
+  return res.json({ data: { user: toSessionUser(user), token } });
+}
+
+/**
+ * POST /api/auth/logout — revoke the session this token belongs to. The JWT
+ * stays syntactically valid until it expires, but requireAuth rejects it once
+ * the session is revoked, so the logout takes effect server-side immediately.
+ */
+export async function logout(req: Request, res: Response) {
+  if (!req.auth) {
+    return res.status(401).json({ error: { message: "Authentication required" } });
+  }
+  if (req.auth.sid) {
+    await Session.updateOne(
+      { _id: req.auth.sid, user: req.auth.sub },
+      { $set: { revokedAt: new Date() } }
+    );
+  }
+  return res.json({ data: { ok: true } });
 }
 
 /** PATCH /api/auth/profile — update the logged-in user's account + profile details. */

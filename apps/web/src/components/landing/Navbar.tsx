@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { UserRole } from "@buildora/shared";
+import { UserRole, type SessionUser } from "@buildora/shared";
 import { smoothScrollToId } from "@/lib/smoothScroll";
+import { logoutUser } from "@/lib/api";
 import { useSession } from "@/store/useSession";
 import { ThemeToggle } from "./ThemeToggle";
 
@@ -46,7 +47,11 @@ const megaMenu = [
   {
     label: "Land owners",
     links: [
-      { href: "/projects/new", label: "Post a project brief", desc: "Land, budget, floors — in minutes" },
+      {
+        href: "/projects/new",
+        label: "Post a project brief",
+        desc: "Land, budget, floors — in minutes",
+      },
       { href: "/architects", label: "Find architects", desc: "Browse verified portfolios" },
       { href: "/marketplace", label: "Marketplace", desc: "Order materials straight to your site" },
       { href: "/permits", label: "Permit tools", desc: "DAP zone checks & RAJUK fees" },
@@ -62,10 +67,22 @@ const megaMenu = [
   {
     label: "Professionals",
     links: [
-      { href: "/auth?role=professional", label: "Join Buildora", desc: "Architects, engineers, contractors, suppliers" },
-      { href: "/profile/professional", label: "Get verified", desc: "Earn the Platform Verified badge" },
+      {
+        href: "/auth?role=professional",
+        label: "Join Buildora",
+        desc: "Architects, engineers, contractors, suppliers",
+      },
+      {
+        href: "/profile/professional",
+        label: "Get verified",
+        desc: "Earn the Platform Verified badge",
+      },
       { href: "/briefs", label: "Open briefs", desc: "Find your next client" },
-      { href: "/marketplace/sell", label: "Sell materials", desc: "List products on the marketplace" },
+      {
+        href: "/marketplace/sell",
+        label: "Sell materials",
+        desc: "List products on the marketplace",
+      },
       { href: "/inquiries", label: "Requests", desc: "Inquiries and replies in one place" },
     ],
     featured: {
@@ -153,8 +170,156 @@ function MegaMenuItem({ group }: { group: (typeof megaMenu)[number] }) {
   );
 }
 
+/** "Monir Akib" → "MA" — fallback when the user hasn't uploaded a photo. */
+function initialsOf(name: string): string {
+  return name
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((word) => word[0] ?? "")
+    .join("")
+    .toUpperCase();
+}
+
+/** "STRUCTURAL_ENGINEER" → "structural engineer" (capitalised via CSS). */
+function roleLabelOf(role: UserRole): string {
+  return role.replace(/_/g, " ").toLowerCase();
+}
+
+function Avatar({ user, className }: { user: SessionUser; className: string }) {
+  const url = user.profile?.avatarUrl;
+  return url ? (
+    // eslint-disable-next-line @next/next/no-img-element -- tiny avatar, remote host unknown
+    <img src={url} alt="" className={`${className} rounded-full object-cover`} />
+  ) : (
+    <span
+      className={`${className} grid place-items-center rounded-full bg-amber-400 text-[0.65em] font-extrabold tracking-wide text-stone-950`}
+    >
+      {initialsOf(user.name)}
+    </span>
+  );
+}
+
+/**
+ * Signed-in account chip: avatar + first name in the bar, with a hover/focus
+ * dropdown (same CSS-only pattern as the mega-menu) holding the full identity,
+ * quick links, and Log out.
+ */
+function UserChip({ user, onLogout }: { user: SessionUser; onLogout: () => void }) {
+  const firstName = user.name.split(" ")[0];
+  return (
+    <div className="group relative">
+      <button
+        type="button"
+        aria-haspopup="true"
+        aria-label={`Account: ${user.name}`}
+        className="flex items-center gap-2 rounded-full border border-white/20 bg-white/10 py-1 pl-1 pr-1.5 text-white backdrop-blur transition group-hover:border-white/40 group-hover:bg-white/20 group-focus-within:border-white/40 sm:pr-3"
+      >
+        <Avatar user={user} className="h-7 w-7 text-base" />
+        <span className="hidden max-w-28 truncate text-sm font-bold sm:block">{firstName}</span>
+        {/* Chevron flips while the panel is open */}
+        <svg
+          viewBox="0 0 24 24"
+          className="hidden h-3.5 w-3.5 text-white/70 transition-transform duration-300 group-hover:rotate-180 sm:block"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </button>
+
+      {/* pt-3 bridges the hover gap between the bar and the panel */}
+      <div className="invisible absolute right-0 top-full translate-y-2 pt-3 opacity-0 transition duration-200 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:opacity-100">
+        <div className="w-64 overflow-hidden rounded-2xl border border-white/10 bg-stone-950/90 shadow-2xl shadow-black/40 backdrop-blur-xl">
+          {/* Identity header */}
+          <div className="flex items-center gap-3 border-b border-white/10 p-4">
+            <Avatar user={user} className="h-10 w-10 text-lg" />
+            <div className="min-w-0">
+              <p className="truncate text-sm font-extrabold text-white">{user.name}</p>
+              <p className="truncate text-xs text-white/50">{user.email}</p>
+              <p className="mt-0.5 text-[0.65rem] font-bold tracking-widest text-amber-400 uppercase">
+                {roleLabelOf(user.role)}
+              </p>
+            </div>
+          </div>
+
+          <div className="p-1.5">
+            <Link
+              href="/dashboard"
+              className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold text-white/85 transition hover:bg-white/5 hover:text-white"
+            >
+              {/* Four-tile dashboard grid */}
+              <svg
+                viewBox="0 0 24 24"
+                className="h-4 w-4 text-white/50"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <rect x="3" y="3" width="7" height="7" rx="1.5" />
+                <rect x="14" y="3" width="7" height="7" rx="1.5" />
+                <rect x="3" y="14" width="7" height="7" rx="1.5" />
+                <rect x="14" y="14" width="7" height="7" rx="1.5" />
+              </svg>
+              Dashboard
+            </Link>
+            <Link
+              href="/profile"
+              className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold text-white/85 transition hover:bg-white/5 hover:text-white"
+            >
+              {/* Person silhouette */}
+              <svg
+                viewBox="0 0 24 24"
+                className="h-4 w-4 text-white/50"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+              </svg>
+              Profile
+            </Link>
+          </div>
+
+          <div className="border-t border-white/10 p-1.5">
+            <button
+              type="button"
+              onClick={onLogout}
+              className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold text-white/85 transition hover:bg-red-500/15 hover:text-red-300"
+            >
+              {/* Door frame with an arrow leaving it */}
+              <svg
+                viewBox="0 0 24 24"
+                className="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <path d="M16 17l5-5-5-5" />
+                <path d="M21 12H9" />
+              </svg>
+              Log out
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function Navbar({ showGetStarted = true }: { showGetStarted?: boolean }) {
   const user = useSession((s) => s.user);
+  const token = useSession((s) => s.token);
   const clearSession = useSession((s) => s.clearSession);
 
   // The session store hydrates from localStorage on the client, so only trust
@@ -165,6 +330,18 @@ export function Navbar({ showGetStarted = true }: { showGetStarted?: boolean }) 
   const loggedIn = mounted && !!user;
 
   const [menuOpen, setMenuOpen] = useState(false);
+
+  // Revoke the session server-side (fire-and-forget — the local session is
+  // already gone either way), then leave immediately for the landing page.
+  // Hard navigation, not router.push: protected pages react to the cleared
+  // session by bouncing to /auth, and that client-side redirect would win the
+  // race against a soft push. A document load also resets all in-memory state.
+  function handleLogout() {
+    if (token) logoutUser(token).catch(() => {});
+    clearSession();
+    setMenuOpen(false);
+    window.location.assign("/");
+  }
 
   // While the drawer is open: lock body scroll and let Escape close it.
   useEffect(() => {
@@ -233,52 +410,10 @@ export function Navbar({ showGetStarted = true }: { showGetStarted?: boolean }) 
 
         <div className="flex items-center gap-3">
           <ThemeToggle />
-          {loggedIn && (
-            <Link
-              href="/profile"
-              aria-label="Your profile"
-              title="Your profile"
-              className="grid h-9 w-9 place-items-center rounded-full border border-white/25 bg-white/10 text-white backdrop-blur transition hover:border-white/40 hover:bg-white/25"
-            >
-              {/* Person silhouette */}
-              <svg
-                viewBox="0 0 24 24"
-                className="h-4.5 w-4.5"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                <circle cx="12" cy="7" r="4" />
-              </svg>
-            </Link>
-          )}
-          {showGetStarted &&
-            (loggedIn ? (
-              <button
-                type="button"
-                onClick={clearSession}
-                className="hidden items-center gap-2 rounded-full border border-white/25 bg-white/10 px-5 py-2 text-sm font-bold text-white backdrop-blur transition hover:border-red-400/60 hover:bg-red-500/20 hover:text-red-300 sm:flex"
-              >
-                {/* Door frame with an arrow leaving it */}
-                <svg
-                  viewBox="0 0 24 24"
-                  className="h-4 w-4"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                  <path d="M16 17l5-5-5-5" />
-                  <path d="M21 12H9" />
-                </svg>
-                Log out
-              </button>
-            ) : (
+          {loggedIn && user ? (
+            <UserChip user={user} onLogout={handleLogout} />
+          ) : (
+            showGetStarted && (
               <a
                 href="/#cta"
                 onClick={onAnchorClick}
@@ -286,19 +421,16 @@ export function Navbar({ showGetStarted = true }: { showGetStarted?: boolean }) 
               >
                 Get started
               </a>
-            ))}
+            )
+          )}
         </div>
       </nav>
 
       <SideMenu
         open={menuOpen}
-        loggedIn={loggedIn}
-        role={loggedIn ? (user?.role ?? null) : null}
+        user={loggedIn ? user : null}
         onClose={() => setMenuOpen(false)}
-        onLogout={() => {
-          clearSession();
-          setMenuOpen(false);
-        }}
+        onLogout={handleLogout}
       />
     </header>
   );
@@ -311,17 +443,17 @@ export function Navbar({ showGetStarted = true }: { showGetStarted?: boolean }) 
  */
 function SideMenu({
   open,
-  loggedIn,
-  role,
+  user,
   onClose,
   onLogout,
 }: {
   open: boolean;
-  loggedIn: boolean;
-  role: UserRole | null;
+  user: SessionUser | null;
   onClose: () => void;
   onLogout: () => void;
 }) {
+  const loggedIn = !!user;
+  const role = user?.role ?? null;
   const isLandOwner = role === UserRole.LAND_OWNER;
   const isAdmin = role === UserRole.ADMIN;
   const isProfessional = loggedIn && !isLandOwner && !isAdmin;
@@ -431,6 +563,9 @@ function SideMenu({
               )}
               {isAdmin && (
                 <>
+                  <Link href="/admin" onClick={onClose} className={itemClass}>
+                    Admin console
+                  </Link>
                   <Link href="/supervisor" onClick={onClose} className={itemClass}>
                     Verification queue
                   </Link>
@@ -453,28 +588,46 @@ function SideMenu({
         </nav>
 
         <div className="relative z-10 mt-auto border-t border-black/10 pt-4 dark:border-white/15">
-          {loggedIn ? (
-            <button
-              type="button"
-              onClick={onLogout}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-stone-700 transition hover:bg-red-500/10 hover:text-red-600 dark:text-white/85 dark:hover:bg-red-500/15 dark:hover:text-red-300"
-            >
-              {/* Door frame with an arrow leaving it */}
-              <svg
-                viewBox="0 0 24 24"
-                className="h-4 w-4"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+          {user ? (
+            <>
+              {/* Who's signed in — tap-through to the profile page */}
+              <Link
+                href="/profile"
+                onClick={onClose}
+                className="mb-1 flex items-center gap-3 rounded-xl px-3 py-2.5 transition hover:bg-stone-100 dark:hover:bg-white/10"
               >
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                <path d="M16 17l5-5-5-5" />
-                <path d="M21 12H9" />
-              </svg>
-              Log out
-            </button>
+                <Avatar user={user} className="h-9 w-9 text-base" />
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-extrabold text-stone-900 dark:text-white">
+                    {user.name}
+                  </span>
+                  <span className="block truncate text-xs text-stone-500 capitalize dark:text-white/50">
+                    {roleLabelOf(user.role)}
+                  </span>
+                </span>
+              </Link>
+              <button
+                type="button"
+                onClick={onLogout}
+                className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-stone-700 transition hover:bg-red-500/10 hover:text-red-600 dark:text-white/85 dark:hover:bg-red-500/15 dark:hover:text-red-300"
+              >
+                {/* Door frame with an arrow leaving it */}
+                <svg
+                  viewBox="0 0 24 24"
+                  className="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                  <path d="M16 17l5-5-5-5" />
+                  <path d="M21 12H9" />
+                </svg>
+                Log out
+              </button>
+            </>
           ) : (
             <div className="flex flex-col gap-2">
               <Link

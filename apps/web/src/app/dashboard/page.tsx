@@ -198,6 +198,35 @@ export default function DashboardPage() {
             </Link>
 
             {isAdmin && (
+              <Link href="/admin" className={cardClass}>
+                <span className="grid h-11 w-11 place-items-center rounded-2xl bg-amber-400 text-stone-950">
+                  {/* Console grid */}
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="h-5.5 w-5.5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <rect x="3" y="3" width="7" height="7" rx="1.5" />
+                    <rect x="14" y="3" width="7" height="7" rx="1.5" />
+                    <rect x="3" y="14" width="7" height="7" rx="1.5" />
+                    <rect x="14" y="14" width="7" height="7" rx="1.5" />
+                  </svg>
+                </span>
+                <h2 className="mt-4 text-lg font-bold">Admin console</h2>
+                <p className="mt-1 text-sm text-stone-600 dark:text-slate-400">
+                  Live analytics, user &amp; role management, and marketplace oversight.
+                </p>
+                <span className="mt-4 inline-block text-sm font-bold text-amber-600 dark:text-amber-400">
+                  Open the console →
+                </span>
+              </Link>
+            )}
+
+            {isAdmin && (
               <Link href="/supervisor" className={cardClass}>
                 <span className="grid h-11 w-11 place-items-center rounded-2xl bg-amber-400 text-stone-950">
                   {/* Shield-check / review */}
