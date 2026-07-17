@@ -23,6 +23,134 @@ const links = [
   { href: "/#vision", label: "Why Buildora" },
 ];
 
+/**
+ * Desktop mega-menu groups (Turner/McCarthy-style): each primary item opens a
+ * panel of described links plus a featured CTA card. Anchor hrefs ("/#…") get
+ * the swoop-scroll treatment; the rest are normal page links.
+ */
+const megaMenu = [
+  {
+    label: "Platform",
+    links: [
+      { href: "/#features", label: "Features", desc: "Escrow, permits, bidding, site diary" },
+      { href: "/#how-it-works", label: "How it works", desc: "Four steps from plot to keys" },
+      { href: "/#vision", label: "Why Buildora", desc: "Verified, protected, tracked" },
+    ],
+    featured: {
+      title: "Ready to build?",
+      body: "Post a brief and meet verified professionals.",
+      href: "/auth",
+      cta: "Start your project",
+    },
+  },
+  {
+    label: "Land owners",
+    links: [
+      { href: "/projects/new", label: "Post a project brief", desc: "Land, budget, floors — in minutes" },
+      { href: "/architects", label: "Find architects", desc: "Browse verified portfolios" },
+      { href: "/permits", label: "Permit tools", desc: "DAP zone checks & RAJUK fees" },
+      { href: "/dashboard", label: "Your dashboard", desc: "Projects, messages, requests" },
+    ],
+    featured: {
+      title: "Your plot, your rules",
+      body: "Stay in control from design to handover.",
+      href: "/auth",
+      cta: "Create an account",
+    },
+  },
+  {
+    label: "Professionals",
+    links: [
+      { href: "/auth?role=professional", label: "Join Buildora", desc: "Architects, engineers, contractors, suppliers" },
+      { href: "/profile/professional", label: "Get verified", desc: "Earn the Platform Verified badge" },
+      { href: "/briefs", label: "Open briefs", desc: "Find your next client" },
+      { href: "/inquiries", label: "Requests", desc: "Inquiries and replies in one place" },
+    ],
+    featured: {
+      title: "Grow your practice",
+      body: "Serious clients. Escrow-protected fees.",
+      href: "/auth?role=professional",
+      cta: "Get verified",
+    },
+  },
+];
+
+/** One mega-menu item: label button + hover/focus dropdown panel. Pure CSS
+ *  (group-hover + focus-within) — no state, works with keyboard tabbing. */
+function MegaMenuItem({ group }: { group: (typeof megaMenu)[number] }) {
+  return (
+    <div className="group relative">
+      <button
+        type="button"
+        aria-haspopup="true"
+        className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold text-white/80 transition group-hover:text-white group-focus-within:text-white"
+      >
+        {group.label}
+        {/* Chevron flips while the panel is open */}
+        <svg
+          viewBox="0 0 24 24"
+          className="h-3.5 w-3.5 transition-transform duration-300 group-hover:rotate-180"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </button>
+
+      {/* pt-3 bridges the hover gap between the bar and the panel */}
+      <div className="invisible absolute left-1/2 top-full -translate-x-1/2 translate-y-2 pt-3 opacity-0 transition duration-200 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:opacity-100">
+        <div className="grid w-136 grid-cols-[1fr_13rem] gap-5 rounded-2xl border border-white/10 bg-stone-950/90 p-5 shadow-2xl shadow-black/40 backdrop-blur-xl">
+          {/* Link column */}
+          <div className="flex flex-col gap-1">
+            {group.links.map((l) =>
+              l.href.startsWith("/#") ? (
+                <a
+                  key={l.href}
+                  href={l.href}
+                  onClick={onAnchorClick}
+                  className="rounded-xl px-3 py-2.5 transition hover:bg-white/5"
+                >
+                  <span className="block text-sm font-bold text-white transition group-hover:text-white">
+                    {l.label}
+                  </span>
+                  <span className="mt-0.5 block text-xs text-white/50">{l.desc}</span>
+                </a>
+              ) : (
+                <Link
+                  key={l.href}
+                  href={l.href}
+                  className="rounded-xl px-3 py-2.5 transition hover:bg-white/5"
+                >
+                  <span className="block text-sm font-bold text-white">{l.label}</span>
+                  <span className="mt-0.5 block text-xs text-white/50">{l.desc}</span>
+                </Link>
+              )
+            )}
+          </div>
+
+          {/* Featured CTA card (the Turner “Become a Subcontractor” move) */}
+          <Link
+            href={group.featured.href}
+            className="flex flex-col justify-between rounded-xl bg-amber-400 p-4 text-stone-950 transition hover:bg-amber-300"
+          >
+            <div>
+              <p className="text-sm font-extrabold">{group.featured.title}</p>
+              <p className="mt-1.5 text-xs leading-relaxed text-stone-800">{group.featured.body}</p>
+            </div>
+            <p className="mt-4 inline-flex items-center gap-1.5 text-xs font-extrabold">
+              {group.featured.cta}
+              <span aria-hidden>→</span>
+            </p>
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function Navbar({ showGetStarted = true }: { showGetStarted?: boolean }) {
   const user = useSession((s) => s.user);
   const clearSession = useSession((s) => s.clearSession);
@@ -51,6 +179,7 @@ export function Navbar({ showGetStarted = true }: { showGetStarted?: boolean }) 
 
   return (
     <header className="fixed inset-x-0 top-4 z-50 px-4 sm:px-6">
+      {/* Floating glass pill, now carrying the mega-menu items */}
       <nav className="animate-fade-down mx-auto flex h-14 max-w-5xl items-center justify-between gap-4 rounded-2xl border border-white/10 bg-black/35 px-4 shadow-2xl shadow-black/20 backdrop-blur-xl sm:px-5">
         <div className="flex items-center gap-2">
           <button
@@ -92,16 +221,11 @@ export function Navbar({ showGetStarted = true }: { showGetStarted?: boolean }) 
           </a>
         </div>
 
-        <div className="hidden items-center gap-7 md:flex">
-          {links.map((link) => (
-            <a
-              key={link.href}
-              href={link.href}
-              onClick={onAnchorClick}
-              className="text-sm font-semibold text-white/80 transition hover:text-white"
-            >
-              {link.label}
-            </a>
+        {/* Primary items with mega-menu panels — desktop only; the drawer
+            covers mobile */}
+        <div className="hidden items-center gap-1 lg:flex">
+          {megaMenu.map((group) => (
+            <MegaMenuItem key={group.label} group={group} />
           ))}
         </div>
 
@@ -156,7 +280,7 @@ export function Navbar({ showGetStarted = true }: { showGetStarted?: boolean }) 
               <a
                 href="/#cta"
                 onClick={onAnchorClick}
-                className="hidden rounded-full bg-white px-5 py-2 text-sm font-bold text-stone-900 shadow-lg transition hover:scale-[1.03] hover:bg-stone-100 sm:block"
+                className="hidden rounded-full bg-amber-400 px-5 py-2 text-sm font-bold text-stone-950 shadow-lg transition hover:scale-[1.03] hover:bg-amber-300 sm:block"
               >
                 Get started
               </a>
@@ -354,27 +478,7 @@ function SideMenu({
                 >
                   <path d="M4 20V8.5L12 3l8 5.5V20" />
                 </svg>
-                Sign in as land owner
-              </Link>
-              <Link
-                href="/auth/professional"
-                onClick={onClose}
-                className="flex items-center justify-center gap-2 rounded-xl border border-black/10 bg-black/5 px-4 py-3 text-sm font-bold text-stone-700 backdrop-blur transition hover:bg-black/10 hover:text-stone-900 dark:border-white/15 dark:bg-white/5 dark:text-white/85 dark:hover:bg-white/10 dark:hover:text-white"
-              >
-                {/* Briefcase mark */}
-                <svg
-                  viewBox="0 0 24 24"
-                  className="h-4 w-4"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <rect x="3" y="7" width="18" height="13" rx="2" />
-                  <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                </svg>
-                Sign in as professional
+                Sign in / Sign up
               </Link>
             </div>
           )}

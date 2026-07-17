@@ -1,11 +1,13 @@
 import { HeroScrub } from "@/components/landing/HeroScrub";
+import { IntroScrub } from "@/components/landing/IntroScrub";
 import { Navbar } from "@/components/landing/Navbar";
 import {
   CtaSection,
   Features,
   Footer,
   HowItWorks,
-  Marquee,
+  Showcase,
+  Statement,
   Stats,
   Vision,
 } from "@/components/landing/sections";
@@ -16,8 +18,10 @@ export default function HomePage() {
       <Navbar />
       <main>
         <HeroScrub />
-        <Marquee />
+        <IntroScrub />
+        <Statement />
         <Features />
+        <Showcase />
         <HowItWorks />
         <Stats />
         <Vision />

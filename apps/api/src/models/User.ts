@@ -97,6 +97,9 @@ const profileSchema = new Schema<UserProfile>(
     avatarUrl: { type: String, trim: true },
     company: { type: String, trim: true },
     bio: { type: String, trim: true },
+    // Public portfolio hero — the professional's own headline and short intro.
+    portfolioTitle: { type: String, trim: true },
+    portfolioIntro: { type: String, trim: true },
     // Land owner
     nid: { type: String, trim: true },
     landAreaKatha: { type: Number, min: 0 },

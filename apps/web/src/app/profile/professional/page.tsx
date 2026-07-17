@@ -29,7 +29,7 @@ export default function ProfessionalProfilePage() {
   useEffect(() => {
     if (!mounted) return;
     if (!user) {
-      router.replace("/auth/professional");
+      router.replace("/auth?role=professional");
     } else if (!PROFESSIONAL_ROLES.includes(user.role)) {
       router.replace("/profile");
     }

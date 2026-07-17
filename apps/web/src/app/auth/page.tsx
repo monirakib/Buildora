@@ -3,27 +3,64 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { loginUser, registerLandOwner } from "@/lib/api";
+import { loginUser, registerLandOwner, registerProfessional } from "@/lib/api";
 import { useSession } from "@/store/useSession";
 import { useTheme } from "@/store/useTheme";
 import { Navbar } from "@/components/landing/Navbar";
 
-type Mode = "signup" | "login";
+/** The three panes of the unified auth page — one login for every role, plus a
+ *  signup each for land owners and professionals. */
+type Mode = "login" | "owner" | "pro";
 
-// The four full-page backdrops, keyed by form mode + theme. All are rendered at
-// once and cross-faded via opacity so switching mode or theme is smooth and the
+// The six full-page backdrops, keyed by pane + theme. All are rendered at once
+// and cross-faded via opacity so switching pane or theme is smooth and the
 // images are preloaded (no flash on first switch).
 const authBackgrounds = [
   { mode: "login", theme: "day", src: "/auth-bg/login-day.png" },
   { mode: "login", theme: "night", src: "/auth-bg/login-night.png" },
-  { mode: "signup", theme: "day", src: "/auth-bg/signup-day.png" },
-  { mode: "signup", theme: "night", src: "/auth-bg/signup-night.png" },
+  { mode: "owner", theme: "day", src: "/auth-bg/signup-day.png" },
+  { mode: "owner", theme: "night", src: "/auth-bg/signup-night.png" },
+  { mode: "pro", theme: "day", src: "/auth-bg/signup-professional-day.png" },
+  { mode: "pro", theme: "night", src: "/auth-bg/signup-professional-night.png" },
+] as const;
+
+// Kicker / headline / sub-line for each pane.
+const heroCopy: Record<Mode, { kicker: string; title: string; sub: string }> = {
+  login: {
+    kicker: "Welcome back",
+    title: "Log in to Buildora.",
+    sub: "One login for land owners and professionals alike.",
+  },
+  owner: {
+    kicker: "For land owners",
+    title: "Start your project.",
+    sub: "Create an account to post your project brief and meet verified professionals.",
+  },
+  pro: {
+    kicker: "For professionals",
+    title: "Grow your practice.",
+    sub: "Architects, engineers, contractors, and suppliers — meet serious clients, get paid through protected escrow, and carry a badge people trust.",
+  },
+};
+
+// The four professional actors, mirroring the API's PROFESSIONAL_ROLES.
+const roleOptions = [
+  { value: "ARCHITECT", label: "Architect" },
+  { value: "STRUCTURAL_ENGINEER", label: "Structural engineer" },
+  { value: "CONTRACTOR", label: "Contractor" },
+  { value: "SUPPLIER", label: "Material supplier" },
 ] as const;
 
 const inputClass =
   "block w-full rounded-xl border border-stone-300/80 bg-white/70 px-4 py-2.5 text-sm text-stone-900 placeholder-stone-400 backdrop-blur transition outline-none focus:border-amber-500 focus:bg-white/90 focus:ring-2 focus:ring-amber-400/30 dark:border-white/15 dark:bg-white/5 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:bg-white/10";
 
 const labelClass = "mb-1.5 block text-sm font-semibold";
+
+const hintClass = "mt-1.5 text-xs font-medium text-stone-600 dark:text-slate-400";
+
+const optionalTag = (
+  <span className="font-medium text-stone-500 dark:text-slate-400">(optional)</span>
+);
 
 /**
  * Liquid-glass surface — translucent tint, heavy frosted blur + saturation, a
@@ -110,12 +147,26 @@ function PasswordInput({
   );
 }
 
+/** Thin uppercase divider used to group the long signup form into sections. */
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="mt-2 flex items-center gap-3">
+      <span className="text-[11px] font-bold tracking-[0.16em] whitespace-nowrap text-stone-500 uppercase dark:text-slate-400">
+        {children}
+      </span>
+      <span aria-hidden className="h-px flex-1 bg-stone-300/70 dark:bg-white/10" />
+    </div>
+  );
+}
+
 export default function AuthPage() {
   const router = useRouter();
   const { user, setSession, clearSession } = useSession();
   const theme = useTheme((s) => s.mode);
 
   const [mode, setMode] = useState<Mode>("login");
+  // One superset form — the login pane uses identifier/password; the owner
+  // signup the common fields; the professional signup adds role + credentials.
   const [form, setForm] = useState({
     name: "",
     username: "",
@@ -126,6 +177,14 @@ export default function AuthPage() {
     phone: "",
     password: "",
     confirmPassword: "",
+    // Professional signup only
+    role: "",
+    company: "",
+    licenseAuthority: "",
+    licenseNumber: "",
+    specialties: "",
+    yearsExperience: "",
+    website: "",
   });
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -137,21 +196,29 @@ export default function AuthPage() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
     setMounted(true);
-    // Old professional entry link — professionals have their own page now.
+    // Old professional entry links land on the professional signup pane.
     // (Read from window to avoid a Suspense boundary for useSearchParams.)
     if (new URLSearchParams(window.location.search).get("role") === "professional") {
-      router.replace("/auth/professional");
+      setMode("pro");
     }
-  }, [router]);
+  }, []);
 
-  const set = (field: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
-    setForm({ ...form, [field]: e.target.value });
+  const set =
+    (field: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+      setForm({ ...form, [field]: e.target.value });
+
+  function switchMode(m: Mode) {
+    setMode(m);
+    setError(null);
+    setShowPassword(false);
+    setForm((f) => ({ ...f, password: "", confirmPassword: "" }));
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
 
-    if (mode === "signup" && form.password !== form.confirmPassword) {
+    if (mode !== "login" && form.password !== form.confirmPassword) {
       setError("Passwords don't match");
       return;
     }
@@ -159,15 +226,30 @@ export default function AuthPage() {
     setLoading(true);
     try {
       const result =
-        mode === "signup"
-          ? await registerLandOwner({
-              name: form.name,
-              username: form.username,
-              email: form.email,
-              phone: form.phone || undefined,
-              password: form.password,
-            })
-          : await loginUser({ identifier: form.identifier, password: form.password });
+        mode === "login"
+          ? await loginUser({ identifier: form.identifier, password: form.password })
+          : mode === "owner"
+            ? await registerLandOwner({
+                name: form.name,
+                username: form.username,
+                email: form.email,
+                phone: form.phone || undefined,
+                password: form.password,
+              })
+            : await registerProfessional({
+                role: form.role,
+                name: form.name,
+                username: form.username,
+                email: form.email,
+                phone: form.phone,
+                password: form.password,
+                company: form.company,
+                licenseAuthority: form.licenseAuthority,
+                licenseNumber: form.licenseNumber,
+                specialties: form.specialties,
+                yearsExperience: form.yearsExperience,
+                website: form.website,
+              });
       setSession(result.user, result.token);
       // Land in the app hub, which branches by role (find-an-architect etc.).
       router.push("/dashboard");
@@ -187,11 +269,14 @@ export default function AuthPage() {
   // default to "day" until mounted (matches the server render and avoids a
   // hydration mismatch; the correct image fades in immediately after mount).
   const activeTheme = mounted ? theme : "day";
+  const copy = heroCopy[mode];
+  const modeIndex = (["login", "owner", "pro"] as const).indexOf(mode);
+  const isSignup = mode !== "login";
 
   return (
     <div className="relative flex min-h-screen flex-col">
-      {/* Full-page backdrops — all four are layered and cross-faded so both the
-          login↔signup switch and the day↔night switch transition smoothly. */}
+      {/* Full-page backdrops — all six are layered and cross-faded so both the
+          pane switch and the day↔night switch transition smoothly. */}
       <div className="fixed inset-0 -z-10 bg-stone-100 dark:bg-stone-950">
         {authBackgrounds.map((bg) => {
           const active = bg.mode === mode && bg.theme === activeTheme;
@@ -207,7 +292,7 @@ export default function AuthPage() {
           );
         })}
         {/* Scrim over the background image to keep the glass cards + text legible.
-            TWEAK HERE: bg-white/50 = day-mode whiteness (higher = more opaque,
+            TWEAK HERE: bg-white/20 = day-mode whiteness (higher = more opaque,
             lower = more transparent); dark:bg-black/40 = night-mode darkness. */}
         <div className="absolute inset-0 bg-white/20 dark:bg-black/40" />
       </div>
@@ -249,108 +334,57 @@ export default function AuthPage() {
           ) : (
             <>
               <p className="text-sm font-bold tracking-[0.2em] text-amber-600 uppercase dark:text-amber-400">
-                For land owners
+                {copy.kicker}
               </p>
               <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-stone-900 [text-shadow:0_1px_10px_rgba(255,255,255,0.6)] sm:text-4xl dark:text-white dark:[text-shadow:0_1px_12px_rgba(0,0,0,0.5)]">
-                {mode === "signup" ? "Start your project." : "Welcome back."}
+                {copy.title}
               </h1>
               <p className="mt-3 font-medium text-stone-800 [text-shadow:0_1px_8px_rgba(255,255,255,0.7)] dark:text-slate-200 dark:[text-shadow:0_1px_10px_rgba(0,0,0,0.5)]">
-                {mode === "signup"
-                  ? "Create an account to post your project brief and meet verified professionals."
-                  : "Log in to continue your building journey."}
+                {copy.sub}
               </p>
 
               <div className={`${glassCardClass} mt-8 p-6 sm:p-8`}>
                 <div className="relative z-10">
-                  {/* Login / signup segmented toggle with a sliding pill,
-                    same technique as the ThemeToggle knob */}
-                  <div className="relative grid grid-cols-2 rounded-full border border-stone-200/70 bg-white/50 p-1 backdrop-blur dark:border-transparent dark:bg-white/10">
+                  {/* Three-way segmented toggle with a sliding pill: one login,
+                      then a signup each for land owners and professionals. */}
+                  <div className="relative grid grid-cols-3 rounded-full border border-stone-200/70 bg-white/50 p-1 backdrop-blur dark:border-transparent dark:bg-white/10">
                     <span
                       aria-hidden
-                      className={`absolute top-1 bottom-1 left-1 w-[calc(50%-0.25rem)] rounded-full bg-stone-900 shadow transition-transform duration-300 dark:bg-amber-400 ${
-                        mode === "signup" ? "translate-x-full" : ""
-                      }`}
+                      className="absolute top-1 bottom-1 left-1 w-[calc(33.333%-0.25rem)] rounded-full bg-stone-900 shadow transition-transform duration-300 dark:bg-amber-400"
+                      style={{ transform: `translateX(${modeIndex * 100}%)` }}
                     />
-                    {(["login", "signup"] as const).map((m) => (
+                    {(
+                      [
+                        { value: "login", label: "Log in" },
+                        { value: "owner", label: "Land owner" },
+                        { value: "pro", label: "Professional" },
+                      ] as const
+                    ).map((m) => (
                       <button
-                        key={m}
+                        key={m.value}
                         type="button"
-                        onClick={() => {
-                          setMode(m);
-                          setError(null);
-                          setShowPassword(false);
-                          setForm((f) => ({ ...f, password: "", confirmPassword: "" }));
-                        }}
-                        className={`relative z-10 rounded-full py-2 text-sm font-bold transition-colors duration-300 ${
-                          mode === m
+                        onClick={() => switchMode(m.value)}
+                        className={`relative z-10 rounded-full py-2 text-[13px] font-bold transition-colors duration-300 ${
+                          mode === m.value
                             ? "text-white dark:text-slate-950"
                             : "text-stone-600 hover:text-stone-900 dark:text-slate-400 dark:hover:text-slate-200"
                         }`}
                       >
-                        {m === "login" ? "Log in" : "Sign up"}
+                        {m.label}
                       </button>
                     ))}
                   </div>
+                  {isSignup && (
+                    <p className="mt-3 text-center text-xs font-semibold text-stone-500 dark:text-slate-400">
+                      {mode === "owner"
+                        ? "Signing up as a land owner"
+                        : "Signing up as a professional"}
+                    </p>
+                  )}
 
                   <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
-                    {mode === "signup" && (
-                      <div>
-                        <label htmlFor="name" className={labelClass}>
-                          Full name
-                        </label>
-                        <input
-                          id="name"
-                          type="text"
-                          required
-                          minLength={2}
-                          autoComplete="name"
-                          value={form.name}
-                          onChange={set("name")}
-                          className={inputClass}
-                        />
-                      </div>
-                    )}
-
-                    {mode === "signup" && (
-                      <div>
-                        <label htmlFor="username" className={labelClass}>
-                          Username
-                        </label>
-                        <input
-                          id="username"
-                          type="text"
-                          required
-                          minLength={3}
-                          maxLength={20}
-                          pattern="[A-Za-z0-9_]+"
-                          autoComplete="username"
-                          value={form.username}
-                          onChange={set("username")}
-                          className={inputClass}
-                        />
-                        <p className="mt-1.5 text-xs font-medium text-stone-600 dark:text-slate-400">
-                          Letters, numbers and underscores. This is permanent and can&apos;t be
-                          changed later.
-                        </p>
-                      </div>
-                    )}
-
-                    {mode === "signup" ? (
-                      <div>
-                        <label htmlFor="email" className={labelClass}>
-                          Email
-                        </label>
-                        <input
-                          id="email"
-                          type="email"
-                          required
-                          autoComplete="email"
-                          value={form.email}
-                          onChange={set("email")}
-                          className={inputClass}
-                        />
-                      </div>
-                    ) : (
+                    {/* ---- Login pane ---- */}
+                    {mode === "login" && (
                       <div>
                         <label htmlFor="identifier" className={labelClass}>
                           Email or username
@@ -367,23 +401,211 @@ export default function AuthPage() {
                       </div>
                     )}
 
-                    {mode === "signup" && (
-                      <div>
-                        <label htmlFor="phone" className={labelClass}>
-                          Phone{" "}
-                          <span className="font-medium text-stone-500 dark:text-slate-400">
-                            (optional)
-                          </span>
-                        </label>
-                        <input
-                          id="phone"
-                          type="tel"
-                          autoComplete="tel"
-                          value={form.phone}
-                          onChange={set("phone")}
-                          className={inputClass}
-                        />
-                      </div>
+                    {/* ---- Professional signup: profession picker ---- */}
+                    {mode === "pro" && (
+                      <>
+                        <div>
+                          <span className={labelClass}>Your profession</span>
+                          {/* Radio cards — each label wraps a visually hidden native
+                              radio, so `required` and keyboard selection work for
+                              free; `has-checked:` styles the selected card. */}
+                          <div className="grid grid-cols-2 gap-2">
+                            {roleOptions.map((r) => (
+                              <label
+                                key={r.value}
+                                className="flex cursor-pointer items-center justify-center rounded-xl border border-stone-300/80 bg-white/60 px-3 py-2.5 text-center text-sm font-semibold text-stone-600 backdrop-blur transition select-none hover:border-stone-400 has-checked:border-amber-500 has-checked:bg-amber-400/15 has-checked:text-stone-950 has-focus-visible:ring-2 has-focus-visible:ring-amber-400/40 dark:border-white/15 dark:bg-white/5 dark:text-slate-400 dark:hover:border-white/30 dark:has-checked:border-amber-400 dark:has-checked:bg-amber-400/10 dark:has-checked:text-amber-200"
+                              >
+                                <input
+                                  type="radio"
+                                  name="role"
+                                  required
+                                  value={r.value}
+                                  checked={form.role === r.value}
+                                  onChange={set("role")}
+                                  className="sr-only"
+                                />
+                                {r.label}
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                        <SectionLabel>About you</SectionLabel>
+                      </>
+                    )}
+
+                    {/* ---- Shared signup fields (both signups) ---- */}
+                    {isSignup && (
+                      <>
+                        <div>
+                          <label htmlFor="name" className={labelClass}>
+                            Full name
+                          </label>
+                          <input
+                            id="name"
+                            type="text"
+                            required
+                            minLength={2}
+                            autoComplete="name"
+                            value={form.name}
+                            onChange={set("name")}
+                            className={inputClass}
+                          />
+                        </div>
+
+                        <div>
+                          <label htmlFor="username" className={labelClass}>
+                            Username
+                          </label>
+                          <input
+                            id="username"
+                            type="text"
+                            required
+                            minLength={3}
+                            maxLength={20}
+                            pattern="[A-Za-z0-9_]+"
+                            autoComplete="username"
+                            value={form.username}
+                            onChange={set("username")}
+                            className={inputClass}
+                          />
+                          <p className={hintClass}>
+                            Letters, numbers and underscores. This is permanent and can&apos;t be
+                            changed later.
+                          </p>
+                        </div>
+
+                        <div className="grid gap-4 sm:grid-cols-2">
+                          <div>
+                            <label htmlFor="email" className={labelClass}>
+                              Email
+                            </label>
+                            <input
+                              id="email"
+                              type="email"
+                              required
+                              autoComplete="email"
+                              value={form.email}
+                              onChange={set("email")}
+                              className={inputClass}
+                            />
+                          </div>
+                          <div>
+                            <label htmlFor="phone" className={labelClass}>
+                              Phone {optionalTag}
+                            </label>
+                            <input
+                              id="phone"
+                              type="tel"
+                              autoComplete="tel"
+                              value={form.phone}
+                              onChange={set("phone")}
+                              className={inputClass}
+                            />
+                          </div>
+                        </div>
+                      </>
+                    )}
+
+                    {/* ---- Professional signup: firm + credentials ---- */}
+                    {mode === "pro" && (
+                      <>
+                        <div>
+                          <label htmlFor="company" className={labelClass}>
+                            Firm / company
+                          </label>
+                          <input
+                            id="company"
+                            type="text"
+                            required
+                            minLength={2}
+                            autoComplete="organization"
+                            value={form.company}
+                            onChange={set("company")}
+                            className={inputClass}
+                          />
+                        </div>
+
+                        {/* Credentials — optional now, required before the account
+                            can be submitted for verification review. The section
+                            label marks everything below as optional. */}
+                        <SectionLabel>Credentials &amp; experience — optional</SectionLabel>
+
+                        <div className="grid gap-4 sm:grid-cols-2">
+                          <div>
+                            <label htmlFor="licenseAuthority" className={labelClass}>
+                              License body
+                            </label>
+                            <input
+                              id="licenseAuthority"
+                              type="text"
+                              placeholder="IAB / IEB / RAJUK"
+                              value={form.licenseAuthority}
+                              onChange={set("licenseAuthority")}
+                              className={inputClass}
+                            />
+                          </div>
+                          <div>
+                            <label htmlFor="licenseNumber" className={labelClass}>
+                              License no.
+                            </label>
+                            <input
+                              id="licenseNumber"
+                              type="text"
+                              value={form.licenseNumber}
+                              onChange={set("licenseNumber")}
+                              className={inputClass}
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label htmlFor="specialties" className={labelClass}>
+                            Specialties
+                          </label>
+                          <input
+                            id="specialties"
+                            type="text"
+                            placeholder="e.g. Residential towers, RCC design"
+                            value={form.specialties}
+                            onChange={set("specialties")}
+                            className={inputClass}
+                          />
+                        </div>
+
+                        <div className="grid gap-4 sm:grid-cols-2">
+                          <div>
+                            <label htmlFor="yearsExperience" className={labelClass}>
+                              Experience (yrs)
+                            </label>
+                            <input
+                              id="yearsExperience"
+                              type="number"
+                              min={0}
+                              max={80}
+                              value={form.yearsExperience}
+                              onChange={set("yearsExperience")}
+                              className={inputClass}
+                            />
+                          </div>
+                          <div>
+                            <label htmlFor="website" className={labelClass}>
+                              Website
+                            </label>
+                            <input
+                              id="website"
+                              type="url"
+                              placeholder="https://…"
+                              value={form.website}
+                              onChange={set("website")}
+                              className={inputClass}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Marks the end of the optional section — passwords below
+                            are required again. */}
+                        <SectionLabel>Account security</SectionLabel>
+                      </>
                     )}
 
                     <div>
@@ -396,17 +618,13 @@ export default function AuthPage() {
                         onChange={set("password")}
                         visible={showPassword}
                         onToggleVisible={() => setShowPassword((v) => !v)}
-                        minLength={mode === "signup" ? 8 : 1}
-                        autoComplete={mode === "signup" ? "new-password" : "current-password"}
+                        minLength={isSignup ? 8 : 1}
+                        autoComplete={isSignup ? "new-password" : "current-password"}
                       />
-                      {mode === "signup" && (
-                        <p className="mt-1.5 text-xs font-medium text-stone-600 dark:text-slate-400">
-                          At least 8 characters.
-                        </p>
-                      )}
+                      {isSignup && <p className={hintClass}>At least 8 characters.</p>}
                     </div>
 
-                    {mode === "signup" && (
+                    {isSignup && (
                       <div>
                         <label htmlFor="confirmPassword" className={labelClass}>
                           Confirm password
@@ -429,26 +647,23 @@ export default function AuthPage() {
                       </p>
                     )}
 
+                    {mode === "pro" && (
+                      <p className="rounded-xl border border-amber-500/25 bg-amber-400/10 px-4 py-2.5 text-xs font-medium text-stone-700 dark:border-amber-300/15 dark:text-slate-300">
+                        Your account starts unverified — submit your documents afterwards to earn
+                        the Platform Verified badge.
+                      </p>
+                    )}
+
                     <button
                       type="submit"
                       disabled={loading}
                       className="mt-1 rounded-full bg-amber-400 px-8 py-3 text-sm font-bold text-stone-950 shadow-lg transition hover:scale-[1.02] hover:bg-amber-300 disabled:scale-100 disabled:opacity-60"
                     >
-                      {loading ? "Please wait…" : mode === "signup" ? "Create account" : "Log in"}
+                      {loading ? "Please wait…" : isSignup ? "Create account" : "Log in"}
                     </button>
                   </form>
                 </div>
               </div>
-
-              <p className="mt-6 text-center text-sm font-semibold text-stone-900 [text-shadow:0_1px_10px_rgba(255,255,255,0.9)] dark:text-slate-100 dark:[text-shadow:0_1px_12px_rgba(0,0,0,0.6)]">
-                Architect, engineer, contractor, or supplier?{" "}
-                <Link
-                  href="/auth/professional"
-                  className="text-amber-600 underline underline-offset-2 hover:text-amber-500 dark:text-amber-400"
-                >
-                  Sign in as a professional
-                </Link>
-              </p>
             </>
           )}
         </div>

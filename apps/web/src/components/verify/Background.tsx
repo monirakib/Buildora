@@ -1,44 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
-import { motion, useMotionValue, useSpring } from "motion/react";
+import { motion } from "motion/react";
 import { useTheme } from "@/store/useTheme";
-
-/**
- * A soft light that trails the cursor across the whole page — like a light
- * source moving over the glass. The raw pointer position feeds two motion
- * values; useSpring smooths them so the glow glides behind the cursor.
- */
-function CursorGlow() {
-  const x = useMotionValue(-1000);
-  const y = useMotionValue(-1000);
-  const springX = useSpring(x, { stiffness: 90, damping: 24, mass: 0.6 });
-  const springY = useSpring(y, { stiffness: 90, damping: 24, mass: 0.6 });
-
-  useEffect(() => {
-    function onMove(e: PointerEvent) {
-      x.set(e.clientX);
-      y.set(e.clientY);
-    }
-    window.addEventListener("pointermove", onMove);
-    return () => window.removeEventListener("pointermove", onMove);
-  }, [x, y]);
-
-  return (
-    <motion.div
-      aria-hidden
-      className="pointer-events-none fixed z-0 h-[44rem] w-[44rem] rounded-full"
-      style={{
-        left: springX,
-        top: springY,
-        translateX: "-50%",
-        translateY: "-50%",
-        background:
-          "radial-gradient(closest-side, rgba(255,255,255,0.05), rgba(245,180,0,0.03) 45%, transparent 70%)",
-      }}
-    />
-  );
-}
 
 /**
  * The wizard's backdrop: an architecture photograph the glass panels actually
@@ -93,8 +56,7 @@ export function WizardBackground() {
         }}
       />
 
-      {/* The cursor light is a night-only effect — daylight needs none. */}
-      {night && <CursorGlow />}
+      {/* The cursor light (night-only) is global now — see components/CursorGlow. */}
     </div>
   );
 }

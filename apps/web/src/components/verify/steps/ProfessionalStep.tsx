@@ -86,6 +86,38 @@ export function ProfessionalStep({ form, patch }: StepProps) {
           />
         </Field>
 
+        <Field
+          id="portfolioTitle"
+          title="Portfolio Headline"
+          hint="The big statement land owners see first on your public portfolio."
+        >
+          <input
+            id="portfolioTitle"
+            type="text"
+            maxLength={90}
+            placeholder='e.g. "Architecture for a Better Tomorrow"'
+            value={form.portfolioTitle}
+            onChange={(e) => patch({ portfolioTitle: e.target.value })}
+            className={input}
+          />
+        </Field>
+
+        <Field
+          id="portfolioIntro"
+          title="Portfolio Introduction"
+          hint="One or two sentences under your headline — what you design and why."
+        >
+          <textarea
+            id="portfolioIntro"
+            rows={3}
+            maxLength={280}
+            placeholder="I design thoughtful spaces that respond to people, place, and purpose…"
+            value={form.portfolioIntro}
+            onChange={(e) => patch({ portfolioIntro: e.target.value })}
+            className={input}
+          />
+        </Field>
+
         <Field id="languages" title="Languages" hint="Comma-separated, e.g. Bangla, English">
           <input
             id="languages"

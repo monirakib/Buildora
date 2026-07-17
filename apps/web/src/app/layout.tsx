@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Manrope } from "next/font/google";
 import "./globals.css";
+import { CursorGlow } from "@/components/CursorGlow";
 
 const manrope = Manrope({
   subsets: ["latin"],
@@ -22,6 +23,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={manrope.variable} suppressHydrationWarning>
       <body className="min-h-screen bg-stone-50 font-sans text-stone-900 antialiased transition-colors duration-500 dark:bg-[#060a15] dark:text-slate-100">
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        <CursorGlow />
         {children}
       </body>
     </html>

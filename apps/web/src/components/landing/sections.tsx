@@ -3,6 +3,8 @@ import { HealthCheck } from "@/components/HealthCheck";
 import { CountUp } from "./CountUp";
 import { Reveal } from "./Reveal";
 
+export { HowItWorks } from "./HowItWorks";
+
 /* ---------- Minimal geometric icons (24×24, stroke-based) ---------- */
 
 function Icon({ children }: { children: React.ReactNode }) {
@@ -64,80 +66,108 @@ const icons = {
   ),
 };
 
-/* ---------- Marquee strip ---------- */
+/* ---------- Statement (editorial split with photo collage) ----------
+   Photography: Unsplash / Pexels free license, stored in /public/landing. */
 
-const marqueeItems = [
-  "Verified Architects",
-  "Structural Engineers",
-  "Licensed Contractors",
-  "RAJUK Permit Tracking",
-  "Escrow Payments",
-  "Materials Marketplace",
-  "Live Site Diary",
-  "DAP Zone Checks",
-  "Transparent Bidding",
-];
-
-function MarqueeRow({ ariaHidden = false }: { ariaHidden?: boolean }) {
+export function Statement() {
   return (
-    <ul aria-hidden={ariaHidden || undefined} className="flex w-max shrink-0 items-center">
-      {marqueeItems.map((item) => (
-        <li key={item} className="flex items-center">
-          <span className="mx-6 text-xs font-bold tracking-[0.2em] text-stone-500 uppercase dark:text-slate-400">
-            {item}
-          </span>
-          <span className="text-[9px] text-amber-500/80">◆</span>
-        </li>
-      ))}
-    </ul>
-  );
-}
+    <section className="mx-auto max-w-6xl px-5 py-24 sm:px-8 sm:py-32">
+      <div className="grid items-center gap-12 lg:grid-cols-2">
+        {/* The words */}
+        <Reveal>
+          <p className="text-sm font-bold tracking-[0.2em] text-amber-600 uppercase dark:text-amber-400">
+            Why Buildora exists
+          </p>
+          <h2 className="mt-3 text-3xl leading-tight font-extrabold tracking-tight sm:text-5xl">
+            We don&apos;t just connect you to builders.
+            <br />
+            <span className="text-amber-600 dark:text-amber-400">We protect the build.</span>
+          </h2>
+          <p className="mt-5 max-w-lg text-lg text-stone-600 dark:text-slate-400">
+            Building a home in Bangladesh means navigating unverified contractors, cash handshakes,
+            and permits that vanish into queues. Buildora replaces all three with one accountable
+            platform.
+          </p>
+          <ul className="mt-8 flex flex-col gap-4">
+            {[
+              "Every professional is human-verified — NID, IAB/IEB, RAJUK",
+              "Every taka sits in escrow until an engineer signs off",
+              "Every permit step is tracked in the open, end to end",
+            ].map((point) => (
+              <li key={point} className="flex items-start gap-3 text-sm font-semibold">
+                <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-amber-400/20 text-amber-600 dark:text-amber-400">
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="h-3 w-3"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M20 6 9 17l-5-5" />
+                  </svg>
+                </span>
+                {point}
+              </li>
+            ))}
+          </ul>
+        </Reveal>
 
-export function Marquee() {
-  return (
-    <section className="overflow-hidden border-y border-stone-200 bg-white py-4 transition-colors duration-500 dark:border-white/10 dark:bg-white/3">
-      <div className="animate-marquee flex w-max hover:[animation-play-state:paused] motion-reduce:animate-none">
-        <MarqueeRow />
-        <MarqueeRow ariaHidden />
+        {/* The photo collage — a big frame with a smaller print overlapping it */}
+        <Reveal delay={150}>
+          <div className="relative pb-14 pl-0 sm:pr-10">
+            {/* eslint-disable-next-line @next/next/no-img-element -- local asset */}
+            <img
+              src="/landing/site-crane.jpg"
+              alt="Engineers reviewing a slab under construction"
+              loading="lazy"
+              className="aspect-4/3 w-full rounded-3xl object-cover shadow-2xl shadow-black/10"
+            />
+            {/* eslint-disable-next-line @next/next/no-img-element -- local asset */}
+            <img
+              src="/landing/blueprint-tools.jpg"
+              alt="Floor plans with measuring tools"
+              loading="lazy"
+              className="absolute right-0 bottom-0 w-2/5 rounded-2xl border-4 border-stone-50 object-cover shadow-xl sm:right-2 dark:border-[#060a15]"
+            />
+            {/* Amber accent square, echoing the brand mark */}
+            <span
+              aria-hidden
+              className="absolute -bottom-3 left-6 h-16 w-16 rounded-xl bg-amber-400/90 sm:left-10"
+            />
+          </div>
+        </Reveal>
       </div>
     </section>
   );
 }
 
-/* ---------- Features ---------- */
+export { Showcase } from "./Showcase";
 
-const features = [
-  {
-    icon: icons.shield,
-    title: "Verified professionals",
-    body: "Architects, engineers, and contractors screened through NID, IAB/IEB membership, and RAJUK registration checks.",
-  },
-  {
-    icon: icons.escrow,
-    title: "Escrow-protected payments",
-    body: "Funds sit safely in escrow and release only at approved milestones — via bKash, Nagad, or bank transfer.",
-  },
-  {
-    icon: icons.permit,
-    title: "RAJUK permits, guided",
-    body: "DAP zone checks, fee calculators, document checklists, and ECPS submission tracking from day one.",
-  },
-  {
-    icon: icons.design,
-    title: "Design studio",
-    body: "Concept briefs, floor plans, elevations, and 3D previews — with revision rounds built into every contract.",
-  },
-  {
-    icon: icons.bidding,
-    title: "Transparent bidding",
-    body: "Post your BOQ and compare contractor bids side by side on price, rating, timeline, and past projects.",
-  },
-  {
-    icon: icons.diary,
-    title: "Live site diary",
-    body: "Daily work logs, photos, attendance, and weather from your site — visible from anywhere, any time.",
-  },
-];
+/* ---------- Features (bento grid) ---------- */
+
+/** Shared shell for every bento tile — hover lifts it and warms the border. */
+const tileClass =
+  "group relative flex h-full flex-col overflow-hidden rounded-3xl border border-stone-200 bg-white p-7 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-amber-400/60 hover:shadow-xl dark:border-white/10 dark:bg-white/5 dark:shadow-none dark:hover:bg-white/10";
+
+/** Icon chip in the tile's top-left corner. */
+function TileIcon({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="grid h-11 w-11 place-items-center rounded-xl bg-stone-900 text-amber-400 transition duration-300 group-hover:scale-110 group-hover:rotate-3 dark:bg-white/10 dark:text-amber-300">
+      {children}
+    </div>
+  );
+}
+
+/** Little credential chip used in the verified tile. */
+function CredChip({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="rounded-full border border-stone-200 px-3 py-1 text-xs font-bold text-stone-600 dark:border-white/15 dark:text-slate-300">
+      {children}
+    </span>
+  );
+}
 
 export function Features() {
   return (
@@ -154,88 +184,225 @@ export function Features() {
         </p>
       </Reveal>
 
+      {/* Bento layout: [verified verified escrow] / [permit design escrow→bidding] /
+          [diary diary bidding] — spans only kick in at lg; below that it stacks. */}
       <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {features.map((f, i) => (
-          <Reveal key={f.title} delay={(i % 3) * 110}>
-            <div className="group h-full rounded-2xl border border-stone-200 bg-white p-7 shadow-sm transition duration-300 hover:-translate-y-1.5 hover:border-amber-400/60 hover:shadow-xl dark:border-white/10 dark:bg-white/5 dark:shadow-none dark:hover:bg-white/10">
-              <div className="grid h-11 w-11 place-items-center rounded-xl bg-stone-900 text-amber-400 transition duration-300 group-hover:scale-110 group-hover:rotate-3 dark:bg-white/10 dark:text-amber-300">
-                {f.icon}
+        {/* --- Verified professionals (wide) --- */}
+        <Reveal className="sm:col-span-2" delay={0}>
+          <div className={tileClass}>
+            <div className="flex flex-wrap items-start justify-between gap-6">
+              <div className="max-w-sm">
+                <TileIcon>{icons.shield}</TileIcon>
+                <h3 className="mt-5 text-lg font-bold">Verified professionals</h3>
+                <p className="mt-2 text-sm leading-relaxed text-stone-600 dark:text-slate-400">
+                  Architects, engineers, and contractors screened through NID, IAB/IEB membership,
+                  and RAJUK registration checks — reviewed by a human supervisor.
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <CredChip>NID checked</CredChip>
+                  <CredChip>IAB / IEB member</CredChip>
+                  <CredChip>RAJUK enlisted</CredChip>
+                </div>
               </div>
-              <h3 className="mt-5 text-lg font-bold">{f.title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-stone-600 dark:text-slate-400">
-                {f.body}
-              </p>
+
+              {/* Mini visual: overlapping avatars + the verified badge */}
+              <div className="flex flex-col items-center gap-3 self-center">
+                <div className="flex -space-x-3">
+                  {["NR", "AK", "SJ"].map((who, i) => (
+                    <span
+                      key={who}
+                      className={`grid h-13 w-13 place-items-center rounded-full border-2 border-white text-xs font-extrabold transition duration-300 group-hover:-translate-y-1 dark:border-stone-800 ${
+                        i === 2
+                          ? "bg-amber-400 text-stone-950"
+                          : "bg-stone-200 text-stone-600 dark:bg-white/15 dark:text-slate-200"
+                      }`}
+                      style={{ transitionDelay: `${i * 60}ms` }}
+                    >
+                      {who}
+                    </span>
+                  ))}
+                </div>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-bold text-emerald-700 dark:bg-emerald-400/15 dark:text-emerald-300">
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="h-3.5 w-3.5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M20 6 9 17l-5-5" />
+                  </svg>
+                  Platform Verified
+                </span>
+              </div>
             </div>
-          </Reveal>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-/* ---------- How it works ---------- */
-
-const steps = [
-  {
-    title: "Post your project brief",
-    body: "Land area, location, floors, budget, and style — done in minutes.",
-  },
-  {
-    title: "Match with verified pros",
-    body: "Browse portfolios, compare ratings, and request low-cost concept briefs.",
-  },
-  {
-    title: "Design & permits",
-    body: "Approve designs online while your RAJUK permit is filed and tracked through ECPS.",
-  },
-  {
-    title: "Build with protection",
-    body: "Engineers sign off each milestone; escrow releases payments only when work is verified.",
-  },
-];
-
-export function HowItWorks() {
-  return (
-    <section
-      id="how-it-works"
-      className="border-y border-stone-200 bg-white py-24 transition-colors duration-500 sm:py-32 dark:border-white/10 dark:bg-white/3"
-    >
-      <div className="mx-auto max-w-6xl px-5 sm:px-8">
-        <Reveal>
-          <p className="text-sm font-bold tracking-[0.2em] text-amber-600 uppercase dark:text-amber-400">
-            How it works
-          </p>
-          <h2 className="mt-3 max-w-2xl text-3xl font-extrabold tracking-tight sm:text-5xl">
-            Four steps from plot to keys
-          </h2>
+          </div>
         </Reveal>
 
-        <ol className="mt-14 grid gap-10 md:grid-cols-4 md:gap-6">
-          {steps.map((step, i) => (
-            <Reveal key={step.title} delay={i * 130}>
-              <li className="relative list-none">
-                <div className="flex items-center gap-4 md:block">
-                  <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-stone-900 text-lg font-extrabold text-amber-400 dark:bg-amber-400 dark:text-slate-950">
-                    {i + 1}
-                  </span>
-                  {i < steps.length - 1 && (
-                    <span className="absolute top-6 left-14 hidden h-px w-[calc(100%-4rem)] bg-stone-300 md:block dark:bg-white/15" />
-                  )}
+        {/* --- Escrow (milestone bars fill on hover) --- */}
+        <Reveal delay={110}>
+          <div className={tileClass}>
+            <TileIcon>{icons.escrow}</TileIcon>
+            <h3 className="mt-5 text-lg font-bold">Escrow-protected payments</h3>
+            <p className="mt-2 text-sm leading-relaxed text-stone-600 dark:text-slate-400">
+              Funds release only at approved milestones — via bKash, Nagad, or bank.
+            </p>
+            <div className="mt-auto flex flex-col gap-3 pt-6">
+              {[
+                { label: "Design", w: "w-[30%]", d: "delay-0" },
+                { label: "Structure", w: "w-[40%]", d: "delay-150" },
+                { label: "Finishing", w: "w-[30%]", d: "delay-300" },
+              ].map((m) => (
+                <div key={m.label}>
+                  <div className="flex justify-between text-xs font-bold text-stone-500 dark:text-slate-400">
+                    <span>{m.label}</span>
+                    <span className="opacity-0 transition-opacity duration-500 group-hover:opacity-100">
+                      released ✓
+                    </span>
+                  </div>
+                  {/* Bar fills to 100% on hover, staggered — “tranches releasing” */}
+                  <div className="mt-1 h-2 rounded-full bg-stone-200 dark:bg-white/10">
+                    <div
+                      className={`h-2 rounded-full bg-amber-500 transition-all duration-700 dark:bg-amber-400 ${m.w} ${m.d} group-hover:w-full`}
+                    />
+                  </div>
                 </div>
-                <h3 className="mt-0 text-base font-bold md:mt-5">{step.title}</h3>
+              ))}
+            </div>
+          </div>
+        </Reveal>
+
+        {/* --- Permits (checklist ticks in on hover) --- */}
+        <Reveal delay={0}>
+          <div className={tileClass}>
+            <TileIcon>{icons.permit}</TileIcon>
+            <h3 className="mt-5 text-lg font-bold">RAJUK permits, guided</h3>
+            <p className="mt-2 text-sm leading-relaxed text-stone-600 dark:text-slate-400">
+              Zone checks, fee calculators, and ECPS tracking from day one.
+            </p>
+            <ul className="mt-auto flex flex-col gap-2.5 pt-6">
+              {["DAP zone checked", "Fees calculated", "ECPS submitted"].map((item, i) => (
+                <li key={item} className="flex items-center gap-2.5 text-sm font-semibold">
+                  <span className="grid h-5 w-5 place-items-center rounded-full border border-stone-300 transition-colors duration-300 group-hover:border-amber-500 group-hover:bg-amber-400/15 dark:border-white/20 dark:group-hover:border-amber-400">
+                    <svg
+                      viewBox="0 0 24 24"
+                      className="h-3 w-3 scale-0 text-amber-600 transition-transform duration-300 group-hover:scale-100 dark:text-amber-400"
+                      style={{ transitionDelay: `${i * 120}ms` }}
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="3"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M20 6 9 17l-5-5" />
+                    </svg>
+                  </span>
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </Reveal>
+
+        {/* --- Design studio (blueprint that inks amber on hover) --- */}
+        <Reveal delay={110}>
+          <div className={tileClass}>
+            <TileIcon>{icons.design}</TileIcon>
+            <h3 className="mt-5 text-lg font-bold">Design studio</h3>
+            <p className="mt-2 text-sm leading-relaxed text-stone-600 dark:text-slate-400">
+              Concept briefs, floor plans, and 3D previews — with revision rounds built in.
+            </p>
+            {/* Tiny floor plan; strokes warm to amber on hover */}
+            <svg
+              viewBox="0 0 120 64"
+              className="mt-auto w-full pt-6 text-stone-300 transition-colors duration-500 group-hover:text-amber-500 dark:text-white/20 dark:group-hover:text-amber-400"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+            >
+              <rect x="6" y="4" width="108" height="56" rx="2" />
+              <path d="M48 4v24M48 40v20M6 34h28M62 34h52M84 34v26" />
+              {/* Door swing arc */}
+              <path d="M48 28a12 12 0 0 1 12 12" strokeDasharray="3 3" />
+            </svg>
+          </div>
+        </Reveal>
+
+        {/* --- Bidding (bars race up on hover) --- */}
+        <Reveal delay={220}>
+          <div className={tileClass}>
+            <TileIcon>{icons.bidding}</TileIcon>
+            <h3 className="mt-5 text-lg font-bold">Transparent bidding</h3>
+            <p className="mt-2 text-sm leading-relaxed text-stone-600 dark:text-slate-400">
+              Post your BOQ and compare contractor bids side by side.
+            </p>
+            <div className="mt-auto flex items-end gap-3 pt-6">
+              {[
+                { h: "h-10", hover: "group-hover:h-14", tone: "bg-stone-300 dark:bg-white/15" },
+                { h: "h-16", hover: "group-hover:h-20", tone: "bg-stone-300 dark:bg-white/15" },
+                {
+                  h: "h-12",
+                  hover: "group-hover:h-24",
+                  tone: "bg-amber-500 dark:bg-amber-400",
+                },
+              ].map((bar, i) => (
+                <div key={i} className="flex flex-1 flex-col items-center gap-1.5">
+                  <div
+                    className={`w-full rounded-t-lg transition-all duration-500 ${bar.h} ${bar.hover} ${bar.tone}`}
+                    style={{ transitionDelay: `${i * 90}ms` }}
+                  />
+                  <span className="text-xs font-bold text-stone-500 dark:text-slate-400">
+                    Bid {String.fromCharCode(65 + i)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Reveal>
+
+        {/* --- Site diary (wide, live log rows) --- */}
+        <Reveal className="sm:col-span-2" delay={0}>
+          <div className={tileClass}>
+            <div className="flex flex-wrap items-start justify-between gap-6">
+              <div className="max-w-sm">
+                <TileIcon>{icons.diary}</TileIcon>
+                <h3 className="mt-5 text-lg font-bold">Live site diary</h3>
                 <p className="mt-2 text-sm leading-relaxed text-stone-600 dark:text-slate-400">
-                  {step.body}
+                  Daily work logs, photos, attendance, and weather from your site — visible from
+                  anywhere, any time.
                 </p>
-              </li>
-            </Reveal>
-          ))}
-        </ol>
+              </div>
+              {/* Mini visual: recent log entries */}
+              <ul className="flex min-w-56 flex-1 flex-col gap-2.5 self-center sm:max-w-xs">
+                {[
+                  { day: "Day 42", note: "Slab casting — 14 workers" },
+                  { day: "Day 41", note: "Rebar inspection passed" },
+                  { day: "Day 40", note: "Materials delivered on site" },
+                ].map((row, i) => (
+                  <li
+                    key={row.day}
+                    className="flex items-center gap-3 rounded-xl border border-stone-200 px-3.5 py-2.5 transition duration-300 group-hover:translate-x-1 dark:border-white/10"
+                    style={{ transitionDelay: `${i * 70}ms` }}
+                  >
+                    <span className="h-2 w-2 shrink-0 rounded-full bg-amber-500 dark:bg-amber-400" />
+                    <span className="text-xs font-extrabold text-stone-500 dark:text-slate-400">
+                      {row.day}
+                    </span>
+                    <span className="truncate text-xs font-semibold">{row.note}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </Reveal>
       </div>
     </section>
   );
 }
 
-/* ---------- Stats ---------- */
+/* ---------- Stats (editorial hairline band) ---------- */
 
 const stats = [
   { to: 5, suffix: "", label: "user roles, one platform" },
@@ -247,15 +414,17 @@ const stats = [
 export function Stats() {
   return (
     <section className="mx-auto max-w-6xl px-5 py-20 sm:px-8 sm:py-24">
-      <div className="grid gap-10 text-center sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-x-8 gap-y-10 border-y border-stone-200 py-12 sm:grid-cols-2 lg:grid-cols-4 dark:border-white/10">
         {stats.map((stat, i) => (
           <Reveal key={stat.label} delay={i * 100}>
-            <p className="text-5xl font-extrabold tracking-tight text-amber-600 tabular-nums sm:text-6xl dark:text-amber-400">
-              <CountUp to={stat.to} suffix={stat.suffix} />
-            </p>
-            <p className="mt-3 text-sm font-semibold text-stone-600 dark:text-slate-400">
-              {stat.label}
-            </p>
+            <div className={i > 0 ? "lg:border-l lg:border-stone-200 lg:pl-8 dark:lg:border-white/10" : ""}>
+              <p className="text-5xl font-extrabold tracking-tight text-amber-600 tabular-nums sm:text-6xl dark:text-amber-400">
+                <CountUp to={stat.to} suffix={stat.suffix} />
+              </p>
+              <p className="mt-3 text-sm font-semibold text-stone-600 dark:text-slate-400">
+                {stat.label}
+              </p>
+            </div>
           </Reveal>
         ))}
       </div>
@@ -263,36 +432,59 @@ export function Stats() {
   );
 }
 
-/* ---------- Vision ---------- */
+/* ---------- Vision (full-bleed photo quote) ---------- */
 
 const roles = ["Land Owners", "Architects", "Structural Engineers", "Contractors", "Suppliers"];
 
 export function Vision() {
   return (
-    <section
-      id="vision"
-      className="mx-auto max-w-4xl scroll-mt-24 px-5 py-24 text-center sm:px-8 sm:py-32"
-    >
-      <Reveal>
-        <p className="text-2xl leading-snug font-bold tracking-tight text-stone-800 sm:text-4xl dark:text-slate-100">
-          “The single digital home for every construction project in Bangladesh — where every
-          professional is <span className="text-amber-600 dark:text-amber-400">verified</span>,
-          every payment is <span className="text-amber-600 dark:text-amber-400">protected</span>,
-          and every permit is <span className="text-amber-600 dark:text-amber-400">tracked</span>.”
-        </p>
-      </Reveal>
-      <Reveal delay={150}>
-        <ul className="mt-10 flex flex-wrap justify-center gap-2.5">
-          {roles.map((role) => (
-            <li
-              key={role}
-              className="rounded-full border border-stone-300 px-4 py-1.5 text-sm font-semibold text-stone-700 transition hover:border-amber-500 hover:text-amber-600 dark:border-white/15 dark:text-slate-300 dark:hover:border-amber-400 dark:hover:text-amber-300"
-            >
-              {role}
-            </li>
-          ))}
-        </ul>
-      </Reveal>
+    <section id="vision" className="relative scroll-mt-24 overflow-hidden py-28 sm:py-36">
+      {/* The architecture photograph behind the quote — day render in light
+          mode, night render in dark, with a scrim so the text stays crisp. */}
+      {/* eslint-disable-next-line @next/next/no-img-element -- local asset */}
+      <img
+        src="/verify-bg-day.jpg"
+        alt=""
+        loading="lazy"
+        className="absolute inset-0 h-full w-full object-cover dark:hidden"
+      />
+      {/* eslint-disable-next-line @next/next/no-img-element -- local asset */}
+      <img
+        src="/verify-bg-night.jpg"
+        alt=""
+        loading="lazy"
+        className="absolute inset-0 hidden h-full w-full object-cover dark:block"
+      />
+      <div className="absolute inset-0 bg-white/80 dark:bg-[#05070C]/75" />
+
+      <div className="relative mx-auto max-w-4xl px-5 text-center sm:px-8">
+        <Reveal>
+          <span
+            aria-hidden
+            className="block text-7xl leading-none font-extrabold text-amber-500/40 sm:text-8xl"
+          >
+            “
+          </span>
+          <p className="-mt-6 text-2xl leading-snug font-bold tracking-tight text-stone-800 sm:-mt-8 sm:text-4xl dark:text-slate-100">
+            The single digital home for every construction project in Bangladesh — where every
+            professional is <span className="text-amber-600 dark:text-amber-400">verified</span>,
+            every payment is <span className="text-amber-600 dark:text-amber-400">protected</span>,
+            and every permit is <span className="text-amber-600 dark:text-amber-400">tracked</span>.
+          </p>
+        </Reveal>
+        <Reveal delay={150}>
+          <ul className="mt-10 flex flex-wrap justify-center gap-2.5">
+            {roles.map((role) => (
+              <li
+                key={role}
+                className="rounded-full border border-stone-400/50 bg-white/50 px-4 py-1.5 text-sm font-semibold text-stone-700 backdrop-blur transition hover:border-amber-500 hover:text-amber-600 dark:border-white/20 dark:bg-white/5 dark:text-slate-300 dark:hover:border-amber-400 dark:hover:text-amber-300"
+              >
+                {role}
+              </li>
+            ))}
+          </ul>
+        </Reveal>
+      </div>
     </section>
   );
 }
@@ -301,20 +493,32 @@ export function Vision() {
 
 export function CtaSection() {
   return (
-    <section id="cta" className="px-5 pb-24 sm:px-8 sm:pb-32">
+    <section id="cta" className="px-5 py-24 sm:px-8 sm:py-32">
       <Reveal>
         <div className="relative mx-auto max-w-6xl overflow-hidden rounded-3xl bg-stone-900 px-8 py-16 text-center shadow-2xl sm:px-16 sm:py-24 dark:bg-linear-to-br dark:from-indigo-950 dark:via-slate-900 dark:to-slate-950">
+          {/* Drafting grid, faded toward the edges — ties into the brand */}
+          <div
+            aria-hidden
+            className="absolute inset-0 opacity-[0.07]"
+            style={{
+              backgroundImage:
+                "linear-gradient(to right, white 1px, transparent 1px), linear-gradient(to bottom, white 1px, transparent 1px)",
+              backgroundSize: "44px 44px",
+              maskImage: "radial-gradient(90% 90% at 50% 40%, black 30%, transparent 100%)",
+              WebkitMaskImage: "radial-gradient(90% 90% at 50% 40%, black 30%, transparent 100%)",
+            }}
+          />
           {/* Breathing glow */}
           <div className="animate-glow pointer-events-none absolute -top-28 left-1/2 h-64 w-152 rounded-full bg-amber-400/25 blur-3xl" />
 
-          <h2 className="mx-auto max-w-2xl text-3xl font-extrabold tracking-tight text-white sm:text-5xl">
+          <h2 className="relative mx-auto max-w-2xl text-3xl font-extrabold tracking-tight text-white sm:text-5xl">
             Ready to build?
           </h2>
-          <p className="mx-auto mt-4 max-w-xl text-lg text-stone-300 dark:text-slate-400">
+          <p className="relative mx-auto mt-4 max-w-xl text-lg text-stone-300 dark:text-slate-400">
             Post your project brief and meet verified professionals — starting in Dhaka, under RAJUK
             jurisdiction.
           </p>
-          <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
+          <div className="relative mt-10 flex flex-wrap items-center justify-center gap-4">
             <Link
               href="/auth"
               className="rounded-full bg-amber-400 px-8 py-3.5 text-sm font-bold text-stone-950 shadow-xl transition hover:scale-[1.03] hover:bg-amber-300"
@@ -322,13 +526,13 @@ export function CtaSection() {
               Start your project
             </Link>
             <Link
-              href="/auth/professional"
+              href="/auth?role=professional"
               className="rounded-full border border-white/25 px-8 py-3.5 text-sm font-bold text-white transition hover:bg-white/10"
             >
               Join as a professional
             </Link>
           </div>
-          <p className="mt-6 text-xs text-stone-500 dark:text-slate-500">
+          <p className="relative mt-6 text-xs text-stone-500 dark:text-slate-500">
             Architects, engineers, contractors, and suppliers — get verified and start bidding.
           </p>
         </div>
@@ -339,23 +543,85 @@ export function CtaSection() {
 
 /* ---------- Footer ---------- */
 
+const footerExplore = [
+  { label: "Features", href: "/#features" },
+  { label: "How it works", href: "/#how-it-works" },
+  { label: "Find architects", href: "/architects" },
+  { label: "Permit tools", href: "/permits" },
+];
+
+const footerStart = [
+  { label: "Start your project", href: "/auth" },
+  { label: "Join as a professional", href: "/auth?role=professional" },
+  { label: "Your dashboard", href: "/dashboard" },
+];
+
 export function Footer() {
   return (
-    <footer className="border-t border-stone-200 py-12 transition-colors duration-500 dark:border-white/10">
-      <div className="mx-auto flex max-w-6xl flex-col items-center gap-6 px-5 text-center sm:flex-row sm:justify-between sm:px-8 sm:text-left">
+    <footer className="overflow-hidden border-t border-stone-200 transition-colors duration-500 dark:border-white/10">
+      <div className="mx-auto grid max-w-6xl gap-10 px-5 py-14 sm:grid-cols-[1.5fr_1fr_1fr] sm:px-8">
         <div>
           <p className="text-lg font-extrabold tracking-tight">Buildora</p>
-          <p className="mt-1 text-sm text-stone-500 dark:text-slate-500">
-            The construction super-platform for Bangladesh. Dhaka first.
+          <p className="mt-2 max-w-xs text-sm text-stone-500 dark:text-slate-500">
+            The construction super-platform for Bangladesh. Verified people, protected money,
+            tracked permits. Dhaka first.
           </p>
+          <div className="mt-4">
+            <HealthCheck />
+          </div>
         </div>
-        <div className="flex flex-col items-center gap-3 sm:items-end">
-          <HealthCheck />
-          <p className="text-xs text-stone-400 dark:text-slate-600">
-            © 2026 Buildora. All rights reserved.
+
+        <nav aria-label="Explore">
+          <p className="text-xs font-bold tracking-[0.16em] text-stone-500 uppercase dark:text-slate-400">
+            Explore
           </p>
-        </div>
+          <ul className="mt-4 flex flex-col gap-2.5">
+            {footerExplore.map((l) => (
+              <li key={l.label}>
+                <Link
+                  href={l.href}
+                  className="text-sm font-semibold text-stone-700 transition hover:text-amber-600 dark:text-slate-300 dark:hover:text-amber-400"
+                >
+                  {l.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+
+        <nav aria-label="Get started">
+          <p className="text-xs font-bold tracking-[0.16em] text-stone-500 uppercase dark:text-slate-400">
+            Get started
+          </p>
+          <ul className="mt-4 flex flex-col gap-2.5">
+            {footerStart.map((l) => (
+              <li key={l.label}>
+                <Link
+                  href={l.href}
+                  className="text-sm font-semibold text-stone-700 transition hover:text-amber-600 dark:text-slate-300 dark:hover:text-amber-400"
+                >
+                  {l.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
       </div>
+
+      <div className="mx-auto flex max-w-6xl flex-col items-center gap-2 border-t border-stone-200 px-5 py-6 sm:flex-row sm:justify-between sm:px-8 dark:border-white/10">
+        <p className="text-xs text-stone-400 dark:text-slate-600">
+          © 2026 Buildora. All rights reserved.
+        </p>
+        <p className="text-xs text-stone-400 dark:text-slate-600">Made in Dhaka 🇧🇩</p>
+      </div>
+
+      {/* Giant watermark wordmark, cropped by the footer edge */}
+      <p
+        aria-hidden
+        className="pointer-events-none mb-[-0.28em] text-center text-[19vw] leading-none font-extrabold tracking-tighter text-stone-900/5 select-none sm:text-[15vw] dark:text-white/4"
+      >
+        BUILDORA
+      </p>
     </footer>
   );
 }

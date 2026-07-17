@@ -109,6 +109,10 @@ export interface ProfessionalProfile {
   /** Firm or company they practise under. */
   company?: string;
   bio?: string;
+  /** Their own portfolio headline, e.g. "Architecture for a Better Tomorrow". */
+  portfolioTitle?: string;
+  /** Short hero introduction shown under the headline on the public portfolio. */
+  portfolioIntro?: string;
   /** Registration body, e.g. "IAB", "IEB", "RAJUK". */
   licenseAuthority?: string;
   /** Professional registration / license number (IAB membership no. for architects). */
@@ -198,10 +202,18 @@ export interface PublicProfessional {
   avatarUrl?: string;
   company?: string;
   bio?: string;
+  /** Their own portfolio headline, e.g. "Architecture for a Better Tomorrow". */
+  portfolioTitle?: string;
+  /** Short hero introduction shown under the headline. */
+  portfolioIntro?: string;
   licenseAuthority?: string;
   specialties?: string;
   yearsExperience?: number;
   website?: string;
+  /** e.g. "Principal Architect" — shown under the name on the public portfolio. */
+  professionalTitle?: string;
+  /** Selected chips from EXPERTISE_AREAS. */
+  expertise?: string[];
   education?: EducationEntry[];
   achievements?: AchievementEntry[];
   portfolio?: PortfolioProject[];

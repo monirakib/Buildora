@@ -68,6 +68,8 @@ function formFromUser(user: SessionUser) {
     avatarUrl: p.avatarUrl ?? "",
     company: p.company ?? "",
     bio: p.bio ?? "",
+    portfolioTitle: p.portfolioTitle ?? "",
+    portfolioIntro: p.portfolioIntro ?? "",
     licenseAuthority: p.licenseAuthority ?? "",
     licenseNumber: p.licenseNumber ?? "",
     specialties: p.specialties ?? "",
@@ -231,7 +233,7 @@ export function ClassicProfessionalForm() {
   useEffect(() => {
     if (!mounted) return;
     if (!user) {
-      router.replace("/auth/professional");
+      router.replace("/auth?role=professional");
       return;
     }
     if (!PROFESSIONAL_ROLES.includes(user.role)) {
@@ -502,6 +504,36 @@ export function ClassicProfessionalForm() {
                     value={form.bio}
                     onChange={set("bio")}
                     placeholder="Your practice, design philosophy, notable work…"
+                    className={inputClass}
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="portfolioTitle" className={labelClass}>
+                    Portfolio headline
+                  </label>
+                  <input
+                    id="portfolioTitle"
+                    type="text"
+                    maxLength={90}
+                    value={form.portfolioTitle}
+                    onChange={set("portfolioTitle")}
+                    placeholder='e.g. "Architecture for a Better Tomorrow"'
+                    className={inputClass}
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="portfolioIntro" className={labelClass}>
+                    Portfolio introduction
+                  </label>
+                  <textarea
+                    id="portfolioIntro"
+                    rows={3}
+                    maxLength={280}
+                    value={form.portfolioIntro}
+                    onChange={set("portfolioIntro")}
+                    placeholder="One or two sentences shown under your headline on your public page."
                     className={inputClass}
                   />
                 </div>
