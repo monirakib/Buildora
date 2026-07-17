@@ -8,7 +8,6 @@
 
   --animate-fade-up: fade-up 0.9s ease-out both;
   --animate-fade-down: fade-down 0.7s ease-out both;
-  --animate-glow: glow 7s ease-in-out infinite;
 }
 
 @keyframes fade-up {
@@ -30,18 +29,6 @@
   to {
     opacity: 1;
     transform: translateY(0);
-  }
-}
-
-@keyframes glow {
-  0%,
-  100% {
-    opacity: 0.4;
-    transform: translateX(-50%) scale(1);
-  }
-  50% {
-    opacity: 0.85;
-    transform: translateX(-50%) scale(1.15);
   }
 }
 

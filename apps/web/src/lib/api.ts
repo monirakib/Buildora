@@ -202,6 +202,23 @@ export async function uploadImage(token: string, file: File): Promise<string> {
   return body.data.url;
 }
 
+/** POST /api/uploads/model — upload a .glb 3D design model, get its URL. */
+export async function uploadModel(token: string, file: File): Promise<string> {
+  const form = new FormData();
+  form.append("model", file);
+  const res = await fetch(`${API_BASE_URL}/api/uploads/model`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: form,
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
+    throw new Error(body?.error?.message ?? `Upload failed: ${res.status}`);
+  }
+  const body = (await res.json()) as { data: { url: string } };
+  return body.data.url;
+}
+
 /** POST /api/verification/submit — send the profile for supervisor review. */
 export async function submitVerification(
   token: string,
@@ -266,4 +283,45 @@ export async function decideVerificationRequest(
     }
   );
   return res.data.request;
+}
+
+// ---------- Buildora Guide (AI assistant) ----------
+
+export interface AssistantMessage {
+  role: "user" | "model";
+  content: string;
+}
+
+/**
+ * POST /api/assistant/chat — ask the Buildora Guide one question. Guests pass
+ * their running history (kept in the widget's state); signed-in users send a
+ * token instead and the API uses their stored conversation.
+ */
+export async function assistantChat(
+  token: string | null,
+  message: string,
+  history: AssistantMessage[]
+): Promise<string> {
+  const res = await request<{ data: { reply: string } }>("/api/assistant/chat", {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    body: JSON.stringify(token ? { message } : { message, history }),
+  });
+  return res.data.reply;
+}
+
+/** GET /api/assistant/chat — the signed-in user's stored conversation. */
+export async function getAssistantChat(token: string): Promise<AssistantMessage[]> {
+  const res = await request<{ data: { messages: AssistantMessage[] } }>("/api/assistant/chat", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return res.data.messages;
+}
+
+/** DELETE /api/assistant/chat — wipe the signed-in user's conversation. */
+export async function clearAssistantChat(token: string): Promise<void> {
+  await request<{ data: { ok: boolean } }>("/api/assistant/chat", {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
 }

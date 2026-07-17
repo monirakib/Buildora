@@ -334,7 +334,7 @@ export function HeroScrub() {
           ref={skipRef}
           type="button"
           onClick={skipToContent}
-          className="absolute right-5 bottom-8 flex items-center gap-2 rounded-full border border-white/25 bg-black/40 px-4 py-2 text-xs font-bold tracking-wide text-white/90 backdrop-blur transition-colors hover:bg-black/65 sm:right-8"
+          className="absolute right-24 bottom-8 flex items-center gap-2 rounded-full border border-white/25 bg-black/40 px-4 py-2 text-xs font-bold tracking-wide text-white/90 backdrop-blur transition-colors hover:bg-black/65 sm:right-26"
         >
           Skip intro
           <svg viewBox="0 0 24 24" fill="none" className="h-3.5 w-3.5">

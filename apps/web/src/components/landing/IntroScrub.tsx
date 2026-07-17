@@ -52,10 +52,22 @@ export function IntroScrub() {
   });
 
   return (
-    <section className="border-b border-stone-200 bg-white py-24 transition-colors duration-500 sm:py-32 dark:border-white/10 dark:bg-white/3">
+    <section className="relative overflow-hidden border-b border-stone-200 py-24 transition-colors duration-500 sm:py-32 dark:border-white/10">
+      {/* Quiet backdrop: the photo is softened and veiled by a heavy scrim so
+          it reads as texture behind the words, not a second hero. */}
+      {/* eslint-disable-next-line @next/next/no-img-element -- local asset */}
+      <img
+        src="/landing/concrete-white.jpg"
+        alt=""
+        loading="lazy"
+        aria-hidden
+        className="absolute inset-0 h-full w-full scale-105 object-cover blur-[2px]"
+      />
+      <div className="absolute inset-0 bg-white/85 dark:bg-[#05070C]/85" />
+
       <p
         ref={ref}
-        className="mx-auto max-w-4xl px-5 text-center text-2xl leading-snug font-extrabold tracking-tight sm:px-8 sm:text-4xl"
+        className="relative mx-auto max-w-4xl px-5 text-center text-2xl leading-snug font-extrabold tracking-tight sm:px-8 sm:text-4xl"
       >
         {words.map((word, i) => (
           <Word key={i} word={word} index={i} progress={scrollYProgress} />

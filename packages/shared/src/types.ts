@@ -6,8 +6,10 @@ import type {
   DocumentCategory,
   InquiryStatus,
   LandUse,
+  OrderStatus,
   PaymentKind,
   PaymentMethod,
+  ProductCategory,
   ProjectStatus,
   ProposalStatus,
   UserRole,
@@ -436,6 +438,50 @@ export interface ProjectDocument {
   category: DocumentCategory;
   fileUrl: string;
   uploader: { id: string; name: string };
+  createdAt: string;
+}
+
+/* ---------- Marketplace ---------- */
+
+/** One item a supplier/contractor sells on the marketplace. */
+export interface Product {
+  id: string;
+  seller: {
+    id: string;
+    name: string;
+    company?: string;
+    role: UserRole;
+    verificationStatus: VerificationStatus;
+  };
+  name: string;
+  /** Manufacturer/brand, e.g. "Shah Cement". */
+  brand?: string;
+  category: ProductCategory;
+  description?: string;
+  /** Selling unit, e.g. "bag", "ton", "piece", "cft". */
+  unit: string;
+  priceBdt: number;
+  imageUrl?: string;
+  /** Sellers can pause a listing without deleting it. */
+  isActive: boolean;
+  createdAt: string;
+}
+
+/**
+ * A land owner's order for one product. The name/unit/price are snapshotted
+ * at order time so later listing edits don't rewrite history.
+ */
+export interface MarketOrder {
+  id: string;
+  buyer: { id: string; name: string; phone?: string };
+  seller: { id: string; name: string; company?: string };
+  product: { id: string; name: string; brand?: string; unit: string; priceBdt: number };
+  quantity: number;
+  totalBdt: number;
+  deliveryAddress: string;
+  phone: string;
+  note?: string;
+  status: OrderStatus;
   createdAt: string;
 }
 

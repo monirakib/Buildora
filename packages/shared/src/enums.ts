@@ -115,9 +115,36 @@ export enum LandUse {
   INSTITUTIONAL = "INSTITUTIONAL",
 }
 
+/** What a marketplace product is, for browsing filters. */
+export enum ProductCategory {
+  CEMENT = "CEMENT",
+  STEEL = "STEEL",
+  BRICKS = "BRICKS",
+  SAND_AGGREGATE = "SAND_AGGREGATE",
+  TILES = "TILES",
+  PAINT = "PAINT",
+  ELECTRICAL = "ELECTRICAL",
+  PLUMBING = "PLUMBING",
+  WOOD = "WOOD",
+  OTHER = "OTHER",
+}
+
+/**
+ * Lifecycle of a marketplace order. Land owners order freely (no approval
+ * ladder) — the status only tracks fulfilment by the seller.
+ */
+export enum OrderStatus {
+  PLACED = "PLACED",
+  CONFIRMED = "CONFIRMED",
+  DELIVERED = "DELIVERED",
+  CANCELLED = "CANCELLED",
+}
+
 /** Filing category for the project document archive. */
 export enum DocumentCategory {
   DESIGN = "DESIGN",
+  /** A 3D design model (.glb) viewable in the in-browser 3D viewer. */
+  MODEL_3D = "MODEL_3D",
   PERMIT = "PERMIT",
   CONTRACT = "CONTRACT",
   SITE = "SITE",

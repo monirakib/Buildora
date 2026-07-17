@@ -16,6 +16,10 @@ const envSchema = z.object({
   CLOUDINARY_CLOUD_NAME: z.string().optional(),
   CLOUDINARY_API_KEY: z.string().optional(),
   CLOUDINARY_API_SECRET: z.string().optional(),
+  // Google Gemini (the Buildora Guide assistant) — key from
+  // https://aistudio.google.com; the assistant 503s until it's set.
+  GEMINI_API_KEY: z.string().optional(),
+  GEMINI_MODEL: z.string().default("gemini-flash-latest"),
   // Supervisor account created by `pnpm seed:admin` (see scripts/seed-admin.ts).
   ADMIN_NAME: z.string().default("Platform Supervisor"),
   ADMIN_USERNAME: z.string().default("supervisor"),

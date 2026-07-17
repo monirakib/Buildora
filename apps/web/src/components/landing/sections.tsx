@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { HealthCheck } from "@/components/HealthCheck";
 import { CountUp } from "./CountUp";
 import { Reveal } from "./Reveal";
 
@@ -493,32 +492,33 @@ export function Vision() {
 
 export function CtaSection() {
   return (
-    <section id="cta" className="px-5 py-24 sm:px-8 sm:py-32">
-      <Reveal>
-        <div className="relative mx-auto max-w-6xl overflow-hidden rounded-3xl bg-stone-900 px-8 py-16 text-center shadow-2xl sm:px-16 sm:py-24 dark:bg-linear-to-br dark:from-indigo-950 dark:via-slate-900 dark:to-slate-950">
-          {/* Drafting grid, faded toward the edges — ties into the brand */}
-          <div
-            aria-hidden
-            className="absolute inset-0 opacity-[0.07]"
-            style={{
-              backgroundImage:
-                "linear-gradient(to right, white 1px, transparent 1px), linear-gradient(to bottom, white 1px, transparent 1px)",
-              backgroundSize: "44px 44px",
-              maskImage: "radial-gradient(90% 90% at 50% 40%, black 30%, transparent 100%)",
-              WebkitMaskImage: "radial-gradient(90% 90% at 50% 40%, black 30%, transparent 100%)",
-            }}
-          />
-          {/* Breathing glow */}
-          <div className="animate-glow pointer-events-none absolute -top-28 left-1/2 h-64 w-152 rounded-full bg-amber-400/25 blur-3xl" />
+    <section id="cta" className="relative overflow-hidden">
+      {/* Full-bleed jobsite photograph; the scrim runs left-to-right so the
+          words sit on the dark side and the crew stays visible on the right. */}
+      {/* eslint-disable-next-line @next/next/no-img-element -- local asset */}
+      <img
+        src="/landing/crew-review.jpg"
+        alt=""
+        loading="lazy"
+        aria-hidden
+        className="absolute inset-0 h-full w-full object-cover"
+      />
+      <div className="absolute inset-0 bg-linear-to-r from-black/90 via-black/70 to-black/35" />
 
-          <h2 className="relative mx-auto max-w-2xl text-3xl font-extrabold tracking-tight text-white sm:text-5xl">
-            Ready to build?
-          </h2>
-          <p className="relative mx-auto mt-4 max-w-xl text-lg text-stone-300 dark:text-slate-400">
-            Post your project brief and meet verified professionals — starting in Dhaka, under RAJUK
-            jurisdiction.
+      <div className="relative mx-auto max-w-6xl px-5 py-28 sm:px-8 sm:py-40">
+        <Reveal>
+          <p className="text-sm font-bold tracking-[0.2em] text-amber-400 uppercase">
+            Start today
           </p>
-          <div className="relative mt-10 flex flex-wrap items-center justify-center gap-4">
+          <h2 className="mt-4 max-w-2xl text-4xl leading-[1.05] font-extrabold tracking-tight text-white sm:text-6xl">
+            Let&apos;s build something that lasts.
+          </h2>
+          <p className="mt-5 max-w-xl text-lg text-white/70">
+            Post your project brief and meet verified professionals — starting in Dhaka, under
+            RAJUK jurisdiction.
+          </p>
+
+          <div className="mt-10 flex flex-wrap items-center gap-4">
             <Link
               href="/auth"
               className="rounded-full bg-amber-400 px-8 py-3.5 text-sm font-bold text-stone-950 shadow-xl transition hover:scale-[1.03] hover:bg-amber-300"
@@ -527,16 +527,20 @@ export function CtaSection() {
             </Link>
             <Link
               href="/auth?role=professional"
-              className="rounded-full border border-white/25 px-8 py-3.5 text-sm font-bold text-white transition hover:bg-white/10"
+              className="rounded-full border border-white/30 px-8 py-3.5 text-sm font-bold text-white backdrop-blur transition hover:bg-white/10"
             >
               Join as a professional
             </Link>
           </div>
-          <p className="relative mt-6 text-xs text-stone-500 dark:text-slate-500">
-            Architects, engineers, contractors, and suppliers — get verified and start bidding.
-          </p>
-        </div>
-      </Reveal>
+
+          {/* Quiet assurances under a hairline, instead of centered microcopy */}
+          <div className="mt-16 flex flex-wrap gap-x-10 gap-y-3 border-t border-white/15 pt-6 text-xs font-bold tracking-wide text-white/50 uppercase">
+            <span>Escrow-protected payments</span>
+            <span>Human-verified professionals</span>
+            <span>RAJUK permits guided</span>
+          </div>
+        </Reveal>
+      </div>
     </section>
   );
 }
@@ -566,9 +570,6 @@ export function Footer() {
             The construction super-platform for Bangladesh. Verified people, protected money,
             tracked permits. Dhaka first.
           </p>
-          <div className="mt-4">
-            <HealthCheck />
-          </div>
         </div>
 
         <nav aria-label="Explore">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef } from "react";
 import Link from "next/link";
 import { Reveal } from "./Reveal";
 
@@ -39,22 +39,13 @@ const showcaseCards = [
 ];
 
 /** Round chevron button for the gallery rail. */
-function ArrowButton({
-  dir,
-  disabled,
-  onClick,
-}: {
-  dir: "prev" | "next";
-  disabled: boolean;
-  onClick: () => void;
-}) {
+function ArrowButton({ dir, onClick }: { dir: "prev" | "next"; onClick: () => void }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      disabled={disabled}
       aria-label={dir === "prev" ? "Previous projects" : "More projects"}
-      className="grid h-11 w-11 place-items-center rounded-full border border-stone-300 text-stone-700 transition hover:border-amber-500 hover:text-amber-600 disabled:cursor-default disabled:opacity-30 disabled:hover:border-stone-300 disabled:hover:text-stone-700 dark:border-white/20 dark:text-slate-200 dark:hover:border-amber-400 dark:hover:text-amber-300 dark:disabled:hover:border-white/20 dark:disabled:hover:text-slate-200"
+      className="grid h-11 w-11 place-items-center rounded-full border border-stone-300 text-stone-700 transition hover:border-amber-500 hover:text-amber-600 dark:border-white/20 dark:text-slate-200 dark:hover:border-amber-400 dark:hover:text-amber-300"
     >
       <svg
         viewBox="0 0 24 24"
@@ -74,30 +65,26 @@ function ArrowButton({
 /**
  * "What will you build?" — a horizontal snap-scroll photo rail. The arrow
  * buttons scroll it one card at a time for mouse users (the rail itself still
- * swipes on touch and scrolls with trackpads); they disable at either end.
+ * swipes on touch and scrolls with trackpads) and wrap around at either end,
+ * so the gallery loops.
  */
 export function Showcase() {
   const railRef = useRef<HTMLDivElement>(null);
-  const [canPrev, setCanPrev] = useState(false);
-  const [canNext, setCanNext] = useState(true);
 
-  // Re-check both arrows whenever the rail moves or resizes.
-  function updateArrows() {
-    const el = railRef.current;
-    if (!el) return;
-    setCanPrev(el.scrollLeft > 8);
-    setCanNext(el.scrollLeft < el.scrollWidth - el.clientWidth - 8);
-  }
-  useEffect(() => {
-    updateArrows();
-    window.addEventListener("resize", updateArrows);
-    return () => window.removeEventListener("resize", updateArrows);
-  }, []);
-
-  // One card + the gap-5 (20px) between cards, so each click advances a card.
+  // One card + the gap-5 (20px) between cards, so each click advances a
+  // card. Past the last card it wraps back to the first (and vice versa).
   function scrollByCard(dir: 1 | -1) {
     const el = railRef.current;
     if (!el) return;
+    const max = el.scrollWidth - el.clientWidth;
+    if (dir === 1 && el.scrollLeft >= max - 8) {
+      el.scrollTo({ left: 0, behavior: "smooth" });
+      return;
+    }
+    if (dir === -1 && el.scrollLeft <= 8) {
+      el.scrollTo({ left: max, behavior: "smooth" });
+      return;
+    }
     const card = el.querySelector("a");
     const step = card ? card.clientWidth + 20 : el.clientWidth * 0.8;
     el.scrollBy({ left: dir * step, behavior: "smooth" });
@@ -117,8 +104,8 @@ export function Showcase() {
               </h2>
             </div>
             <div className="flex items-center gap-3">
-              <ArrowButton dir="prev" disabled={!canPrev} onClick={() => scrollByCard(-1)} />
-              <ArrowButton dir="next" disabled={!canNext} onClick={() => scrollByCard(1)} />
+              <ArrowButton dir="prev" onClick={() => scrollByCard(-1)} />
+              <ArrowButton dir="next" onClick={() => scrollByCard(1)} />
             </div>
           </div>
         </Reveal>
@@ -129,14 +116,13 @@ export function Showcase() {
       <Reveal delay={120}>
         <div
           ref={railRef}
-          onScroll={updateArrows}
-          className="mt-10 flex snap-x snap-mandatory gap-5 overflow-x-auto px-5 pb-4 scrollbar-none sm:px-[max(1.25rem,calc((100vw-72rem)/2+2rem))] [&::-webkit-scrollbar]:hidden"
+          className="mt-10 flex snap-x snap-mandatory gap-5 overflow-x-auto px-5 pb-4 scrollbar-none sm:scroll-pl-5 [&::-webkit-scrollbar]:hidden"
         >
           {showcaseCards.map((card) => (
             <Link
               key={card.tag}
               href="/auth"
-              className="group relative h-96 w-[85vw] shrink-0 snap-start overflow-hidden rounded-3xl sm:w-120"
+              className="group relative h-96 w-[85vw] shrink-0 snap-center overflow-hidden rounded-3xl sm:w-120 sm:snap-start"
             >
               {/* eslint-disable-next-line @next/next/no-img-element -- local asset */}
               <img

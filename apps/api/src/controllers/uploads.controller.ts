@@ -50,3 +50,49 @@ export async function uploadImage(req: Request, res: Response) {
 
   return res.status(201).json({ data: { url: result.secure_url } });
 }
+
+/**
+ * Multer for 3D design models. GLB is binary (no reliable mimetype across
+ * browsers), so the filter goes by extension. 15 MB cap — enough for an
+ * architectural model exported from SketchUp/Revit/Blender.
+ */
+export const modelUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 15 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (/\.(glb|gltf)$/i.test(file.originalname)) return cb(null, true);
+    cb(new Error("Only .glb / .gltf 3D models can be uploaded"));
+  },
+});
+
+/**
+ * POST /api/uploads/model — authenticated users upload one 3D model (form
+ * field "model") and get back its hosted URL. Stored on Cloudinary as a raw
+ * file (it's not an image), served back to the in-browser 3D viewer.
+ */
+export async function uploadModel(req: Request, res: Response) {
+  if (!env.CLOUDINARY_CLOUD_NAME || !env.CLOUDINARY_API_KEY || !env.CLOUDINARY_API_SECRET) {
+    return res.status(503).json({
+      error: { message: "Uploads aren't configured (missing Cloudinary keys)" },
+    });
+  }
+  if (!req.file) {
+    return res.status(400).json({ error: { message: "Attach a .glb model file" } });
+  }
+
+  const result = await new Promise<{ secure_url: string }>((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      // "raw" keeps the bytes untouched; keep the .glb extension in the URL
+      // so loaders and browsers recognise the format.
+      {
+        folder: `buildora/${req.auth!.sub}/models`,
+        resource_type: "raw",
+        format: "glb",
+      },
+      (error, uploaded) => (uploaded ? resolve(uploaded) : reject(error))
+    );
+    stream.end(req.file!.buffer);
+  });
+
+  return res.status(201).json({ data: { url: result.secure_url } });
+}

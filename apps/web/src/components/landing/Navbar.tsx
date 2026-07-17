@@ -48,6 +48,7 @@ const megaMenu = [
     links: [
       { href: "/projects/new", label: "Post a project brief", desc: "Land, budget, floors — in minutes" },
       { href: "/architects", label: "Find architects", desc: "Browse verified portfolios" },
+      { href: "/marketplace", label: "Marketplace", desc: "Order materials straight to your site" },
       { href: "/permits", label: "Permit tools", desc: "DAP zone checks & RAJUK fees" },
       { href: "/dashboard", label: "Your dashboard", desc: "Projects, messages, requests" },
     ],
@@ -64,6 +65,7 @@ const megaMenu = [
       { href: "/auth?role=professional", label: "Join Buildora", desc: "Architects, engineers, contractors, suppliers" },
       { href: "/profile/professional", label: "Get verified", desc: "Earn the Platform Verified badge" },
       { href: "/briefs", label: "Open briefs", desc: "Find your next client" },
+      { href: "/marketplace/sell", label: "Sell materials", desc: "List products on the marketplace" },
       { href: "/inquiries", label: "Requests", desc: "Inquiries and replies in one place" },
     ],
     featured: {
@@ -323,6 +325,7 @@ function SideMenu({
   const isLandOwner = role === UserRole.LAND_OWNER;
   const isAdmin = role === UserRole.ADMIN;
   const isProfessional = loggedIn && !isLandOwner && !isAdmin;
+  const isSeller = role === UserRole.SUPPLIER || role === UserRole.CONTRACTOR;
   const itemClass =
     "flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-stone-700 transition hover:bg-stone-100 hover:text-stone-900 dark:text-white/85 dark:hover:bg-white/10 dark:hover:text-white";
 
@@ -408,6 +411,16 @@ function SideMenu({
                   Find an architect
                 </Link>
               )}
+              {isSeller && (
+                <Link href="/marketplace/sell" onClick={onClose} className={itemClass}>
+                  My listings
+                </Link>
+              )}
+              {(isLandOwner || isSeller) && (
+                <Link href="/marketplace/orders" onClick={onClose} className={itemClass}>
+                  Market orders
+                </Link>
+              )}
               <Link href="/messages" onClick={onClose} className={itemClass}>
                 Messages
               </Link>
@@ -431,6 +444,9 @@ function SideMenu({
               </Link>
             </>
           )}
+          <Link href="/marketplace" onClick={onClose} className={itemClass}>
+            Marketplace
+          </Link>
           <Link href="/permits" onClick={onClose} className={itemClass}>
             Permit tools
           </Link>

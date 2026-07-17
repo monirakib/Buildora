@@ -1,0 +1,112 @@
+import type { MarketOrder, OrderStatus, Paginated, Product } from "@buildora/shared";
+import { request } from "./api";
+
+/* ---------- Catalogue ---------- */
+
+/** GET /api/marketplace/products — public catalogue with search + filter. */
+export async function listProducts(params: {
+  search?: string;
+  category?: string;
+  page?: number;
+}): Promise<Paginated<Product>> {
+  const qs = new URLSearchParams();
+  if (params.search) qs.set("search", params.search);
+  if (params.category) qs.set("category", params.category);
+  if (params.page) qs.set("page", String(params.page));
+  const res = await request<{ data: Paginated<Product> }>(
+    `/api/marketplace/products?${qs.toString()}`
+  );
+  return res.data;
+}
+
+/* ---------- Seller listings ---------- */
+
+export interface ProductInput {
+  name: string;
+  brand?: string;
+  category: string;
+  description?: string;
+  unit: string;
+  priceBdt: number;
+  imageUrl?: string;
+  isActive?: boolean;
+}
+
+export async function listMyProducts(token: string): Promise<Product[]> {
+  const res = await request<{ data: { products: Product[] } }>("/api/marketplace/products/mine", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return res.data.products;
+}
+
+export async function createProduct(token: string, input: ProductInput): Promise<Product> {
+  const res = await request<{ data: { product: Product } }>("/api/marketplace/products", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(input),
+  });
+  return res.data.product;
+}
+
+export async function updateProduct(
+  token: string,
+  id: string,
+  input: Partial<ProductInput>
+): Promise<Product> {
+  const res = await request<{ data: { product: Product } }>(`/api/marketplace/products/${id}`, {
+    method: "PATCH",
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(input),
+  });
+  return res.data.product;
+}
+
+export async function deleteProduct(token: string, id: string): Promise<void> {
+  await request<{ data: { ok: boolean } }>(`/api/marketplace/products/${id}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+/* ---------- Orders ---------- */
+
+export async function placeOrder(
+  token: string,
+  input: {
+    productId: string;
+    quantity: number;
+    deliveryAddress: string;
+    phone: string;
+    note?: string;
+  }
+): Promise<MarketOrder> {
+  const res = await request<{ data: { order: MarketOrder } }>("/api/marketplace/orders", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(input),
+  });
+  return res.data.order;
+}
+
+export async function listOrders(token: string): Promise<MarketOrder[]> {
+  const res = await request<{ data: { orders: MarketOrder[] } }>("/api/marketplace/orders", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return res.data.orders;
+}
+
+export async function updateOrderStatus(
+  token: string,
+  id: string,
+  status: OrderStatus
+): Promise<MarketOrder> {
+  const res = await request<{ data: { order: MarketOrder } }>(
+    `/api/marketplace/orders/${id}/status`,
+    {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ status }),
+    }
+  );
+  return res.data.order;
+}

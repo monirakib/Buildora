@@ -1,6 +1,8 @@
 import { Router } from "express";
+import { assistantRouter } from "./assistant.routes";
 import { authRouter } from "./auth.routes";
 import { contractsRouter } from "./contracts.routes";
+import { marketplaceRouter } from "./marketplace.routes";
 import { healthRouter } from "./health.routes";
 import { messagesRouter } from "./messages.routes";
 import { permitsRouter } from "./permits.routes";
@@ -24,3 +26,5 @@ apiRouter.use("/proposals", proposalsRouter);
 apiRouter.use("/contracts", contractsRouter);
 apiRouter.use("/messages", messagesRouter);
 apiRouter.use("/permits", permitsRouter);
+apiRouter.use("/assistant", assistantRouter);
+apiRouter.use("/marketplace", marketplaceRouter);
