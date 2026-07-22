@@ -20,6 +20,14 @@ const envSchema = z.object({
   // https://aistudio.google.com; the assistant 503s until it's set.
   GEMINI_API_KEY: z.string().optional(),
   GEMINI_MODEL: z.string().default("gemini-flash-latest"),
+  // WebRTC ICE servers for voice calls. STUN handles NAT discovery and works
+  // for the demo on most networks (defaults to Google's public STUN). Set the
+  // TURN_* vars later to relay calls that can't connect peer-to-peer across
+  // stricter networks — no client change needed, the API serves these.
+  STUN_URLS: z.string().default("stun:stun.l.google.com:19302"),
+  TURN_URL: z.string().optional(),
+  TURN_USERNAME: z.string().optional(),
+  TURN_CREDENTIAL: z.string().optional(),
   // Supervisor account created by `pnpm seed:admin` (see scripts/seed-admin.ts).
   ADMIN_NAME: z.string().default("Platform Supervisor"),
   ADMIN_USERNAME: z.string().default("supervisor"),

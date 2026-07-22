@@ -3,6 +3,7 @@ import { Manrope } from "next/font/google";
 import "./globals.css";
 import { CursorGlow } from "@/components/CursorGlow";
 import { AssistantWidget } from "@/components/assistant/AssistantWidget";
+import { CallProvider } from "@/components/call/CallProvider";
 
 const manrope = Manrope({
   subsets: ["latin"],
@@ -26,6 +27,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         <CursorGlow />
         <AssistantWidget />
+        <CallProvider />
         {children}
       </body>
     </html>

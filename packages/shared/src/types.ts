@@ -1,5 +1,6 @@
 import type {
   BuildingType,
+  CallStatus,
   ContractStatus,
   DeliverableKind,
   DeliverableStatus,
@@ -394,6 +395,105 @@ export interface ChatMessage {
   senderName: string;
   body: string;
   createdAt: string;
+}
+
+/* ---------- Voice calls (WebRTC 1:1) ---------- */
+
+/** The other party on a call, shown in the ringing/in-call UI and call history. */
+export interface CallPeer {
+  id: string;
+  name: string;
+  username: string;
+  role: UserRole;
+  avatarUrl?: string;
+}
+
+/**
+ * A finished (or in-progress) call as it appears in a user's history.
+ * `direction` is relative to the viewer: OUTGOING = they placed it.
+ */
+export interface CallRecord {
+  id: string;
+  direction: "OUTGOING" | "INCOMING";
+  peer: CallPeer;
+  status: CallStatus;
+  /** When the invite was sent. */
+  startedAt: string;
+  /** When the callee accepted, if they did. */
+  answeredAt?: string;
+  endedAt?: string;
+  /** Talk time in seconds (0 for unanswered calls). */
+  durationSec: number;
+}
+
+/**
+ * One ICE server for the browser's RTCPeerConnection. STUN needs only `urls`;
+ * a TURN relay adds credentials. Served by the API so the team can swap in a
+ * TURN provider later by setting env vars — no client redeploy.
+ */
+export interface IceServerConfig {
+  urls: string | string[];
+  username?: string;
+  credential?: string;
+}
+
+/**
+ * Socket.IO event names for call signaling, shared so the client and server
+ * can't drift. `sdp`/`candidate` payloads are the browser's WebRTC objects,
+ * typed as `unknown` here because the shared package can't depend on DOM libs
+ * (the API compiles under Node) — the web client casts them back.
+ */
+export const CALL_EVENTS = {
+  // client → server
+  start: "call:start",
+  accept: "call:accept",
+  reject: "call:reject",
+  cancel: "call:cancel",
+  hangup: "call:hangup",
+  offer: "call:offer",
+  answer: "call:answer",
+  ice: "call:ice",
+  // server → client
+  incoming: "call:incoming",
+  accepted: "call:accepted",
+  rejected: "call:rejected",
+  cancelled: "call:cancelled",
+  ended: "call:ended",
+  unavailable: "call:unavailable",
+  peerOffer: "call:peer-offer",
+  peerAnswer: "call:peer-answer",
+  peerIce: "call:peer-ice",
+} as const;
+
+/** Payload the caller sends to start a call. Server acks with { callId }. */
+export interface CallStartPayload {
+  toUserId: string;
+}
+
+/** Server → callee when a call comes in. */
+export interface IncomingCallPayload {
+  callId: string;
+  from: CallPeer;
+}
+
+/** SDP offer/answer relayed between the two peers, keyed by call. */
+export interface CallDescriptionPayload {
+  callId: string;
+  /** RTCSessionDescriptionInit on the web side. */
+  sdp: unknown;
+}
+
+/** A single ICE candidate relayed between the two peers. */
+export interface CallIcePayload {
+  callId: string;
+  /** RTCIceCandidateInit on the web side. */
+  candidate: unknown;
+}
+
+/** Server → client when a call reaches a terminal state, with the final status. */
+export interface CallStatusPayload {
+  callId: string;
+  status: CallStatus;
 }
 
 /** An admin-maintained DAP zone record (the rules, not hardcoded). */
