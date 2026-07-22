@@ -140,6 +140,26 @@ export enum OrderStatus {
   CANCELLED = "CANCELLED",
 }
 
+/**
+ * Lifecycle of a 1:1 voice call. A call rings, then either connects (ACCEPTED →
+ * ENDED) or doesn't (REJECTED / MISSED / CANCELLED). The final status is what
+ * shows in the call history.
+ */
+export enum CallStatus {
+  /** Invite sent; the callee's device is ringing. */
+  RINGING = "RINGING",
+  /** Callee accepted — audio is connected. */
+  ACCEPTED = "ACCEPTED",
+  /** Callee declined the invite. */
+  REJECTED = "REJECTED",
+  /** Nobody picked up (callee offline, or it rang out). */
+  MISSED = "MISSED",
+  /** Caller gave up before the callee answered. */
+  CANCELLED = "CANCELLED",
+  /** Connected, then hung up normally. */
+  ENDED = "ENDED",
+}
+
 /** Filing category for the project document archive. */
 export enum DocumentCategory {
   DESIGN = "DESIGN",
