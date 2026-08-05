@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Manrope } from "next/font/google";
 import "./globals.css";
 import { CursorGlow } from "@/components/CursorGlow";
+import { SessionSync } from "@/components/SessionSync";
 import { AssistantWidget } from "@/components/assistant/AssistantWidget";
 import { CallProvider } from "@/components/call/CallProvider";
 
@@ -26,6 +27,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-screen bg-stone-50 font-sans text-stone-900 antialiased transition-colors duration-500 dark:bg-[#060a15] dark:text-slate-100">
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         <CursorGlow />
+        <SessionSync />
         <AssistantWidget />
         <CallProvider />
         {children}

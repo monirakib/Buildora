@@ -16,7 +16,7 @@ import {
   type Product as ProductShape,
 } from "@buildora/shared";
 import { User } from "../models/User";
-import { Session } from "../models/Session";
+import { Session, sessionCutoffs } from "../models/Session";
 import { Project } from "../models/Project";
 import { Proposal } from "../models/Proposal";
 import { Contract } from "../models/Contract";
@@ -286,6 +286,9 @@ export async function listUsers(req: Request, res: Response) {
 
   // One aggregation over this page's users: latest activity + live login count.
   const ids = docs.map((d) => d._id);
+  // "Active" has to mean the same thing here as it does in requireAuth, so a
+  // login that timed out isn't still listed as open.
+  const { usedSince, startedSince } = sessionCutoffs();
   const sessionRows: { _id: Types.ObjectId; lastSeenAt: Date; active: number }[] =
     await Session.aggregate([
       { $match: { user: { $in: ids } } },
@@ -293,11 +296,23 @@ export async function listUsers(req: Request, res: Response) {
         $group: {
           _id: "$user",
           lastSeenAt: { $max: "$lastSeenAt" },
-          // $ifNull: sessions that were never revoked have no revokedAt field
-          // at all, and in aggregation expressions "missing" ≠ null — so
-          // normalise missing to null before comparing.
           active: {
-            $sum: { $cond: [{ $eq: [{ $ifNull: ["$revokedAt", null] }, null] }, 1, 0] },
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    // $ifNull: sessions that were never revoked have no
+                    // revokedAt field at all, and in aggregation expressions
+                    // "missing" ≠ null — so normalise before comparing.
+                    { $eq: [{ $ifNull: ["$revokedAt", null] }, null] },
+                    { $gt: ["$lastSeenAt", usedSince] },
+                    { $gt: ["$createdAt", startedSince] },
+                  ],
+                },
+                1,
+                0,
+              ],
+            },
           },
         },
       },

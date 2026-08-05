@@ -1,4 +1,5 @@
 import { Schema, model, Types } from "mongoose";
+import { env } from "../config/env";
 
 /**
  * One login = one session document. The session id travels inside the JWT
@@ -29,3 +30,44 @@ const sessionSchema = new Schema<SessionDoc>(
 );
 
 export const Session = model<SessionDoc>("Session", sessionSchema);
+
+const HOUR_MS = 60 * 60 * 1000;
+
+/**
+ * The two moments a session has to be newer than to still count: last used
+ * within the idle window, and started within the maximum lifetime. Both are
+ * derived from fields the session already stores, so there's no expiry date to
+ * keep in sync — changing the env vars re-dates every existing session at once.
+ */
+export function sessionCutoffs(now: Date = new Date()) {
+  return {
+    usedSince: new Date(now.getTime() - env.SESSION_IDLE_HOURS * HOUR_MS),
+    startedSince: new Date(now.getTime() - env.SESSION_MAX_HOURS * HOUR_MS),
+  };
+}
+
+/**
+ * The rule for "this login is still good", as a query filter: not logged out,
+ * and inside both windows. Spread into any query that should match live logins.
+ */
+export function liveSessionFilter(now: Date = new Date()) {
+  const { usedSince, startedSince } = sessionCutoffs(now);
+  return {
+    revokedAt: null,
+    lastSeenAt: { $gt: usedSince },
+    createdAt: { $gt: startedSince },
+  };
+}
+
+/**
+ * Checks the login a token came from is still alive and stamps it as seen in
+ * the same round trip. Returns null when it was logged out, timed out, or the
+ * id isn't a real session — every caller treats null as "sign in again".
+ */
+export async function touchSession(sessionId: string, userId: string) {
+  const now = new Date();
+  return Session.findOneAndUpdate(
+    { _id: sessionId, user: userId, ...liveSessionFilter(now) },
+    { $set: { lastSeenAt: now } }
+  ).catch(() => null);
+}
