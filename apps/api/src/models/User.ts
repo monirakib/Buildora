@@ -17,6 +17,8 @@ export interface UserDoc {
   role: UserRole;
   verificationStatus: VerificationStatus;
   profile?: UserProfile;
+  /** Last time the user held a live signaling socket — powers "Active 5 mins ago". */
+  lastSeenAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -172,6 +174,8 @@ const userSchema = new Schema<UserDoc>(
       default: VerificationStatus.PENDING_VERIFICATION,
     },
     profile: { type: profileSchema, default: undefined },
+    // Written by the signaling server on connect/disconnect (see realtime/signaling.ts).
+    lastSeenAt: { type: Date },
   },
   { timestamps: true }
 );

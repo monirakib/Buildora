@@ -2,8 +2,14 @@
 
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Phone, PhoneIncoming, PhoneMissed, PhoneOutgoing } from "lucide-react";
-import { CallStatus, type CallRecord, type ChatMessage, type Conversation } from "@buildora/shared";
+import { Phone, PhoneIncoming, PhoneMissed, PhoneOutgoing, Video } from "lucide-react";
+import {
+  CallMedia,
+  CallStatus,
+  type CallRecord,
+  type ChatMessage,
+  type Conversation,
+} from "@buildora/shared";
 import { listRecentCalls } from "@/lib/apiCalls";
 import { getConversationMessages, listConversations, sendMessage } from "@/lib/apiMessages";
 import { useCall } from "@/store/useCall";
@@ -37,6 +43,58 @@ function formatDuration(sec: number) {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
+/**
+ * How long ago someone was last connected, e.g. "Active 5 mins ago". Only used
+ * when they're offline — while they're online the header says "Online now".
+ */
+function formatLastSeen(lastSeenAt?: string) {
+  if (!lastSeenAt) return "Offline";
+  const mins = Math.floor((Date.now() - new Date(lastSeenAt).getTime()) / 60000);
+  if (mins < 1) return "Active just now";
+  if (mins < 60) return `Active ${mins} min${mins === 1 ? "" : "s"} ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `Active ${hours} hour${hours === 1 ? "" : "s"} ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `Active ${days} day${days === 1 ? "" : "s"} ago`;
+  return `Active on ${new Date(lastSeenAt).toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "short",
+  })}`;
+}
+
+/**
+ * Initial-letter avatar with a presence dot. The green dot appears only while
+ * the person has a live socket, so it can't get stuck on after they close the tab.
+ */
+function PresenceAvatar({
+  name,
+  online,
+  size,
+}: {
+  name: string;
+  online: boolean;
+  size: "sm" | "md";
+}) {
+  const box = size === "md" ? "h-10 w-10" : "h-9 w-9";
+  const dot = size === "md" ? "h-3 w-3" : "h-2.5 w-2.5";
+  return (
+    <span className="relative shrink-0">
+      <span
+        className={`${box} grid place-items-center rounded-full bg-amber-400 font-extrabold text-stone-950`}
+      >
+        {name[0]?.toUpperCase()}
+      </span>
+      {online && (
+        <span
+          className={`${dot} absolute right-0 bottom-0 rounded-full border-2 border-white bg-emerald-500 dark:border-stone-950`}
+          title="Online now"
+          aria-label="Online now"
+        />
+      )}
+    </span>
+  );
+}
+
 /** Calls that never connected show in red with a "missed" icon. */
 const unansweredStatuses: CallStatus[] = [
   CallStatus.MISSED,
@@ -48,12 +106,15 @@ const unansweredStatuses: CallStatus[] = [
 function describeCall(call: CallRecord) {
   const unanswered = unansweredStatuses.includes(call.status);
   const outgoing = call.direction === "OUTGOING";
+  // Calls are logged as the kind they were placed as; a camera switched on
+  // mid-call isn't recorded, so a voice call stays "voice" in the history.
+  const kind = call.media === CallMedia.VIDEO ? "video" : "voice";
   let label: string;
   if (call.status === CallStatus.REJECTED) label = outgoing ? "Call declined" : "Declined call";
   else if (call.status === CallStatus.CANCELLED)
-    label = outgoing ? "Cancelled call" : "Missed voice call";
-  else if (unanswered) label = outgoing ? "No answer" : "Missed voice call";
-  else label = outgoing ? "Outgoing voice call" : "Incoming voice call";
+    label = outgoing ? "Cancelled call" : `Missed ${kind} call`;
+  else if (unanswered) label = outgoing ? "No answer" : `Missed ${kind} call`;
+  else label = `${outgoing ? "Outgoing" : "Incoming"} ${kind} call`;
   const Icon = unanswered ? PhoneMissed : outgoing ? PhoneOutgoing : PhoneIncoming;
   return { label, unanswered, answered: !unanswered, Icon };
 }
@@ -132,10 +193,13 @@ function MessagesInner() {
     }
   }, [token]);
 
-  // Inbox on mount; thread whenever ?c changes; poll the open thread + inbox.
+  // Inbox on mount, then every 10s — this is also what keeps the presence dots
+  // in the list current, so it polls whether or not a thread is open.
   useEffect(() => {
     if (!mounted || !token) return;
     loadInbox();
+    const timer = setInterval(loadInbox, 10000);
+    return () => clearInterval(timer);
   }, [mounted, token, loadInbox]);
 
   useEffect(() => {
@@ -146,13 +210,14 @@ function MessagesInner() {
     }
     loadThread();
     loadCalls();
+    // The open thread refreshes faster than the inbox — new messages and the
+    // peer's "Online now" / "Active … ago" line both come from this poll.
     const timer = setInterval(() => {
       loadThread();
       loadCalls();
-      loadInbox();
     }, 5000);
     return () => clearInterval(timer);
-  }, [mounted, token, activeId, loadThread, loadCalls, loadInbox]);
+  }, [mounted, token, activeId, loadThread, loadCalls]);
 
   // A call just ended — refresh the log so the new entry shows right away.
   useEffect(() => {
@@ -215,9 +280,7 @@ function MessagesInner() {
                       c.id === activeId ? "bg-black/5 dark:bg-white/10" : ""
                     }`}
                   >
-                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-amber-400 font-extrabold text-stone-950">
-                      {c.other.name[0]?.toUpperCase()}
-                    </span>
+                    <PresenceAvatar name={c.other.name} online={c.other.online} size="md" />
                     <span className="min-w-0 flex-1">
                       <span className="flex items-center justify-between gap-2">
                         <span className="truncate font-bold">{c.other.name}</span>
@@ -264,26 +327,50 @@ function MessagesInner() {
                     >
                       ←
                     </button>
-                    <span className="grid h-9 w-9 place-items-center rounded-full bg-amber-400 font-extrabold text-stone-950">
-                      {active.other.name[0]?.toUpperCase()}
-                    </span>
-                    <div>
-                      <p className="font-bold">{active.other.name}</p>
-                      <p className="text-xs text-stone-500 dark:text-slate-500">
+                    <PresenceAvatar
+                      name={active.other.name}
+                      online={active.other.online}
+                      size="sm"
+                    />
+                    <div className="min-w-0">
+                      <p className="truncate font-bold">{active.other.name}</p>
+                      <p className="truncate text-xs text-stone-500 dark:text-slate-500">
                         {roleLabels[active.other.role] ?? active.other.role} · @
                         {active.other.username}
                       </p>
+                      {active.other.online ? (
+                        <p className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                          Online now
+                        </p>
+                      ) : (
+                        <p className="text-xs text-stone-400 dark:text-slate-500">
+                          {formatLastSeen(active.other.lastSeenAt)}
+                        </p>
+                      )}
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => startCall(active.other)}
-                      disabled={callPhase !== "idle"}
-                      className="ml-auto grid h-10 w-10 place-items-center rounded-full bg-emerald-500 text-white transition hover:bg-emerald-400 disabled:opacity-50"
-                      aria-label={`Call ${active.other.name}`}
-                      title="Voice call"
-                    >
-                      <Phone className="h-5 w-5" />
-                    </button>
+                    <div className="ml-auto flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => startCall(active.other, CallMedia.AUDIO)}
+                        disabled={callPhase !== "idle"}
+                        className="grid h-10 w-10 place-items-center rounded-full bg-emerald-500 text-white transition hover:bg-emerald-400 disabled:opacity-50"
+                        aria-label={`Call ${active.other.name}`}
+                        title="Voice call"
+                      >
+                        <Phone className="h-5 w-5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => startCall(active.other, CallMedia.VIDEO)}
+                        disabled={callPhase !== "idle"}
+                        className="grid h-10 w-10 place-items-center rounded-full bg-sky-500 text-white transition hover:bg-sky-400 disabled:opacity-50"
+                        aria-label={`Video call ${active.other.name}`}
+                        title="Video call"
+                      >
+                        <Video className="h-5 w-5" />
+                      </button>
+                    </div>
                   </header>
 
                   <div className="flex-1 overflow-y-auto p-4">
@@ -302,7 +389,10 @@ function MessagesInner() {
                             const desc = describeCall(item.call);
                             const CallIcon = desc.Icon;
                             return (
-                              <div key={`call-${item.call.id}`} className="my-1 flex justify-center">
+                              <div
+                                key={`call-${item.call.id}`}
+                                className="my-1 flex justify-center"
+                              >
                                 <div
                                   className={`flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5 rounded-full px-3.5 py-1.5 text-xs ${
                                     desc.unanswered
