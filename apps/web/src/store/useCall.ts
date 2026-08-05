@@ -115,8 +115,22 @@ let screenStream: MediaStream | null = null;
 let remoteVideoStream: MediaStream | null = null;
 let localVideoEl: HTMLVideoElement | null = null;
 let remoteVideoEl: HTMLVideoElement | null = null;
-/** Set when a renegotiation was wanted while an offer/answer was still in flight. */
-let renegotiateQueued = false;
+
+// --- Renegotiation ("perfect negotiation") ---
+// Turning a camera or screen share on mid-call changes what this connection
+// carries, so it has to be re-described. Crucially, the side that gained the
+// track must be the one that *offers*: an offer is the only place you can say
+// "I am going to send this", while an answer can only accept what the offer
+// already allowed. That's why the callee has to be able to offer too.
+//
+// Two offers crossing in flight is the classic way a call wedges, so one side
+// is designated polite: on a collision it rolls its own offer back and takes
+// the other side's. The caller is impolite (ignores a colliding offer), the
+// callee is polite.
+let makingOffer = false;
+let ignoreOffer = false;
+/** Offers are only sent once the first offer/answer has finished. */
+let negotiationOpen = false;
 /** An SDP offer that arrived before our peer connection was ready. */
 let pendingOffer: RTCSessionDescriptionInit | null = null;
 /** ICE candidates that arrived before we'd set the remote description. */
@@ -198,7 +212,9 @@ export const useCall = create<CallState>((set, get) => {
     videoSender = null;
     remoteVideoStream = null;
     isCaller = false;
-    renegotiateQueued = false;
+    makingOffer = false;
+    ignoreOffer = false;
+    negotiationOpen = false;
     pendingOffer = null;
     pendingCandidates = [];
     durationTimer = null;
@@ -241,55 +257,27 @@ export const useCall = create<CallState>((set, get) => {
   }
 
   /**
-   * Redoes the offer/answer so the connection reflects the tracks we're sending
-   * now.
+   * Starts, swaps, or stops the video we send.
    *
-   * Swapping the track alone isn't always enough. The video channel is set up
-   * at the start of the call, usually when neither side has a camera yet — and
-   * an empty channel can be agreed as "you may only receive" for one side, no
-   * matter what direction we asked for. That side's later `replaceTrack` then
-   * succeeds locally but never transmits, which is exactly the black-screen
-   * one-way case. Re-offering once there's a real track to describe settles it.
-   *
-   * Only the caller ever creates offers; the callee asks the caller to. Two
-   * simultaneous offers is what wedges a connection, and this rules it out.
+   * Adding or removing a track changes what this connection carries, so the
+   * browser raises `negotiationneeded` and we offer — and because the offer is
+   * ours, it's ours that says we're sending video. Swapping camera ↔ screen
+   * reuses the existing sender, which needs no renegotiation at all: same
+   * channel, different picture.
    */
-  async function renegotiate() {
-    const { callId } = get();
-    if (!pc || !callId) return;
-    if (!isCaller) {
-      socket?.emit(CALL_EVENTS.renegotiate, { callId });
-      return;
-    }
-    // An exchange is already running — do this one right after it lands.
-    if (pc.signalingState !== "stable") {
-      renegotiateQueued = true;
-      return;
-    }
-    try {
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-      socket?.emit(CALL_EVENTS.offer, { callId, sdp: offer });
-    } catch {
-      // A failed re-offer leaves the existing call untouched; the picture just
-      // won't appear until the next toggle tries again.
-    }
-  }
-
-  /**
-   * Puts a video track (camera, screen, or none) on the wire. The swap itself is
-   * instant — the sender already exists — and the renegotiation that follows
-   * makes sure the other end actually agreed to receive it.
-   */
-  async function sendVideoTrack(track: MediaStreamTrack | null) {
-    try {
-      await videoSender?.replaceTrack(track);
-    } catch {
-      // Swap refused (rare) — the renegotiation below re-describes us anyway.
+  async function setLocalVideoTrack(track: MediaStreamTrack | null) {
+    if (pc) {
+      if (track && videoSender) {
+        await videoSender.replaceTrack(track).catch(() => {});
+      } else if (track) {
+        videoSender = pc.addTrack(track, new MediaStream([track]));
+      } else if (videoSender) {
+        pc.removeTrack(videoSender);
+        videoSender = null;
+      }
     }
     syncVideoElements();
     sendMediaState();
-    await renegotiate();
   }
 
   /** Stops the camera and releases the light. */
@@ -384,47 +372,73 @@ export const useCall = create<CallState>((set, get) => {
       }
     };
 
+    // The browser tells us whenever what we send has changed (a track added or
+    // removed) and the connection needs re-describing. This is the only place
+    // an offer is created after the call is up, and it always comes from the
+    // side whose tracks changed — which is what makes that side able to send.
+    connection.onnegotiationneeded = async () => {
+      if (!negotiationOpen || connection.signalingState !== "stable") return;
+      try {
+        makingOffer = true;
+        await connection.setLocalDescription(); // implicit createOffer
+        socket?.emit(CALL_EVENTS.offer, { callId, sdp: connection.localDescription });
+      } catch {
+        // The call carries on as it was; the next toggle tries again.
+      } finally {
+        makingOffer = false;
+      }
+    };
+
     // Feed our mic into the connection.
     localStream?.getTracks().forEach((track) => connection.addTrack(track, localStream!));
 
-    // Always open a two-way video channel, even on a plain voice call: it costs
-    // nothing while empty and lets a camera switched on later start sending
-    // immediately, before the follow-up renegotiation confirms the direction.
-    const videoTransceiver = connection.addTransceiver(
-      cameraStream?.getVideoTracks()[0] ?? "video",
-      {
-        direction: "sendrecv",
-      }
-    );
-    videoSender = videoTransceiver.sender;
+    // A video call has its camera ready before this point, so the very first
+    // offer/answer already carries video. A voice call starts with no video
+    // track at all — switching one on later adds it, and the renegotiation that
+    // follows is what tells the other side to expect it.
+    const cameraTrack = cameraStream?.getVideoTracks()[0];
+    if (cameraTrack) videoSender = connection.addTrack(cameraTrack, cameraStream!);
 
-    // Force both transceivers two-way so neither the offer nor the answer can
-    // collapse to send-only/receive-only (the cause of one-way audio).
+    // Keep the audio two-way so neither the offer nor the answer can collapse to
+    // send-only/receive-only (the cause of one-way audio).
     connection.getTransceivers().forEach((t) => {
-      t.direction = "sendrecv";
+      if (t.sender.track?.kind === "audio") t.direction = "sendrecv";
     });
     pc = connection;
     return connection;
   }
 
-  /** Applies an offer we received (callee side), then answers it. */
+  /**
+   * Applies an offer and answers it — the first one that sets the call up, and
+   * every later one carrying a camera or screen share.
+   *
+   * Both sides can offer now, so two offers can cross. The polite side (the
+   * callee) drops its own and takes theirs — `setRemoteDescription` rolls ours
+   * back for us. The impolite side (the caller) keeps its own and ignores
+   * theirs, and their polite side will come back around to ours.
+   */
   async function answerOffer(offer: RTCSessionDescriptionInit, callId: string) {
     if (!pc) {
       pendingOffer = offer; // mic/peer not ready yet — apply once it is
       return;
     }
+    const polite = !isCaller;
+    const collision = makingOffer || pc.signalingState !== "stable";
+    ignoreOffer = !polite && collision;
+    if (ignoreOffer) return;
+
     await pc.setRemoteDescription(offer);
-    // Ask for both channels to stay two-way. With a real track attached this is
-    // decisive; with an empty one it's only a request, which is why turning the
-    // camera on triggers a fresh offer/answer rather than trusting this alone.
+    // Keep the audio two-way whatever the offer said (one-way-audio guard).
     pc.getTransceivers().forEach((t) => {
-      t.direction = "sendrecv";
+      if (t.sender.track?.kind === "audio" || t.receiver.track?.kind === "audio") {
+        t.direction = "sendrecv";
+      }
     });
     for (const c of pendingCandidates) await pc.addIceCandidate(c).catch(() => {});
     pendingCandidates = [];
-    const answer = await pc.createAnswer();
-    await pc.setLocalDescription(answer);
-    socket?.emit(CALL_EVENTS.answer, { callId, sdp: answer });
+    await pc.setLocalDescription(); // implicit createAnswer
+    socket?.emit(CALL_EVENTS.answer, { callId, sdp: pc.localDescription });
+    negotiationOpen = true; // from here on, our own changes may offer
   }
 
   return {
@@ -495,8 +509,9 @@ export const useCall = create<CallState>((set, get) => {
         socket?.emit(CALL_EVENTS.offer, { callId, sdp: offer });
       });
 
-      // The callee receives the caller's offer and answers it. Mid-call video
-      // changes come through here too, as a fresh offer on the same connection.
+      // An offer from the other side: the first one that sets the call up, and
+      // any later one carrying a camera or screen share. Either side can send
+      // these now, so answerOffer sorts out two that cross.
       socket.on(
         CALL_EVENTS.peerOffer,
         async ({ callId, sdp }: { callId: string; sdp: unknown }) => {
@@ -505,13 +520,7 @@ export const useCall = create<CallState>((set, get) => {
         }
       );
 
-      // The callee's video changed and it wants us (the caller) to re-offer.
-      socket.on(CALL_EVENTS.peerRenegotiate, ({ callId }: { callId: string }) => {
-        if (!isCaller || get().callId !== callId) return;
-        void renegotiate();
-      });
-
-      // Caller receives the callee's answer.
+      // An answer to an offer we sent.
       socket.on(
         CALL_EVENTS.peerAnswer,
         async ({ callId, sdp }: { callId: string; sdp: unknown }) => {
@@ -519,11 +528,7 @@ export const useCall = create<CallState>((set, get) => {
           await pc.setRemoteDescription(sdp as RTCSessionDescriptionInit);
           for (const c of pendingCandidates) await pc.addIceCandidate(c).catch(() => {});
           pendingCandidates = [];
-          // A video change that arrived mid-exchange waited for this moment.
-          if (renegotiateQueued) {
-            renegotiateQueued = false;
-            void renegotiate();
-          }
+          negotiationOpen = true; // from here on, our own changes may offer
         }
       );
 
@@ -683,9 +688,11 @@ export const useCall = create<CallState>((set, get) => {
         stopCamera();
         set({ cameraOn: false });
         // Nothing left to send unless a screen share is still running.
-        if (!screenOn) await sendVideoTrack(null);
-        else syncVideoElements();
-        sendMediaState();
+        if (!screenOn) await setLocalVideoTrack(null);
+        else {
+          syncVideoElements();
+          sendMediaState();
+        }
         return;
       }
       try {
@@ -704,7 +711,7 @@ export const useCall = create<CallState>((set, get) => {
         syncVideoElements();
         sendMediaState();
       } else {
-        await sendVideoTrack(cameraStream!.getVideoTracks()[0] ?? null);
+        await setLocalVideoTrack(cameraStream!.getVideoTracks()[0] ?? null);
       }
     },
 
@@ -714,7 +721,7 @@ export const useCall = create<CallState>((set, get) => {
         stopScreen();
         set({ screenOn: false });
         // Fall back to the camera if it's still on, otherwise send nothing.
-        await sendVideoTrack(cameraOn ? (cameraStream?.getVideoTracks()[0] ?? null) : null);
+        await setLocalVideoTrack(cameraOn ? (cameraStream?.getVideoTracks()[0] ?? null) : null);
         return;
       }
       try {
@@ -730,11 +737,13 @@ export const useCall = create<CallState>((set, get) => {
         track.onended = () => {
           stopScreen();
           set({ screenOn: false });
-          void sendVideoTrack(get().cameraOn ? (cameraStream?.getVideoTracks()[0] ?? null) : null);
+          void setLocalVideoTrack(
+            get().cameraOn ? (cameraStream?.getVideoTracks()[0] ?? null) : null
+          );
         };
       }
       set({ screenOn: true });
-      await sendVideoTrack(track ?? null);
+      await setLocalVideoTrack(track ?? null);
     },
 
     setMinimized(minimized) {

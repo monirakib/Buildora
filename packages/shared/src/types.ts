@@ -468,8 +468,6 @@ export const CALL_EVENTS = {
   ice: "call:ice",
   /** "my camera/screen just went on or off" — relayed to the other party. */
   mediaState: "call:media-state",
-  /** Callee → caller: "what I'm sending changed, please re-offer." */
-  renegotiate: "call:renegotiate",
   // server → client
   incoming: "call:incoming",
   accepted: "call:accepted",
@@ -481,18 +479,7 @@ export const CALL_EVENTS = {
   peerAnswer: "call:peer-answer",
   peerIce: "call:peer-ice",
   peerMediaState: "call:peer-media-state",
-  peerRenegotiate: "call:peer-renegotiate",
 } as const;
-
-/**
- * A request to redo the offer/answer because one side's tracks changed. Only
- * the caller ever creates offers, so when the callee's video changes it asks
- * for one instead of making its own — two simultaneous offers is what wedges
- * a WebRTC connection, and this makes that impossible by construction.
- */
-export interface CallRenegotiatePayload {
-  callId: string;
-}
 
 /** Payload the caller sends to start a call. Server acks with { callId }. */
 export interface CallStartPayload {

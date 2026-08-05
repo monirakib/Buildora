@@ -10,7 +10,6 @@ import {
   type CallIcePayload,
   type CallMediaStatePayload,
   type CallPeer,
-  type CallRenegotiatePayload,
   type CallStartPayload,
 } from "@buildora/shared";
 import type { AuthPayload } from "../middleware/auth";
@@ -237,11 +236,6 @@ export function attachSignaling(server: HttpServer) {
     socket.on(CALL_EVENTS.mediaState, (payload: CallMediaStatePayload) => {
       const other = peerOf(payload?.callId, me);
       if (other) io.to(userRoom(other)).emit(CALL_EVENTS.peerMediaState, payload);
-    });
-    // The callee asking the caller for a fresh offer after its tracks changed.
-    socket.on(CALL_EVENTS.renegotiate, (payload: CallRenegotiatePayload) => {
-      const other = peerOf(payload?.callId, me);
-      if (other) io.to(userRoom(other)).emit(CALL_EVENTS.peerRenegotiate, payload);
     });
 
     // A dropped connection ends any calls this tab was on — but only if the
