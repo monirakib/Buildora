@@ -37,6 +37,7 @@ function toCallRecord(doc: HydratedDocument<CallDoc>, callerId: string, me: stri
     direction: outgoing ? "OUTGOING" : "INCOMING",
     peer: toPeer(outgoing ? callee : caller),
     status: doc.status,
+    media: doc.media,
     startedAt: doc.createdAt.toISOString(),
     answeredAt: doc.answeredAt?.toISOString(),
     endedAt: doc.endedAt?.toISOString(),
@@ -51,9 +52,7 @@ function toCallRecord(doc: HydratedDocument<CallDoc>, callerId: string, me: stri
  * handed to anonymous visitors.
  */
 export function getIceConfig(_req: Request, res: Response) {
-  const iceServers: IceServerConfig[] = [
-    { urls: env.STUN_URLS.split(",").map((s) => s.trim()) },
-  ];
+  const iceServers: IceServerConfig[] = [{ urls: env.STUN_URLS.split(",").map((s) => s.trim()) }];
   if (env.TURN_URL) {
     iceServers.push({
       urls: env.TURN_URL,

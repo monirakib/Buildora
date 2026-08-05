@@ -4,21 +4,43 @@ import { isValidObjectId } from "mongoose";
 import { Server, type Socket } from "socket.io";
 import {
   CALL_EVENTS,
+  CallMedia,
   CallStatus,
   type CallDescriptionPayload,
   type CallIcePayload,
+  type CallMediaStatePayload,
   type CallPeer,
+  type CallRenegotiatePayload,
   type CallStartPayload,
 } from "@buildora/shared";
 import type { AuthPayload } from "../middleware/auth";
 import { env } from "../config/env";
 import { Call } from "../models/Call";
-import { Session } from "../models/Session";
+import { touchSession } from "../models/Session";
 import { User } from "../models/User";
 
 /** The room every one of a user's tabs joins, so we can ring all their devices. */
 function userRoom(userId: string) {
   return `user:${userId}`;
+}
+
+// The running signaling server, kept here so REST controllers (e.g. the message
+// inbox) can ask who is online without holding a reference themselves.
+let ioRef: Server | null = null;
+
+/**
+ * True when at least one of the user's tabs is connected. Presence is derived
+ * from live sockets rather than stored, so it can never get stuck "online" —
+ * if the socket is gone, so is the green dot.
+ */
+export function isUserOnline(userId: string) {
+  const room = ioRef?.sockets.adapter.rooms.get(userRoom(userId));
+  return !!room && room.size > 0;
+}
+
+/** Stamps "last seen" so an offline user can be shown as "Active 5 mins ago". */
+async function touchLastSeen(userId: string) {
+  await User.updateOne({ _id: userId }, { lastSeenAt: new Date() }).catch(() => null);
 }
 
 /**
@@ -31,17 +53,21 @@ export function attachSignaling(server: HttpServer) {
   const io = new Server(server, {
     cors: { origin: env.CORS_ORIGIN, credentials: true },
   });
+  ioRef = io;
 
   // Active calls kept in memory so we can route each signal to the right peer
   // and enforce that only participants can signal on a call. The DB row is the
   // durable record; this map is just the live routing table.
   const activeCalls = new Map<string, { caller: string; callee: string }>();
 
-  /** True when at least one of the user's tabs is connected. */
-  function isOnline(userId: string) {
-    const room = io.sockets.adapter.rooms.get(userRoom(userId));
-    return !!room && room.size > 0;
-  }
+  // Refresh "last seen" for everyone currently connected, so the timestamp is
+  // still about right if the server stops without clean disconnects. `unref()`
+  // keeps this timer from holding the process open.
+  setInterval(() => {
+    const ids = [...io.sockets.sockets.values()].map((s) => s.data.userId as string);
+    if (ids.length === 0) return;
+    User.updateMany({ _id: { $in: ids } }, { lastSeenAt: new Date() }).catch(() => null);
+  }, 60_000).unref();
 
   /** Given a call and one participant, returns the other participant's id. */
   function peerOf(callId: string, me: string): string | null {
@@ -80,11 +106,8 @@ export function attachSignaling(server: HttpServer) {
       const payload = jwt.verify(token, env.JWT_SECRET) as AuthPayload;
 
       if (payload.sid) {
-        const session = await Session.findOneAndUpdate(
-          { _id: payload.sid, user: payload.sub, revokedAt: null },
-          { $set: { lastSeenAt: new Date() } }
-        ).catch(() => null);
-        if (!session) return next(new Error("Session ended"));
+        const session = await touchSession(payload.sid, payload.sub);
+        if (!session) return next(new Error("Session expired"));
       }
 
       const user = await User.findById(payload.sub).select("name username role profile.avatarUrl");
@@ -108,12 +131,16 @@ export function attachSignaling(server: HttpServer) {
     const me: string = socket.data.userId;
     const meInfo: CallPeer = socket.data.me;
     socket.join(userRoom(me));
+    touchLastSeen(me);
 
     // Caller dials someone. Acks with { callId } so the caller can track the
     // call it just started, or { error } when the callee can't be reached.
     socket.on(
       CALL_EVENTS.start,
-      async (payload: CallStartPayload, ack?: (res: { callId?: string; error?: string }) => void) => {
+      async (
+        payload: CallStartPayload,
+        ack?: (res: { callId?: string; error?: string }) => void
+      ) => {
         const toUserId = payload?.toUserId;
         if (!toUserId || !isValidObjectId(toUserId) || toUserId === me) {
           return ack?.({ error: "Invalid call target" });
@@ -121,16 +148,23 @@ export function attachSignaling(server: HttpServer) {
         const callee = await User.findById(toUserId).select("_id");
         if (!callee) return ack?.({ error: "User not found" });
 
-        const call = await Call.create({ caller: me, callee: toUserId, status: CallStatus.RINGING });
+        // Only the two kinds are accepted; anything else is treated as voice.
+        const media = payload?.media === CallMedia.VIDEO ? CallMedia.VIDEO : CallMedia.AUDIO;
+        const call = await Call.create({
+          caller: me,
+          callee: toUserId,
+          status: CallStatus.RINGING,
+          media,
+        });
         const callId = call._id.toString();
 
-        if (!isOnline(toUserId)) {
+        if (!isUserOnline(toUserId)) {
           await finalize(callId, CallStatus.MISSED);
           return ack?.({ error: "User is offline" });
         }
 
         activeCalls.set(callId, { caller: me, callee: toUserId });
-        io.to(userRoom(toUserId)).emit(CALL_EVENTS.incoming, { callId, from: meInfo });
+        io.to(userRoom(toUserId)).emit(CALL_EVENTS.incoming, { callId, from: meInfo, media });
         return ack?.({ callId });
       }
     );
@@ -169,11 +203,17 @@ export function attachSignaling(server: HttpServer) {
       const other = peerOf(callId, me);
       if (!call || !other) return;
       io.to(userRoom(other)).emit(CALL_EVENTS.ended, { callId });
-      const record = await Call.findById(callId).select("status").catch(() => null);
+      const record = await Call.findById(callId)
+        .select("status")
+        .catch(() => null);
       const wasAnswered = record?.status === CallStatus.ACCEPTED;
       await finalize(
         callId,
-        wasAnswered ? CallStatus.ENDED : call.caller === me ? CallStatus.CANCELLED : CallStatus.REJECTED
+        wasAnswered
+          ? CallStatus.ENDED
+          : call.caller === me
+            ? CallStatus.CANCELLED
+            : CallStatus.REJECTED
       );
     });
 
@@ -191,16 +231,33 @@ export function attachSignaling(server: HttpServer) {
       const other = peerOf(payload?.callId, me);
       if (other) io.to(userRoom(other)).emit(CALL_EVENTS.peerIce, payload);
     });
+    // "My camera/screen went on or off." The video track is negotiated once at
+    // the start of the call and swapped underneath, so this note is how the
+    // other side knows whether to show a video tile or the camera-off avatar.
+    socket.on(CALL_EVENTS.mediaState, (payload: CallMediaStatePayload) => {
+      const other = peerOf(payload?.callId, me);
+      if (other) io.to(userRoom(other)).emit(CALL_EVENTS.peerMediaState, payload);
+    });
+    // The callee asking the caller for a fresh offer after its tracks changed.
+    socket.on(CALL_EVENTS.renegotiate, (payload: CallRenegotiatePayload) => {
+      const other = peerOf(payload?.callId, me);
+      if (other) io.to(userRoom(other)).emit(CALL_EVENTS.peerRenegotiate, payload);
+    });
 
     // A dropped connection ends any calls this tab was on — but only if the
     // user has no other tab still connected (so a refresh doesn't kill a call).
     socket.on("disconnect", async () => {
-      if (isOnline(me)) return;
+      // Stamped on every tab close: whichever one goes last leaves the correct
+      // "last seen" behind, which is what the offline label counts from.
+      await touchLastSeen(me);
+      if (isUserOnline(me)) return;
       for (const [callId, call] of activeCalls) {
         if (call.caller !== me && call.callee !== me) continue;
         const other = call.caller === me ? call.callee : call.caller;
         io.to(userRoom(other)).emit(CALL_EVENTS.ended, { callId });
-        const record = await Call.findById(callId).select("status").catch(() => null);
+        const record = await Call.findById(callId)
+          .select("status")
+          .catch(() => null);
         await finalize(
           callId,
           record?.status === CallStatus.ACCEPTED ? CallStatus.ENDED : CallStatus.MISSED

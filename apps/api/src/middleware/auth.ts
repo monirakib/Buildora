@@ -2,7 +2,7 @@ import type { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import type { UserRole } from "@buildora/shared";
 import { env } from "../config/env";
-import { Session } from "../models/Session";
+import { touchSession } from "../models/Session";
 
 export interface AuthPayload {
   /** User id. */
@@ -33,16 +33,13 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
   }
 
   // The token names the login it came from — make sure that session hasn't
-  // been logged out. The same query bumps lastSeenAt, so the sessions
-  // collection doubles as an activity log. (Tokens minted before sessions
-  // existed carry no sid and pass through until they expire.)
+  // been logged out or timed out. The same query bumps lastSeenAt, so the
+  // sessions collection doubles as an activity log. (Tokens minted before
+  // sessions existed carry no sid and pass through until they expire.)
   if (payload.sid) {
-    const session = await Session.findOneAndUpdate(
-      { _id: payload.sid, user: payload.sub, revokedAt: null },
-      { $set: { lastSeenAt: new Date() } }
-    ).catch(() => null);
+    const session = await touchSession(payload.sid, payload.sub);
     if (!session) {
-      return res.status(401).json({ error: { message: "Session ended — please sign in again" } });
+      return res.status(401).json({ error: { message: "Session expired — please sign in again" } });
     }
   }
 
@@ -62,10 +59,7 @@ export async function optionalAuth(req: Request, _res: Response, next: NextFunct
     try {
       const payload = jwt.verify(header.slice("Bearer ".length), env.JWT_SECRET) as AuthPayload;
       if (payload.sid) {
-        const session = await Session.findOneAndUpdate(
-          { _id: payload.sid, user: payload.sub, revokedAt: null },
-          { $set: { lastSeenAt: new Date() } }
-        ).catch(() => null);
+        const session = await touchSession(payload.sid, payload.sub);
         if (session) req.auth = payload;
       } else {
         req.auth = payload;

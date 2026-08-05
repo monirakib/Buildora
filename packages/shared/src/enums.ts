@@ -160,6 +160,16 @@ export enum CallStatus {
   ENDED = "ENDED",
 }
 
+/**
+ * What a call was placed as. This is only the starting mode — either side can
+ * turn their camera on or share their screen once a voice call is connected,
+ * which is carried live over the signaling channel rather than stored here.
+ */
+export enum CallMedia {
+  AUDIO = "AUDIO",
+  VIDEO = "VIDEO",
+}
+
 /** Filing category for the project document archive. */
 export enum DocumentCategory {
   DESIGN = "DESIGN",

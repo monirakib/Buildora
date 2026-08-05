@@ -27,6 +27,21 @@ export interface AuthResult {
   token: string;
 }
 
+/**
+ * An error the API itself returned, with the status attached. Callers that only
+ * show `err.message` keep working; the ones that care about *why* (mainly
+ * "was this a 401?") can check the status instead of matching on text.
+ */
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
 // Exported so the domain modules (apiProjects, apiMessages, apiPermits) share
 // the same fetch + error-shaping behaviour.
 export async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -38,7 +53,10 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
     // The API replies with { error: { message } } — surface that message so
     // forms can show "Invalid email or password" instead of a status code.
     const body = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
-    throw new Error(body?.error?.message ?? `API request failed: ${res.status} ${res.statusText}`);
+    throw new ApiError(
+      body?.error?.message ?? `API request failed: ${res.status} ${res.statusText}`,
+      res.status
+    );
   }
   return res.json() as Promise<T>;
 }

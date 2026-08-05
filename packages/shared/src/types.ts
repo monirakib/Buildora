@@ -1,5 +1,6 @@
 import type {
   BuildingType,
+  CallMedia,
   CallStatus,
   ContractStatus,
   DeliverableKind,
@@ -382,7 +383,17 @@ export interface Contract {
 /** A two-person message thread, shaped for the caller ("other" = the other side). */
 export interface Conversation {
   id: string;
-  other: { id: string; name: string; username: string; role: UserRole; avatarUrl?: string };
+  other: {
+    id: string;
+    name: string;
+    username: string;
+    role: UserRole;
+    avatarUrl?: string;
+    /** True while they have at least one tab connected to the signaling socket. */
+    online: boolean;
+    /** When they were last connected — used for "Active 5 mins ago" when offline. */
+    lastSeenAt?: string;
+  };
   lastMessage?: { body: string; at: string; mine: boolean };
   unreadCount: number;
   updatedAt: string;
@@ -417,6 +428,8 @@ export interface CallRecord {
   direction: "OUTGOING" | "INCOMING";
   peer: CallPeer;
   status: CallStatus;
+  /** Whether it was placed as a voice or a video call. */
+  media: CallMedia;
   /** When the invite was sent. */
   startedAt: string;
   /** When the callee accepted, if they did. */
@@ -453,6 +466,10 @@ export const CALL_EVENTS = {
   offer: "call:offer",
   answer: "call:answer",
   ice: "call:ice",
+  /** "my camera/screen just went on or off" — relayed to the other party. */
+  mediaState: "call:media-state",
+  /** Callee → caller: "what I'm sending changed, please re-offer." */
+  renegotiate: "call:renegotiate",
   // server → client
   incoming: "call:incoming",
   accepted: "call:accepted",
@@ -463,17 +480,45 @@ export const CALL_EVENTS = {
   peerOffer: "call:peer-offer",
   peerAnswer: "call:peer-answer",
   peerIce: "call:peer-ice",
+  peerMediaState: "call:peer-media-state",
+  peerRenegotiate: "call:peer-renegotiate",
 } as const;
+
+/**
+ * A request to redo the offer/answer because one side's tracks changed. Only
+ * the caller ever creates offers, so when the callee's video changes it asks
+ * for one instead of making its own — two simultaneous offers is what wedges
+ * a WebRTC connection, and this makes that impossible by construction.
+ */
+export interface CallRenegotiatePayload {
+  callId: string;
+}
 
 /** Payload the caller sends to start a call. Server acks with { callId }. */
 export interface CallStartPayload {
   toUserId: string;
+  /** Defaults to AUDIO when omitted. */
+  media?: CallMedia;
 }
 
 /** Server → callee when a call comes in. */
 export interface IncomingCallPayload {
   callId: string;
   from: CallPeer;
+  media: CallMedia;
+}
+
+/**
+ * What each side is currently sending video-wise. Sent whenever a camera or a
+ * screen share is switched on or off, so the other end knows whether to show a
+ * video tile or the "camera off" avatar. The video track itself is negotiated
+ * once at the start of the call and simply swapped underneath — this event is
+ * how the receiver learns what it's now looking at.
+ */
+export interface CallMediaStatePayload {
+  callId: string;
+  cameraOn: boolean;
+  screenOn: boolean;
 }
 
 /** SDP offer/answer relayed between the two peers, keyed by call. */

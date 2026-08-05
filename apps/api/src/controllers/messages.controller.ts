@@ -5,6 +5,7 @@ import type { ChatMessage, Conversation as ConversationDto, UserRole } from "@bu
 import { Conversation, sortPair, type ConversationDoc } from "../models/Conversation";
 import { Message, type MessageDoc } from "../models/Message";
 import { User } from "../models/User";
+import { isUserOnline } from "../realtime/signaling";
 
 const openConversationSchema = z.object({
   userId: z.string().min(1, "Choose who to message"),
@@ -20,11 +21,12 @@ type ParticipantRef = {
   username: string;
   role: UserRole;
   profile?: { avatarUrl?: string };
+  lastSeenAt?: Date;
 };
 
 const withParticipants = [
-  { path: "userA", select: "name username role profile.avatarUrl" },
-  { path: "userB", select: "name username role profile.avatarUrl" },
+  { path: "userA", select: "name username role profile.avatarUrl lastSeenAt" },
+  { path: "userB", select: "name username role profile.avatarUrl lastSeenAt" },
 ];
 
 /**
@@ -40,14 +42,18 @@ function toConversationDto(
   const a = doc.userA as unknown as ParticipantRef;
   const b = doc.userB as unknown as ParticipantRef;
   const other = String(a._id) === callerId ? b : a;
+  const otherId = String(other._id);
   return {
     id: doc._id.toString(),
     other: {
-      id: String(other._id),
+      id: otherId,
       name: other.name,
       username: other.username,
       role: other.role,
       avatarUrl: other.profile?.avatarUrl,
+      // Live from the signaling server; `lastSeenAt` only matters when offline.
+      online: isUserOnline(otherId),
+      lastSeenAt: other.lastSeenAt?.toISOString(),
     },
     lastMessage: lastMessage
       ? {
