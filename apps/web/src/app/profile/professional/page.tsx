@@ -31,7 +31,7 @@ export default function ProfessionalProfilePage() {
     if (!user) {
       router.replace("/auth?role=professional");
     } else if (!PROFESSIONAL_ROLES.includes(user.role)) {
-      router.replace("/profile");
+      router.replace("/account");
     }
   }, [mounted, user, router]);
 

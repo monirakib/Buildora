@@ -120,6 +120,52 @@ export async function updateProfile(
 }
 
 /**
+ * PATCH /api/auth/account — account settings shared by every role: personal
+ * details, extra contact points, and billing. Unlike the profile endpoints
+ * this merges into the profile subdocument, so a professional saving their
+ * billing address doesn't wipe their credentials.
+ */
+export async function updateAccount(
+  token: string,
+  input: Record<string, string>
+): Promise<SessionUser> {
+  const res = await request<{ data: { user: SessionUser } }>("/api/auth/account", {
+    method: "PATCH",
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(input),
+  });
+  return res.data.user;
+}
+
+/** POST /api/auth/change-email — swap the login email (needs the password). */
+export async function changeEmail(
+  token: string,
+  input: { email: string; currentPassword: string }
+): Promise<SessionUser> {
+  const res = await request<{ data: { user: SessionUser } }>("/api/auth/change-email", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(input),
+  });
+  return res.data.user;
+}
+
+/**
+ * POST /api/auth/change-password — set a new password. Signs out every other
+ * session server-side; this one stays alive.
+ */
+export async function changePassword(
+  token: string,
+  input: { currentPassword: string; newPassword: string; confirmPassword: string }
+): Promise<void> {
+  await request<{ data: { ok: boolean } }>("/api/auth/change-password", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(input),
+  });
+}
+
+/**
  * POST /api/auth/logout — revoke this login's session server-side so the JWT
  * stops working everywhere, not just in this browser's localStorage.
  */
