@@ -5,6 +5,7 @@ import Link from "next/link";
 import { UserRole, type PublicProfessional } from "@buildora/shared";
 import { listProfessionals } from "@/lib/api";
 import { Navbar } from "@/components/landing/Navbar";
+import { Stagger } from "@/components/Stagger";
 import { PendingBadge, VerifiedBadge } from "@/components/app/VerifiedBadge";
 
 /** Initials avatar from a name, e.g. "Imran Khan" → "IK". */
@@ -136,11 +137,17 @@ export default function ArchitectsPage() {
                   : "No architects have joined yet — check back soon."}
               </p>
             ) : (
-              <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              /* Stagger *is* the grid — it animates its own children in
+                 sequence. `dependencies` re-runs it whenever a new search
+                 result set arrives. */
+              <Stagger
+                className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3"
+                dependencies={[architects]}
+              >
                 {architects.map((a) => (
                   <ArchitectCard key={a.id} a={a} />
                 ))}
-              </div>
+              </Stagger>
             )}
           </div>
         </div>

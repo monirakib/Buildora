@@ -7,6 +7,7 @@ import { UserRole, type Project } from "@buildora/shared";
 import { listMyProjects } from "@/lib/apiProjects";
 import { useSession } from "@/store/useSession";
 import { Navbar } from "@/components/landing/Navbar";
+import { Stagger } from "@/components/Stagger";
 import {
   buildingTypeLabels,
   formatDate,
@@ -95,7 +96,7 @@ export default function ProjectsPage() {
                 </Link>
               </div>
             ) : (
-              <ul className="flex flex-col gap-4">
+              <Stagger as="ul" className="flex flex-col gap-4" dependencies={[projects]}>
                 {projects.map((p) => (
                   <li key={p.id}>
                     <Link href={`/projects/${p.id}`} className={cardClass}>
@@ -128,7 +129,7 @@ export default function ProjectsPage() {
                     </Link>
                   </li>
                 ))}
-              </ul>
+              </Stagger>
             )}
           </div>
         </div>

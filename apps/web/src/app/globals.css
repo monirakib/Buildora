@@ -32,6 +32,7 @@
   }
 }
 
-html {
-  scroll-behavior: smooth;
-}
+/* No `scroll-behavior: smooth` here on purpose: GSAP's ScrollToPlugin drives
+   every in-page jump (see lib/smoothScroll.ts), and the native smooth
+   behaviour fights it — the browser and GSAP end up animating the same
+   scroll position at once, which reads as stutter. */

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { FRAME_COUNT, frameSrc, type ThemeMode } from "@/lib/frames";
+import { gsap, useGSAP } from "@/lib/gsap";
 import { smoothScrollToId } from "@/lib/smoothScroll";
 import { useTheme } from "@/store/useTheme";
 
@@ -36,15 +37,9 @@ const STAGES: { start: number; end: number; eyebrow: string; title: string; sub:
   },
 ];
 
+/** How much scroll progress a piece of copy takes to fade in or out. */
 const FADE = 0.06;
 const CROSSFADE_MS = 400;
-
-function stageOpacity(p: number, start: number, end: number): number {
-  if (start === 0 && p < start + FADE) return 1; // first stage starts visible
-  const fadeIn = Math.min(1, Math.max(0, (p - start) / FADE));
-  const fadeOut = Math.min(1, Math.max(0, (end - p) / FADE));
-  return Math.max(0, Math.min(fadeIn, fadeOut));
-}
 
 type FrameSets = Record<ThemeMode, (HTMLImageElement | undefined)[]>;
 
@@ -57,17 +52,17 @@ export function HeroScrub() {
   const hintRef = useRef<HTMLDivElement>(null);
   const skipRef = useRef<HTMLButtonElement>(null);
   const barRef = useRef<HTMLDivElement>(null);
-  const fadeGroupRef = useRef<HTMLDivElement>(null);
-  const hintFadeRef = useRef<HTMLDivElement>(null);
   const loadPillRef = useRef<HTMLDivElement>(null);
 
   const framesRef = useRef<FrameSets>({ day: [], night: [] });
   const loadedCountRef = useRef<Record<ThemeMode, number>>({ day: 0, night: 0 });
   const startedRef = useRef<Record<ThemeMode, boolean>>({ day: false, night: false });
   const modeRef = useRef<ThemeMode>(mode);
-  const smoothedRef = useRef(0);
   const lastDrawnRef = useRef<{ img: HTMLImageElement; mode: ThemeMode } | null>(null);
   const fadeRef = useRef<{ from: HTMLImageElement; startedAt: number } | null>(null);
+
+  // GSAP scrubs this object's `frame` as you scroll; the canvas loop reads it.
+  const playheadRef = useRef({ frame: 0 });
 
   // Kick off (or resume) loading a frame set with a small worker pool.
   function ensureSetLoading(m: ThemeMode) {
@@ -100,6 +95,91 @@ export function HeroScrub() {
     }
   }, [mode]);
 
+  /* ---------- GSAP: everything driven by scroll position ---------- */
+
+  useGSAP(
+    () => {
+      const section = sectionRef.current;
+      if (!section) return;
+
+      // Every animation below hangs off the same window: from the moment the
+      // hero's top hits the top of the screen until its bottom does. Because
+      // the section is 320vh tall with a sticky screen inside, that's three
+      // extra screens of scrolling to play with.
+      const window_ = { trigger: section, start: "top top", end: "bottom bottom" };
+
+      // 1. The image sequence. Scrubbing a plain object rather than a DOM
+      // property lets the canvas loop paint whatever frame we've landed on.
+      // `scrub: 0.5` is what gives the sequence its weight — the frame index
+      // takes half a second to catch up to the scrollbar, so flicks glide.
+      gsap.to(playheadRef.current, {
+        frame: FRAME_COUNT - 1,
+        ease: "none",
+        snap: "frame",
+        scrollTrigger: { ...window_, scrub: 0.5 },
+      });
+
+      // 2. Thin progress bar along the top of the hero.
+      gsap.fromTo(
+        barRef.current,
+        { scaleX: 0 },
+        { scaleX: 1, ease: "none", scrollTrigger: { ...window_, scrub: 0.3 } }
+      );
+
+      // 3. All the overlaid copy, as one scrubbed timeline.
+      //
+      // Timeline positions are normally seconds, but under `scrub` the
+      // timeline's total length is stretched across the scroll distance — so
+      // by keeping the total length at exactly 1 (see the spacer at the end),
+      // a position of e.g. 0.3 means "30% of the way through the hero".
+      const copy = gsap.timeline({ scrollTrigger: { ...window_, scrub: 0.3 } });
+
+      STAGES.forEach((stage, i) => {
+        const el = stageRefs.current[i];
+        if (!el) return;
+
+        // The first stage is already on screen when the page loads, so it only
+        // needs to fade out. The others fade in as their window opens.
+        if (i > 0) {
+          copy.fromTo(
+            el,
+            { opacity: 0, y: 14 },
+            { opacity: 1, y: 0, duration: FADE, ease: "none" },
+            stage.start
+          );
+        }
+        copy.to(el, { opacity: 0, y: -14, duration: FADE, ease: "none" }, stage.end - FADE);
+      });
+
+      // Closing CTA fades in near the end and stays.
+      copy.fromTo(
+        ctaRef.current,
+        { opacity: 0, y: 18 },
+        { opacity: 1, y: 0, duration: FADE, ease: "none" },
+        0.86
+      );
+      // It covers the whole hero, so it must not swallow clicks until it's
+      // actually visible. A zero-duration `.set()` on a scrubbed timeline
+      // flips this on the way down and back off on the way up.
+      copy.set(ctaRef.current, { pointerEvents: "auto" }, 0.9);
+
+      // Scroll hint disappears as soon as scrolling starts.
+      copy.to(hintRef.current, { opacity: 0, duration: 0.04, ease: "none" }, 0);
+
+      // Skip button stays available until the closing CTA takes over.
+      copy.to(skipRef.current, { opacity: 0, duration: 0.08, ease: "none" }, 0.78);
+      copy.set(skipRef.current, { pointerEvents: "none" }, 0.84);
+
+      // An empty 1-unit tween so the timeline is exactly 1 long regardless of
+      // where the last real tween ends — that's what keeps the positions above
+      // readable as "fraction of the hero scrolled".
+      copy.to({}, { duration: 1 }, 0);
+    },
+    { scope: sectionRef }
+  );
+
+  /* ---------- Canvas painting (its own frame loop) ---------- */
+
   useEffect(() => {
     ensureSetLoading(modeRef.current);
     // Prefetch the other set once the browser is idle so toggling feels instant.
@@ -107,8 +187,7 @@ export function HeroScrub() {
     const idle = window.setTimeout(() => ensureSetLoading(other), 4000);
 
     const canvas = canvasRef.current;
-    const section = sectionRef.current;
-    if (!canvas || !section) return;
+    if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
@@ -133,10 +212,13 @@ export function HeroScrub() {
       ctx.globalAlpha = 1;
     }
 
+    // This loop only paints. Where we are in the sequence is decided entirely
+    // by GSAP above; here we just render whatever frame the playhead is on
+    // (plus the theme crossfade, which runs on its own clock, not on scroll).
     let raf = 0;
     const tick = () => {
       raf = requestAnimationFrame(tick);
-      if (!canvas || !ctx || !section) return;
+      if (!canvas || !ctx) return;
 
       // Keep the canvas buffer matched to its CSS size and pixel ratio.
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -150,17 +232,7 @@ export function HeroScrub() {
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = "high";
 
-      // Scroll progress through the tall section (0 → 1).
-      const rect = section.getBoundingClientRect();
-      const scrollable = rect.height - window.innerHeight;
-      const progress = Math.max(0, Math.min(1, scrollable > 0 ? -rect.top / scrollable : 0));
-
-      // Ease the frame index toward the target for an inertial feel.
-      const target = progress * (FRAME_COUNT - 1);
-      smoothedRef.current += (target - smoothedRef.current) * 0.16;
-      if (Math.abs(target - smoothedRef.current) < 0.02) smoothedRef.current = target;
-      const index = Math.round(smoothedRef.current);
-
+      const index = Math.round(playheadRef.current.frame);
       const m = modeRef.current;
       const img = nearestLoaded(framesRef.current[m], index);
       if (img) {
@@ -178,41 +250,6 @@ export function HeroScrub() {
           drawCover(img, 1);
         }
         lastDrawnRef.current = { img, mode: m };
-      }
-
-      // Scrub progress bar along the top of the hero.
-      if (barRef.current) {
-        barRef.current.style.transform = `scaleX(${progress.toFixed(4)})`;
-      }
-
-      // Stage copy opacity/parallax, driven imperatively to avoid re-renders.
-      STAGES.forEach((stage, i) => {
-        const el = stageRefs.current[i];
-        if (!el) return;
-        const o = stageOpacity(progress, stage.start, stage.end);
-        el.style.opacity = o.toFixed(3);
-        el.style.transform = `translateY(${((1 - o) * 14).toFixed(1)}px)`;
-        el.style.visibility = o === 0 ? "hidden" : "visible";
-      });
-
-      // Closing CTA fades in near the end and stays.
-      if (ctaRef.current) {
-        const o = Math.max(0, Math.min(1, (progress - 0.86) / FADE));
-        ctaRef.current.style.opacity = o.toFixed(3);
-        ctaRef.current.style.visibility = o === 0 ? "hidden" : "visible";
-        ctaRef.current.style.pointerEvents = o > 0.5 ? "auto" : "none";
-      }
-
-      // Scroll hint fades out as soon as scrolling starts.
-      if (hintRef.current) {
-        hintRef.current.style.opacity = String(Math.max(0, 1 - progress * 25));
-      }
-
-      // Skip button stays available until the closing CTA takes over.
-      if (skipRef.current) {
-        const o = Math.max(0, Math.min(1, 1 - (progress - 0.78) / 0.08));
-        skipRef.current.style.opacity = o.toFixed(3);
-        skipRef.current.style.pointerEvents = o > 0.3 ? "auto" : "none";
       }
 
       // Tiny loading indicator until the active set is fully cached.
@@ -243,8 +280,7 @@ export function HeroScrub() {
         <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" aria-hidden />
 
         {/* Legibility gradients over the imagery */}
-        <div ref={fadeGroupRef} className="pointer-events-none absolute inset-0">
-          {/* Legibility gradients over the imagery */}
+        <div className="pointer-events-none absolute inset-0">
           <div className="absolute inset-x-0 top-0 h-40 bg-linear-to-b from-black/50 to-transparent" />
           <div className="absolute inset-x-0 bottom-0 h-56 bg-linear-to-t from-black/60 to-transparent" />
         </div>
@@ -305,8 +341,8 @@ export function HeroScrub() {
           </div>
         </div>
 
-        {/* Scroll hint + loading pill (also inside the pull fade-out) */}
-        <div ref={hintFadeRef} className="pointer-events-none absolute inset-0">
+        {/* Scroll hint + loading pill */}
+        <div className="pointer-events-none absolute inset-0">
           <div
             ref={hintRef}
             className="absolute inset-x-0 bottom-8 flex flex-col items-center gap-2 text-white/80"
