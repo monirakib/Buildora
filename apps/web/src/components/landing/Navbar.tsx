@@ -181,6 +181,16 @@ function initialsOf(name: string): string {
 }
 
 /** "STRUCTURAL_ENGINEER" → "structural engineer" (capitalised via CSS). */
+/** Architects, engineers, contractors and suppliers — the roles with a profile. */
+function isProfessionalRole(role: UserRole): boolean {
+  return (
+    role === UserRole.ARCHITECT ||
+    role === UserRole.STRUCTURAL_ENGINEER ||
+    role === UserRole.CONTRACTOR ||
+    role === UserRole.SUPPLIER
+  );
+}
+
 function roleLabelOf(role: UserRole): string {
   return role.replace(/_/g, " ").toLowerCase();
 }
@@ -267,11 +277,35 @@ function UserChip({ user, onLogout }: { user: SessionUser; onLogout: () => void 
               </svg>
               Dashboard
             </Link>
+            {/* Only professionals have a profile of their own — credentials,
+                portfolio, verification. For everyone else "Profile" would just
+                bounce to account settings, so it isn't shown. */}
+            {isProfessionalRole(user.role) && (
+              <Link
+                href="/profile/professional"
+                className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold text-white/85 transition hover:bg-white/5 hover:text-white"
+              >
+                {/* Person silhouette */}
+                <svg
+                  viewBox="0 0 24 24"
+                  className="h-4 w-4 text-white/50"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                  <circle cx="12" cy="7" r="4" />
+                </svg>
+                Profile
+              </Link>
+            )}
             <Link
-              href="/profile"
+              href="/account"
               className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold text-white/85 transition hover:bg-white/5 hover:text-white"
             >
-              {/* Person silhouette */}
+              {/* Settings cog */}
               <svg
                 viewBox="0 0 24 24"
                 className="h-4 w-4 text-white/50"
@@ -281,10 +315,10 @@ function UserChip({ user, onLogout }: { user: SessionUser; onLogout: () => void 
                 strokeLinecap="round"
                 strokeLinejoin="round"
               >
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                <circle cx="12" cy="7" r="4" />
+                <circle cx="12" cy="12" r="3" />
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />
               </svg>
-              Profile
+              Account information
             </Link>
           </div>
 
@@ -574,8 +608,13 @@ function SideMenu({
                   </Link>
                 </>
               )}
-              <Link href="/profile" onClick={onClose} className={itemClass}>
-                Profile
+              {isProfessionalRole(user.role) && (
+                <Link href="/profile/professional" onClick={onClose} className={itemClass}>
+                  Profile
+                </Link>
+              )}
+              <Link href="/account" onClick={onClose} className={itemClass}>
+                Account information
               </Link>
             </>
           )}
@@ -590,9 +629,9 @@ function SideMenu({
         <div className="relative z-10 mt-auto border-t border-black/10 pt-4 dark:border-white/15">
           {user ? (
             <>
-              {/* Who's signed in — tap-through to the profile page */}
+              {/* Who's signed in — tap-through to account settings */}
               <Link
-                href="/profile"
+                href="/account"
                 onClick={onClose}
                 className="mb-1 flex items-center gap-3 rounded-xl px-3 py-2.5 transition hover:bg-stone-100 dark:hover:bg-white/10"
               >

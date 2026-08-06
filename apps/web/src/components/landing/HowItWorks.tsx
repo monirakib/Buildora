@@ -2,7 +2,7 @@
 
 import { useRef } from "react";
 import Link from "next/link";
-import { motion, useScroll, useSpring } from "motion/react";
+import { gsap, prefersReducedMotion, useGSAP } from "@/lib/gsap";
 import { Reveal } from "./Reveal";
 
 const steps = [
@@ -31,20 +31,63 @@ const steps = [
 /**
  * Sticky heading on the left, the four steps on the right — with an amber
  * progress line that draws itself down the track as the list scrolls through
- * the viewport (useScroll maps list position to 0→1; useSpring smooths it).
+ * the viewport, and numbered discs that pop in as each step is reached.
  */
 export function HowItWorks() {
+  const sectionRef = useRef<HTMLElement>(null);
   const listRef = useRef<HTMLOListElement>(null);
-  const { scrollYProgress } = useScroll({
-    target: listRef,
-    // 0 when the list's top reaches 75% down the screen, 1 when its bottom
-    // passes 45% — so the line finishes just before the last step leaves.
-    offset: ["start 0.75", "end 0.45"],
-  });
-  const scaleY = useSpring(scrollYProgress, { stiffness: 90, damping: 25 });
+  const lineRef = useRef<HTMLSpanElement>(null);
+
+  useGSAP(
+    () => {
+      const list = listRef.current;
+      const line = lineRef.current;
+      if (!list || !line) return;
+
+      if (prefersReducedMotion()) {
+        gsap.set(line, { scaleY: 1 });
+        return;
+      }
+
+      // The amber line grows from nothing to full height, tied to scroll.
+      gsap.fromTo(
+        line,
+        { scaleY: 0 },
+        {
+          scaleY: 1,
+          ease: "none",
+          scrollTrigger: {
+            trigger: list,
+            // Starts when the list's top reaches 75% down the screen, ends as
+            // its bottom passes 45% — the line finishes just before the last
+            // step leaves the viewport.
+            start: "top 75%",
+            end: "bottom 45%",
+            // Takes ~0.6s to catch up to the scrollbar, which is what the old
+            // spring was doing — it keeps the line from twitching.
+            scrub: 0.6,
+          },
+        }
+      );
+
+      // Each numbered disc springs in as its step arrives.
+      gsap.utils.toArray<HTMLElement>("[data-step-disc]").forEach((disc) => {
+        gsap.from(disc, {
+          scale: 0,
+          opacity: 0,
+          duration: 0.6,
+          // Slight overshoot then settle — gives the disc a physical "pop".
+          ease: "back.out(2)",
+          scrollTrigger: { trigger: disc, start: "top 88%", once: true },
+        });
+      });
+    },
+    { scope: sectionRef }
+  );
 
   return (
     <section
+      ref={sectionRef}
       id="how-it-works"
       className="border-y border-stone-200 bg-white py-24 transition-colors duration-500 sm:py-32 dark:border-white/10 dark:bg-white/3"
     >
@@ -80,17 +123,21 @@ export function HowItWorks() {
             aria-hidden
             className="absolute top-2 bottom-2 left-6 w-px bg-stone-200 dark:bg-white/10"
           />
-          <motion.span
+          <span
+            ref={lineRef}
             aria-hidden
-            style={{ scaleY }}
             className="absolute top-2 bottom-2 left-6 w-px origin-top bg-amber-500 dark:bg-amber-400"
+            style={{ transform: "scaleY(0)" }}
           />
 
           {steps.map((step, i) => (
             <Reveal key={step.title} delay={i * 90}>
               <li className="relative list-none pl-20">
                 {/* Solid disc sits on top of the line */}
-                <span className="absolute top-0 left-0 grid h-12 w-12 place-items-center rounded-full bg-stone-900 text-lg font-extrabold text-amber-400 dark:bg-amber-400 dark:text-slate-950">
+                <span
+                  data-step-disc
+                  className="absolute top-0 left-0 grid h-12 w-12 place-items-center rounded-full bg-stone-900 text-lg font-extrabold text-amber-400 dark:bg-amber-400 dark:text-slate-950"
+                >
                   {i + 1}
                 </span>
                 <h3 className="text-lg font-bold">{step.title}</h3>

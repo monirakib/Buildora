@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { UserRole } from "@buildora/shared";
 import { useSession } from "@/store/useSession";
 import { Navbar } from "@/components/landing/Navbar";
+import { Stagger } from "@/components/Stagger";
 
 const cardClass =
   "group relative overflow-hidden rounded-3xl border border-white/40 bg-white/40 p-6 shadow-xl shadow-black/5 backdrop-blur-xl transition hover:-translate-y-0.5 hover:border-amber-400/60 dark:border-white/10 dark:bg-white/5";
@@ -58,7 +59,7 @@ export default function DashboardPage() {
                 : "Manage your profile and the client requests coming your way."}
           </p>
 
-          <div className="mt-10 grid gap-5 sm:grid-cols-2">
+          <Stagger className="mt-10 grid gap-5 sm:grid-cols-2">
             {!isAdmin && (
               <Link href="/projects" className={cardClass}>
                 <span className="grid h-11 w-11 place-items-center rounded-2xl bg-amber-400 text-stone-950">
@@ -311,13 +312,39 @@ export default function DashboardPage() {
               </Link>
             )}
 
-            {/* Professionals get the richer editor with credentials + portfolio. */}
-            <Link
-              href={isProfessional ? "/profile/professional" : "/profile"}
-              className={cardClass}
-            >
+            {/* Only professionals have a profile: credentials and portfolio,
+                leading to verification. */}
+            {isProfessional && (
+              <Link href="/profile/professional" className={cardClass}>
+                <span className="grid h-11 w-11 place-items-center rounded-2xl bg-stone-900 text-white dark:bg-white/15">
+                  {/* Person */}
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="h-5.5 w-5.5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                    <circle cx="12" cy="7" r="4" />
+                  </svg>
+                </span>
+                <h2 className="mt-4 text-lg font-bold">Complete your profile</h2>
+                <p className="mt-1 text-sm text-stone-600 dark:text-slate-400">
+                  Add your credentials, education, and portfolio — then request verification.
+                </p>
+                <span className="mt-4 inline-block text-sm font-bold text-amber-600 dark:text-amber-400">
+                  Edit profile →
+                </span>
+              </Link>
+            )}
+
+            {/* Account settings — same for every role. */}
+            <Link href="/account" className={cardClass}>
               <span className="grid h-11 w-11 place-items-center rounded-2xl bg-stone-900 text-white dark:bg-white/15">
-                {/* Person */}
+                {/* Settings cog */}
                 <svg
                   viewBox="0 0 24 24"
                   className="h-5.5 w-5.5"
@@ -327,21 +354,19 @@ export default function DashboardPage() {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 >
-                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                  <circle cx="12" cy="7" r="4" />
+                  <circle cx="12" cy="12" r="3" />
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />
                 </svg>
               </span>
-              <h2 className="mt-4 text-lg font-bold">Complete your profile</h2>
+              <h2 className="mt-4 text-lg font-bold">Account information</h2>
               <p className="mt-1 text-sm text-stone-600 dark:text-slate-400">
-                {isProfessional
-                  ? "Add your credentials, education, and portfolio — then request verification."
-                  : "Add your details so professionals understand your project."}
+                Personal details, contact numbers, billing information, and your password.
               </p>
               <span className="mt-4 inline-block text-sm font-bold text-amber-600 dark:text-amber-400">
-                Edit profile →
+                Manage account →
               </span>
             </Link>
-          </div>
+          </Stagger>
         </div>
       </main>
     </div>

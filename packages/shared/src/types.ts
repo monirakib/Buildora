@@ -21,18 +21,43 @@ import type {
 /**
  * Optional profile a land owner fills in after signup. Every field is
  * optional — the profile starts empty and is completed over time.
+ *
+ * Deliberately holds no land or build details: those belong to a specific
+ * Project (which has its own landAreaKatha / floors / budget), not to the
+ * person. A land owner may have several plots, so pinning one set of land
+ * figures to their account never made sense.
  */
 export interface LandOwnerProfile {
   nid?: string;
   avatarUrl?: string;
   company?: string;
   bio?: string;
-  /** Typical land size in katha. */
-  landAreaKatha?: number;
-  buildingType?: BuildingType;
-  budgetMinBdt?: number;
-  budgetMaxBdt?: number;
-  floors?: number;
+}
+
+/**
+ * Billing details captured on the account settings page, used to pre-fill
+ * escrow deposits and payouts. Stored on the user rather than inside
+ * `profile`, because it applies to every role identically.
+ */
+export interface BillingInfo {
+  /** Name the invoice is made out to, if different from the account name. */
+  billingName?: string;
+  addressLine1?: string;
+  addressLine2?: string;
+  city?: string;
+  postcode?: string;
+  /** Defaults to Bangladesh; kept editable for overseas clients. */
+  country?: string;
+  /** How this user prefers to send and receive money. */
+  preferredMethod?: PaymentMethod;
+  /** bKash / Nagad wallet number, when the preferred method is a wallet. */
+  mobileWalletNumber?: string;
+  bankAccountName?: string;
+  bankAccountNumber?: string;
+  bankName?: string;
+  bankBranch?: string;
+  /** Taxpayer identification number, for invoices that need one. */
+  tin?: string;
 }
 
 /** One degree/qualification on a professional's profile. */
@@ -185,11 +210,17 @@ export interface SessionUser {
   name: string;
   /** Chosen at signup, unique, and permanent — never editable afterwards. */
   username: string;
+  /** Primary email: the login identifier. Changing it requires the password. */
   email: string;
+  /** Optional second address for receipts and account recovery. */
+  recoveryEmail?: string;
   phone?: string;
+  /** Optional second number, e.g. an office line or a site contact. */
+  altPhone?: string;
   role: UserRole;
   verificationStatus: VerificationStatus;
   profile?: UserProfile;
+  billing?: BillingInfo;
 }
 
 /**

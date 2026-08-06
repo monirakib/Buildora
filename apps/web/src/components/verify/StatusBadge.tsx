@@ -1,20 +1,46 @@
 "use client";
 
-import { motion } from "motion/react";
+import { useRef } from "react";
 import { BadgeCheck, FileCheck2, PencilLine, ShieldAlert, ShieldCheck } from "lucide-react";
 import { VerificationStatus } from "@buildora/shared";
+import { gsap, prefersReducedMotion, useGSAP } from "@/lib/gsap";
 
 // The four stages of the verification journey, in order. REJECTED is shown
 // separately — it sends the architect back to the editable draft state.
 const STAGES = [
   { status: VerificationStatus.PENDING_VERIFICATION, label: "Draft", icon: PencilLine },
-  { status: VerificationStatus.DOCUMENTS_SUBMITTED, label: "Documents Submitted", icon: FileCheck2 },
+  {
+    status: VerificationStatus.DOCUMENTS_SUBMITTED,
+    label: "Documents Submitted",
+    icon: FileCheck2,
+  },
   { status: VerificationStatus.UNDER_REVIEW, label: "Supervisor Review", icon: ShieldCheck },
   { status: VerificationStatus.APPROVED, label: "Verified Architect", icon: BadgeCheck },
 ];
 
 /** Animated pipeline badge: Draft → Submitted → Review → Verified. */
 export function StatusBadge({ status }: { status: VerificationStatus }) {
+  // Hooks must run on every render, so they sit above the REJECTED early
+  // return below — the ref is simply null in that branch.
+  const activeRef = useRef<HTMLSpanElement>(null);
+
+  useGSAP(
+    () => {
+      const el = activeRef.current;
+      if (!el || prefersReducedMotion()) return;
+
+      // The stage the profile just reached pops in. `back.out` overshoots
+      // slightly before settling, which is what the old 0.9→1.05→1 keyframes
+      // were imitating by hand.
+      gsap.fromTo(
+        el,
+        { scale: 0.9 },
+        { scale: 1, duration: 0.4, ease: "back.out(3)", clearProps: "transform" }
+      );
+    },
+    { dependencies: [status] }
+  );
+
   if (status === VerificationStatus.REJECTED) {
     return (
       <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-500/15 px-3 py-1.5 text-xs font-bold text-rose-700 dark:text-rose-300">
@@ -34,13 +60,14 @@ export function StatusBadge({ status }: { status: VerificationStatus }) {
         return (
           <div key={stage.status} className="flex items-center gap-1.5">
             {i > 0 && (
-              <span className={`h-px w-4 ${reached ? "bg-[#F5B400]/60" : "bg-white/50 dark:bg-white/10"}`} />
+              <span
+                className={`h-px w-4 ${reached ? "bg-[#F5B400]/60" : "bg-white/50 dark:bg-white/10"}`}
+              />
             )}
-            <motion.span
-              // The active stage pulses in when the status changes.
-              initial={false}
-              animate={isActive ? { scale: [0.9, 1.05, 1] } : { scale: 1 }}
-              transition={{ duration: 0.4 }}
+            <span
+              // Only the active stage gets the ref, so only it pulses when
+              // the status changes.
+              ref={isActive ? activeRef : undefined}
               className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold ${
                 isActive && stage.status === VerificationStatus.APPROVED
                   ? "bg-emerald-500/25 text-emerald-800 dark:text-emerald-200 backdrop-blur-xl"
@@ -53,7 +80,7 @@ export function StatusBadge({ status }: { status: VerificationStatus }) {
             >
               <Icon className="h-3.5 w-3.5" />
               {stage.label}
-            </motion.span>
+            </span>
           </div>
         );
       })}

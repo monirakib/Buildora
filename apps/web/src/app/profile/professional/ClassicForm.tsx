@@ -237,7 +237,7 @@ export function ClassicProfessionalForm() {
       return;
     }
     if (!PROFESSIONAL_ROLES.includes(user.role)) {
-      router.replace("/profile");
+      router.replace("/account");
       return;
     }
     setForm((f) => f ?? formFromUser(user));

@@ -1,5 +1,11 @@
 import { Schema, model } from "mongoose";
-import { BuildingType, UserRole, VerificationStatus, type UserProfile } from "@buildora/shared";
+import {
+  PaymentMethod,
+  UserRole,
+  VerificationStatus,
+  type BillingInfo,
+  type UserProfile,
+} from "@buildora/shared";
 
 /**
  * A user is a land owner or a professional (architect/engineer/contractor/
@@ -12,13 +18,16 @@ export interface UserDoc {
   name: string;
   username: string;
   email: string;
+  recoveryEmail?: string;
   phone?: string;
+  altPhone?: string;
   passwordHash: string;
   role: UserRole;
   verificationStatus: VerificationStatus;
   profile?: UserProfile;
   /** Last time the user held a live signaling socket — powers "Active 5 mins ago". */
   lastSeenAt?: Date;
+  billing?: BillingInfo;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -102,13 +111,10 @@ const profileSchema = new Schema<UserProfile>(
     // Public portfolio hero — the professional's own headline and short intro.
     portfolioTitle: { type: String, trim: true },
     portfolioIntro: { type: String, trim: true },
-    // Land owner
+    // Land owner. Land/build figures deliberately live on Project, not here —
+    // an owner can have several plots, so one set of numbers on the account
+    // would be meaningless.
     nid: { type: String, trim: true },
-    landAreaKatha: { type: Number, min: 0 },
-    buildingType: { type: String, enum: Object.values(BuildingType) },
-    budgetMinBdt: { type: Number, min: 0 },
-    budgetMaxBdt: { type: Number, min: 0 },
-    floors: { type: Number, min: 0 },
     // Professional
     licenseAuthority: { type: String, trim: true },
     licenseNumber: { type: String, trim: true },
@@ -152,6 +158,29 @@ const profileSchema = new Schema<UserProfile>(
   { _id: false }
 );
 
+/**
+ * Billing details from the account settings page. Applies to every role
+ * identically, so it sits beside `profile` rather than inside it.
+ */
+const billingSchema = new Schema<BillingInfo>(
+  {
+    billingName: { type: String, trim: true },
+    addressLine1: { type: String, trim: true },
+    addressLine2: { type: String, trim: true },
+    city: { type: String, trim: true },
+    postcode: { type: String, trim: true },
+    country: { type: String, trim: true },
+    preferredMethod: { type: String, enum: Object.values(PaymentMethod) },
+    mobileWalletNumber: { type: String, trim: true },
+    bankAccountName: { type: String, trim: true },
+    bankAccountNumber: { type: String, trim: true },
+    bankName: { type: String, trim: true },
+    bankBranch: { type: String, trim: true },
+    tin: { type: String, trim: true },
+  },
+  { _id: false }
+);
+
 const userSchema = new Schema<UserDoc>(
   {
     name: { type: String, required: true, trim: true },
@@ -165,7 +194,11 @@ const userSchema = new Schema<UserDoc>(
       immutable: true,
     },
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
+    // Secondary contact address. Not unique and never usable to log in — it
+    // only receives receipts and recovery mail.
+    recoveryEmail: { type: String, lowercase: true, trim: true },
     phone: { type: String, trim: true },
+    altPhone: { type: String, trim: true },
     passwordHash: { type: String, required: true },
     role: { type: String, enum: Object.values(UserRole), required: true },
     verificationStatus: {
@@ -176,6 +209,7 @@ const userSchema = new Schema<UserDoc>(
     profile: { type: profileSchema, default: undefined },
     // Written by the signaling server on connect/disconnect (see realtime/signaling.ts).
     lastSeenAt: { type: Date },
+    billing: { type: billingSchema, default: undefined },
   },
   { timestamps: true }
 );

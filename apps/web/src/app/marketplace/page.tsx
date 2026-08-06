@@ -7,6 +7,7 @@ import { ProductCategory, UserRole, type Product } from "@buildora/shared";
 import { listProducts, placeOrder } from "@/lib/apiMarket";
 import { useSession } from "@/store/useSession";
 import { Navbar } from "@/components/landing/Navbar";
+import { Stagger } from "@/components/Stagger";
 import { VerifiedBadge } from "@/components/app/VerifiedBadge";
 import { categoryLabels, formatBdt } from "@/components/market/market";
 
@@ -67,7 +68,10 @@ function OrderModal({
             <p className="text-lg font-extrabold">Order placed ✓</p>
             <p className="mt-2 text-sm text-stone-600 dark:text-slate-400">
               {product.seller.name} has been notified. Track it under{" "}
-              <Link href="/marketplace/orders" className="text-amber-600 underline underline-offset-2 dark:text-amber-400">
+              <Link
+                href="/marketplace/orders"
+                className="text-amber-600 underline underline-offset-2 dark:text-amber-400"
+              >
                 your orders
               </Link>
               .
@@ -157,7 +161,8 @@ function OrderModal({
 
               <div className="mt-1 flex items-center justify-between gap-3">
                 <p className="text-sm font-bold">
-                  Total: <span className="text-amber-600 dark:text-amber-400">{formatBdt(total)}</span>
+                  Total:{" "}
+                  <span className="text-amber-600 dark:text-amber-400">{formatBdt(total)}</span>
                 </p>
                 <div className="flex gap-2">
                   <button
@@ -319,7 +324,10 @@ export default function MarketplacePage() {
               <p className="mt-8 text-xs font-bold text-stone-500 dark:text-slate-500">
                 {total} product{total === 1 ? "" : "s"}
               </p>
-              <div className="mt-3 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              <Stagger
+                className="mt-3 grid gap-5 sm:grid-cols-2 lg:grid-cols-3"
+                dependencies={[products]}
+              >
                 {products.map((p) => (
                   <article
                     key={p.id}
@@ -384,7 +392,7 @@ export default function MarketplacePage() {
                     </div>
                   </article>
                 ))}
-              </div>
+              </Stagger>
             </>
           )}
         </div>

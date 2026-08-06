@@ -7,6 +7,7 @@ import { UserRole, type Paginated, type Project } from "@buildora/shared";
 import { listOpenBriefs } from "@/lib/apiProjects";
 import { useSession } from "@/store/useSession";
 import { Navbar } from "@/components/landing/Navbar";
+import { Stagger } from "@/components/Stagger";
 import { buildingTypeLabels, formatBdt, formatDate } from "@/components/app/projectStatus";
 
 const inputClass =
@@ -100,7 +101,7 @@ export default function BriefsPage() {
               </p>
             ) : (
               <>
-                <ul className="flex flex-col gap-4">
+                <Stagger as="ul" className="flex flex-col gap-4" dependencies={[result.items]}>
                   {result.items.map((p) => (
                     <li key={p.id}>
                       <Link href={`/projects/${p.id}`} className={cardClass}>
@@ -124,7 +125,7 @@ export default function BriefsPage() {
                       </Link>
                     </li>
                   ))}
-                </ul>
+                </Stagger>
 
                 {totalPages > 1 && (
                   <div className="mt-6 flex items-center justify-center gap-3 text-sm">

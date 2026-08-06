@@ -3,6 +3,7 @@ import { Manrope } from "next/font/google";
 import "./globals.css";
 import { CursorGlow } from "@/components/CursorGlow";
 import { SessionSync } from "@/components/SessionSync";
+import { PageTransition } from "@/components/PageTransition";
 import { AssistantWidget } from "@/components/assistant/AssistantWidget";
 import { CallProvider } from "@/components/call/CallProvider";
 
@@ -30,7 +31,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <SessionSync />
         <AssistantWidget />
         <CallProvider />
-        {children}
+        <PageTransition>{children}</PageTransition>
       </body>
     </html>
   );

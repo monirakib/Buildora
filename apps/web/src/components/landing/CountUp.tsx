@@ -1,13 +1,20 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef } from "react";
+import { gsap, prefersReducedMotion, useGSAP } from "@/lib/gsap";
 
-/** Animates a number from 0 to `to` the first time it scrolls into view. */
+/**
+ * Counts a number up from 0 the first time it scrolls into view.
+ *
+ * GSAP tweens a plain `{ value: 0 }` object rather than React state — on each
+ * frame we write the rounded number straight into the span. That keeps the
+ * count off React's render path entirely, so a page full of these stays smooth.
+ */
 export function CountUp({
   to,
   prefix = "",
   suffix = "",
-  duration = 1400,
+  duration = 1800,
 }: {
   to: number;
   prefix?: string;
@@ -15,42 +22,41 @@ export function CountUp({
   duration?: number;
 }) {
   const ref = useRef<HTMLSpanElement>(null);
-  const [value, setValue] = useState(0);
+  const numberRef = useRef<HTMLSpanElement>(null);
 
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      setValue(to);
-      return;
-    }
-    let raf = 0;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (!entry?.isIntersecting) return;
-        observer.disconnect();
-        const start = performance.now();
-        const tick = (now: number) => {
-          const t = Math.min(1, (now - start) / duration);
-          const eased = 1 - Math.pow(1 - t, 3); // ease-out cubic
-          setValue(Math.round(eased * to));
-          if (t < 1) raf = requestAnimationFrame(tick);
-        };
-        raf = requestAnimationFrame(tick);
-      },
-      { threshold: 0.4 }
-    );
-    observer.observe(el);
-    return () => {
-      observer.disconnect();
-      cancelAnimationFrame(raf);
-    };
-  }, [to, duration]);
+  useGSAP(
+    () => {
+      const el = ref.current;
+      const target = numberRef.current;
+      if (!el || !target) return;
+
+      if (prefersReducedMotion()) {
+        target.textContent = String(to);
+        return;
+      }
+
+      const counter = { value: 0 };
+
+      gsap.to(counter, {
+        value: to,
+        duration: duration / 1000,
+        // Sprints ahead then eases into the final number — reads as "settling".
+        ease: "power2.out",
+        // Land on whole numbers only, so it never shows a fraction mid-count.
+        snap: { value: 1 },
+        onUpdate: () => {
+          target.textContent = String(Math.round(counter.value));
+        },
+        scrollTrigger: { trigger: el, start: "top 88%", once: true },
+      });
+    },
+    { scope: ref, dependencies: [to, duration] }
+  );
 
   return (
     <span ref={ref}>
       {prefix}
-      {value}
+      <span ref={numberRef}>0</span>
       {suffix}
     </span>
   );

@@ -2,17 +2,14 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { AnimatePresence, motion } from "motion/react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { VerificationStatus, computeCompletion, type SessionUser } from "@buildora/shared";
-import {
-  getMyVerification,
-  submitVerification,
-  updateProfessionalProfile,
-} from "@/lib/api";
+import { getMyVerification, submitVerification, updateProfessionalProfile } from "@/lib/api";
 import { useSession } from "@/store/useSession";
 import { formFromUser, toPayload, toProfile, type WizardForm } from "./form";
 import { Navbar } from "@/components/landing/Navbar";
+import { gsap, prefersReducedMotion, useGSAP } from "@/lib/gsap";
+import { useHoverScale } from "@/lib/useHoverScale";
 import { GlassCard } from "./ui";
 import { WizardBackground } from "./Background";
 import { SidebarNav } from "./SidebarNav";
@@ -135,10 +132,7 @@ export function ArchitectWizard({ user }: { user: SessionUser }) {
     try {
       if (dirtyRef.current && !(await save(form))) return;
       await submitVerification(token, "");
-      setSession(
-        { ...user, verificationStatus: VerificationStatus.DOCUMENTS_SUBMITTED },
-        token
-      );
+      setSession({ ...user, verificationStatus: VerificationStatus.DOCUMENTS_SUBMITTED }, token);
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't submit for verification");
@@ -160,6 +154,26 @@ export function ArchitectWizard({ user }: { user: SessionUser }) {
     <AchievementsStep key="achievements" {...stepProps} />,
     <DeclarationStep key="declaration" {...stepProps} />,
   ];
+
+  // The step panel slides in each time the step changes. AnimatePresence used
+  // to fade the old step out first; here the content swaps and the new panel
+  // animates in, which looks the same and is a lot less machinery.
+  const stepPanelRef = useRef<HTMLDivElement>(null);
+  useGSAP(
+    () => {
+      const panel = stepPanelRef.current;
+      if (!panel || prefersReducedMotion()) return;
+      gsap.fromTo(
+        panel,
+        { opacity: 0, y: 16, scale: 0.99 },
+        { opacity: 1, y: 0, scale: 1, duration: 0.5, ease: "power3.out", clearProps: "transform" }
+      );
+    },
+    { dependencies: [step] }
+  );
+
+  const backRef = useHoverScale<HTMLButtonElement>({ enabled: step > 0 });
+  const nextRef = useHoverScale<HTMLButtonElement>({ enabled: step < steps.length - 1 });
 
   return (
     <div className="relative min-h-screen bg-stone-100 text-stone-900 dark:bg-[#05070C] dark:text-slate-100">
@@ -185,8 +199,8 @@ export function ArchitectWizard({ user }: { user: SessionUser }) {
             Complete your profile
           </h1>
           <p className="mt-2 max-w-2xl text-sm text-stone-600 dark:text-slate-400">
-            Submit your credentials for manual verification by a Buildora Supervisor and earn
-            the Verified Architect badge.
+            Submit your credentials for manual verification by a Buildora Supervisor and earn the
+            Verified Architect badge.
           </p>
           <div className="mt-5">
             <StatusBadge status={user.verificationStatus} />
@@ -226,52 +240,40 @@ export function ArchitectWizard({ user }: { user: SessionUser }) {
 
           {/* Step content */}
           <div className="min-w-0 flex-1">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={step}
-                initial={{ opacity: 0, y: 16, scale: 0.99 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -16, scale: 0.99 }}
-                transition={{ type: "spring", stiffness: 260, damping: 28 }}
-              >
-                <GlassCard>
-                  {/* fieldset[disabled] turns every control read-only at once
+            <div ref={stepPanelRef}>
+              <GlassCard>
+                {/* fieldset[disabled] turns every control read-only at once
                       while the profile is locked. */}
-                  <fieldset disabled={locked} className="min-w-0">
-                    {steps[step]}
-                  </fieldset>
+                <fieldset disabled={locked} className="min-w-0">
+                  {steps[step]}
+                </fieldset>
 
-                  {/* Prev / Next */}
-                  <div className="mt-8 flex items-center justify-between border-t border-white/40 dark:border-white/8 pt-5">
-                    <motion.button
-                      type="button"
-                      onClick={() => setStep((s) => Math.max(0, s - 1))}
-                      disabled={step === 0}
-                      whileHover={step > 0 ? { scale: 1.04 } : undefined}
-                      whileTap={step > 0 ? { scale: 0.95 } : undefined}
-                      transition={{ type: "spring", stiffness: 400, damping: 24 }}
-                      className="inline-flex items-center gap-1.5 rounded-full border border-white/50 dark:border-white/12 px-5 py-2 text-sm font-bold text-stone-700 dark:text-slate-300 transition-colors hover:border-stone-400 dark:hover:border-white/25 disabled:opacity-40"
-                    >
-                      <ArrowLeft className="h-4 w-4" /> Back
-                    </motion.button>
-                    <span className="text-xs font-bold text-stone-500 dark:text-slate-500">
-                      Step {step + 1} of {steps.length}
-                    </span>
-                    <motion.button
-                      type="button"
-                      onClick={() => setStep((s) => Math.min(steps.length - 1, s + 1))}
-                      disabled={step === steps.length - 1}
-                      whileHover={step < steps.length - 1 ? { scale: 1.04 } : undefined}
-                      whileTap={step < steps.length - 1 ? { scale: 0.95 } : undefined}
-                      transition={{ type: "spring", stiffness: 400, damping: 24 }}
-                      className="inline-flex items-center gap-1.5 rounded-full border border-white/50 dark:border-white/12 px-5 py-2 text-sm font-bold text-stone-700 dark:text-slate-300 transition-colors hover:border-[#F5B400]/50 hover:text-amber-600 dark:hover:text-[#F5B400] hover:shadow-[0_0_24px_rgba(245,180,0,0.12)] disabled:opacity-40"
-                    >
-                      Next <ArrowRight className="h-4 w-4" />
-                    </motion.button>
-                  </div>
-                </GlassCard>
-              </motion.div>
-            </AnimatePresence>
+                {/* Prev / Next */}
+                <div className="mt-8 flex items-center justify-between border-t border-white/40 dark:border-white/8 pt-5">
+                  <button
+                    ref={backRef}
+                    type="button"
+                    onClick={() => setStep((s) => Math.max(0, s - 1))}
+                    disabled={step === 0}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-white/50 dark:border-white/12 px-5 py-2 text-sm font-bold text-stone-700 dark:text-slate-300 transition-colors hover:border-stone-400 dark:hover:border-white/25 disabled:opacity-40"
+                  >
+                    <ArrowLeft className="h-4 w-4" /> Back
+                  </button>
+                  <span className="text-xs font-bold text-stone-500 dark:text-slate-500">
+                    Step {step + 1} of {steps.length}
+                  </span>
+                  <button
+                    ref={nextRef}
+                    type="button"
+                    onClick={() => setStep((s) => Math.min(steps.length - 1, s + 1))}
+                    disabled={step === steps.length - 1}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-white/50 dark:border-white/12 px-5 py-2 text-sm font-bold text-stone-700 dark:text-slate-300 transition-colors hover:border-[#F5B400]/50 hover:text-amber-600 dark:hover:text-[#F5B400] hover:shadow-[0_0_24px_rgba(245,180,0,0.12)] disabled:opacity-40"
+                  >
+                    Next <ArrowRight className="h-4 w-4" />
+                  </button>
+                </div>
+              </GlassCard>
+            </div>
           </div>
         </div>
       </main>

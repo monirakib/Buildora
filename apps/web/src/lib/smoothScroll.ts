@@ -1,21 +1,14 @@
 /**
- * Apple-style eased page scrolling.
+ * Apple-style eased page scrolling, powered by GSAP's ScrollToPlugin.
  *
  * Native CSS `scroll-behavior: smooth` caps its animation at roughly half a
  * second regardless of distance, so multi-screen jumps (our hero alone is
- * 320vh) look like instant teleports. This drives window.scrollTo from a
- * requestAnimationFrame loop instead: duration scales with distance and an
- * ease-in-out curve gives the slow-start / fast-middle / gentle-landing
- * "swoop" feel.
+ * 320vh) look like instant teleports. GSAP animates the scroll position
+ * instead: the duration scales with distance and a power2.inOut curve gives
+ * the slow-start / fast-middle / gentle-landing "swoop" feel.
  */
 
-/** Cancels the in-flight scroll animation, if any. */
-let cancelActive: (() => void) | null = null;
-
-/** Ease-in-out cubic — slow start, fast middle, gentle landing (nav swoop). */
-function easeInOutCubic(t: number): number {
-  return t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
-}
+import { gsap } from "@/lib/gsap";
 
 /**
  * Absolute page-Y of an element's top, honoring its scroll-mt-* so headings
@@ -54,37 +47,25 @@ export function smoothScrollToId(id: string) {
 }
 
 export function smoothScrollTo(targetY: number) {
-  cancelActive?.();
-  const easeFn = easeInOutCubic;
+  const distance = Math.abs(targetY - window.scrollY);
+  if (distance < 1) return;
+
+  // Longer jumps get more airtime, capped so it never feels sluggish.
+  const duration = Math.min(1.5, 0.45 + distance * 0.00022);
 
   // Deliberately ignores prefers-reduced-motion: OS-level "animations off"
   // (common on Windows) would otherwise turn every jump instant.
-  const startY = window.scrollY;
-  const distance = targetY - startY;
-  if (Math.abs(distance) < 1) return;
-
-  // Longer jumps get more airtime, capped so it never feels sluggish.
-  const duration = Math.min(1500, 450 + Math.abs(distance) * 0.22);
-  const startedAt = performance.now();
-  let raf = 0;
-
-  // The user's own wheel/touch input takes over immediately.
-  const stop = () => {
-    cancelAnimationFrame(raf);
-    window.removeEventListener("wheel", stop);
-    window.removeEventListener("touchstart", stop);
-    cancelActive = null;
-  };
-  window.addEventListener("wheel", stop, { passive: true });
-  window.addEventListener("touchstart", stop, { passive: true });
-  cancelActive = stop;
-
-  const tick = (now: number) => {
-    const p = Math.min(1, (now - startedAt) / duration);
-    // "instant" bypasses the CSS scroll-behavior so each frame lands exactly.
-    window.scrollTo({ top: startY + distance * easeFn(p), behavior: "instant" });
-    if (p < 1) raf = requestAnimationFrame(tick);
-    else stop();
-  };
-  raf = requestAnimationFrame(tick);
+  gsap.to(window, {
+    duration,
+    // Slow start, fast middle, gentle landing — the nav "swoop".
+    ease: "power2.inOut",
+    scrollTo: {
+      y: targetY,
+      // Hands control straight back to the user the moment they scroll
+      // themselves, which is what the old wheel/touchstart listeners did.
+      autoKill: true,
+    },
+    // Only one page-scroll animation should ever be in flight.
+    overwrite: true,
+  });
 }
