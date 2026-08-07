@@ -3,6 +3,7 @@ import { isValidObjectId } from "mongoose";
 import { z } from "zod";
 import {
   DEFAULT_PAGE_SIZE,
+  NotificationType,
   OrderStatus,
   ProductCategory,
   UserRole,
@@ -12,6 +13,7 @@ import {
 } from "@buildora/shared";
 import { MarketOrder } from "../models/MarketOrder";
 import { Product } from "../models/Product";
+import { notify } from "../services/notifications";
 
 /* ---------- Shapes sent to the client ---------- */
 
@@ -239,6 +241,19 @@ export async function createOrder(req: Request, res: Response) {
     { path: "buyer", select: "name phone" },
     { path: "seller", select: "name profile.company" },
   ]);
+
+  // The seller has an order to fulfil.
+  const buyer = doc.buyer as unknown as UserRef;
+  notify(String(product.seller), {
+    type: NotificationType.ORDER,
+    title: `New order — ${quantity} × ${product.name}`,
+    body: `${buyer.name} ordered ${quantity} ${product.unit}${quantity > 1 ? "s" : ""} for ৳ ${(
+      product.priceBdt * quantity
+    ).toLocaleString("en-US")}. Confirm it to start fulfilment.`,
+    link: "/marketplace/orders",
+    actorId: req.auth!.sub,
+  });
+
   return res.status(201).json({ data: { order: toOrder(doc) } });
 }
 
@@ -298,5 +313,25 @@ export async function updateOrderStatus(req: Request, res: Response) {
     { path: "buyer", select: "name phone" },
     { path: "seller", select: "name profile.company" },
   ]);
+
+  // Whoever didn't make the move is the one who needs telling.
+  const buyer = doc.buyer as unknown as UserRef;
+  const seller = doc.seller as unknown as UserRef;
+  const recipient = isSeller ? String(buyer._id) : String(seller._id);
+  const bodyByStatus: Partial<Record<OrderStatus, string>> = {
+    [OrderStatus.CONFIRMED]: `${seller.name} confirmed your order for ${doc.productSnapshot.name}.`,
+    [OrderStatus.DELIVERED]: `${seller.name} marked your order for ${doc.productSnapshot.name} as delivered.`,
+    [OrderStatus.CANCELLED]: isSeller
+      ? `${seller.name} cancelled your order for ${doc.productSnapshot.name}.`
+      : `${buyer.name} cancelled their order for ${doc.productSnapshot.name}.`,
+  };
+  notify(recipient, {
+    type: NotificationType.ORDER,
+    title: `Order ${status.toLowerCase()}`,
+    body: bodyByStatus[status] ?? `Your order for ${doc.productSnapshot.name} was updated.`,
+    link: "/marketplace/orders",
+    actorId: me,
+  });
+
   return res.json({ data: { order: toOrder(doc) } });
 }

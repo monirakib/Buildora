@@ -4,6 +4,7 @@ import { z } from "zod";
 import {
   CONCEPT_FEE_BDT,
   ContractStatus,
+  NotificationType,
   ProjectStatus,
   ProposalStatus,
   UserRole,
@@ -13,6 +14,8 @@ import {
 import { Contract } from "../models/Contract";
 import { Project } from "../models/Project";
 import { Proposal, type ProposalDoc } from "../models/Proposal";
+import { User } from "../models/User";
+import { notify, preview } from "../services/notifications";
 import { findProjectOr404 } from "./projects.controller";
 
 const createProposalSchema = z.object({
@@ -118,6 +121,17 @@ export async function createProposal(req: Request, res: Response) {
     architect: req.auth!.sub,
   });
   const populated = await created.populate(withRefs);
+
+  // Tell the owner someone pitched on their brief.
+  const architect = populated.architect as unknown as ArchitectRef;
+  notify(String(project.owner), {
+    type: NotificationType.PROPOSAL,
+    title: `${architect.name} proposed on "${project.title}"`,
+    body: preview(created.coverLetter),
+    link: `/projects/${project._id.toString()}`,
+    actorId: req.auth!.sub,
+  });
+
   return res.status(201).json({ data: { proposal: toProposalDto(populated) } });
 }
 
@@ -193,6 +207,12 @@ export async function acceptProposal(req: Request, res: Response) {
   project.status = ProjectStatus.CONCEPT_STAGE;
   await project.save();
 
+  // Collect the losing architects before the update, so we can tell them too.
+  const losers = await Proposal.find({
+    project: project._id,
+    status: ProposalStatus.PENDING,
+  }).select("architect");
+
   // The losing proposals close automatically; their architects can see why.
   await Proposal.updateMany(
     { project: project._id, status: ProposalStatus.PENDING },
@@ -207,6 +227,27 @@ export async function acceptProposal(req: Request, res: Response) {
     conceptFeeBdt: proposal.conceptFeeBdt,
     designFeeBdt: proposal.designFeeBdt,
   });
+
+  const client = await User.findById(project.owner).select("name");
+  const projectLink = `/projects/${project._id.toString()}`;
+
+  notify(String(proposal.architect), {
+    type: NotificationType.PROPOSAL,
+    title: `Your proposal was accepted 🎉`,
+    body: `${client?.name ?? "The client"} picked you for "${project.title}". The concept fee is next.`,
+    link: projectLink,
+    actorId: req.auth!.sub,
+  });
+
+  for (const lost of losers) {
+    notify(String(lost.architect), {
+      type: NotificationType.PROPOSAL,
+      title: "Your proposal wasn't selected",
+      body: `The owner of "${project.title}" engaged another architect.`,
+      link: "/briefs",
+      actorId: req.auth!.sub,
+    });
+  }
 
   const populated = await proposal.populate(withRefs);
   return res.json({ data: { proposal: toProposalDto(populated) } });
@@ -227,6 +268,15 @@ export async function declineProposal(req: Request, res: Response) {
 
   proposal.status = ProposalStatus.DECLINED;
   await proposal.save();
+
+  notify(String(proposal.architect), {
+    type: NotificationType.PROPOSAL,
+    title: "Your proposal wasn't selected",
+    body: `The owner of "${project.title}" passed on your proposal.`,
+    link: "/briefs",
+    actorId: req.auth!.sub,
+  });
+
   const populated = await proposal.populate(withRefs);
   return res.json({ data: { proposal: toProposalDto(populated) } });
 }
@@ -244,6 +294,22 @@ export async function withdrawProposal(req: Request, res: Response) {
 
   proposal.status = ProposalStatus.WITHDRAWN;
   await proposal.save();
+
   const populated = await proposal.populate(withRefs);
+
+  // Let the owner know the pitch is off the table.
+  const project = populated.project as unknown as ProjectRef;
+  const architect = populated.architect as unknown as ArchitectRef;
+  const owner = await Project.findById(proposal.project).select("owner");
+  if (owner) {
+    notify(String(owner.owner), {
+      type: NotificationType.PROPOSAL,
+      title: "A proposal was withdrawn",
+      body: `${architect.name} pulled their proposal on "${project.title}".`,
+      link: `/projects/${String(project._id)}`,
+      actorId: req.auth!.sub,
+    });
+  }
+
   return res.json({ data: { proposal: toProposalDto(populated) } });
 }
