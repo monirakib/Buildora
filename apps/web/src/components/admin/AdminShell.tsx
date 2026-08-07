@@ -6,6 +6,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { UserRole } from "@buildora/shared";
 import { logoutUser } from "@/lib/api";
 import { useSession } from "@/store/useSession";
+import { useNotifications } from "@/store/useNotifications";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { ThemeToggle } from "@/components/landing/ThemeToggle";
 
 /** Small stroke icons for the sidebar — one path set each, inherits color. */
@@ -52,6 +54,12 @@ function NavIcon({ name }: { name: string }) {
         <path d="M4 20V8.5L12 3l8 5.5V20" />
       </>
     ),
+    announce: (
+      <>
+        <path d="m3 11 18-5v12L3 14v-3Z" />
+        <path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" />
+      </>
+    ),
   };
   return (
     <svg
@@ -77,6 +85,7 @@ const NAV = [
       { href: "/admin", icon: "overview", label: "Overview" },
       { href: "/admin/users", icon: "users", label: "Users & roles" },
       { href: "/admin/market", icon: "market", label: "Marketplace" },
+      { href: "/admin/broadcasts", icon: "announce", label: "Announcements" },
     ],
   },
   {
@@ -119,13 +128,14 @@ export function AdminShell({
 
   function handleLogout() {
     if (token) logoutUser(token).catch(() => {});
+    useNotifications.getState().disconnect();
     clearSession();
     window.location.assign("/");
   }
 
   if (!mounted || !user || user.role !== UserRole.ADMIN) {
     return (
-      <div className="grid min-h-screen place-items-center bg-stone-100 dark:bg-stone-950">
+      <div className="grid min-h-screen place-items-center">
         <p className="text-sm text-stone-500 dark:text-stone-400">Loading console…</p>
       </div>
     );
@@ -133,10 +143,13 @@ export function AdminShell({
 
   const isActive = (href: string) => pathname === href;
 
+  // The console paints no background of its own: the site backdrop
+  // (AmbientBackground, mounted in the root layout) shows through here the same
+  // as everywhere else. Only the sidebar and the cards paint a surface.
   return (
-    <div className="flex min-h-screen bg-stone-100 text-stone-900 dark:bg-stone-950 dark:text-stone-100">
+    <div className="flex min-h-screen text-stone-900 dark:text-stone-100">
       {/* ---- Sidebar (desktop) — deliberately dark in both themes ---- */}
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-white/10 bg-stone-950 lg:flex dark:bg-black/40">
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-white/10 bg-stone-950/95 backdrop-blur-xl lg:flex dark:bg-black/50">
         <Link href="/admin" className="flex items-center gap-2.5 px-5 pt-5">
           <span className="grid h-8 w-8 place-items-center rounded-lg bg-amber-400 shadow">
             <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="none">
@@ -236,7 +249,7 @@ export function AdminShell({
       {/* ---- Content plane ---- */}
       <div className="min-w-0 flex-1 lg:pl-64">
         {/* Top bar: mobile brand + page heading + theme toggle */}
-        <header className="sticky top-0 z-30 border-b border-stone-200/80 bg-stone-100/80 backdrop-blur-xl dark:border-white/10 dark:bg-stone-950/80">
+        <header className="sticky top-0 z-30 border-b border-white/40 bg-white/60 backdrop-blur-xl backdrop-saturate-150 dark:border-white/10 dark:bg-white/4">
           <div className="flex items-center justify-between gap-4 px-4 py-3 sm:px-6">
             <div className="flex min-w-0 items-center gap-3">
               {/* Mobile brand chip (sidebar is hidden) */}
@@ -263,7 +276,10 @@ export function AdminShell({
                 )}
               </div>
             </div>
-            <ThemeToggle />
+            <div className="flex shrink-0 items-center gap-1.5">
+              <NotificationBell tone="surface" />
+              <ThemeToggle />
+            </div>
           </div>
 
           {/* Mobile pill nav — horizontal scroll, mirrors the sidebar */}
