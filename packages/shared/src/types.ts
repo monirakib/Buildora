@@ -1,4 +1,5 @@
 import type {
+  BroadcastAudience,
   BuildingType,
   CallMedia,
   CallStatus,
@@ -8,6 +9,7 @@ import type {
   DocumentCategory,
   InquiryStatus,
   LandUse,
+  NotificationType,
   OrderStatus,
   PaymentKind,
   PaymentMethod,
@@ -671,7 +673,62 @@ export interface MarketOrder {
   createdAt: string;
 }
 
+/* ---------- Notifications ---------- */
+
+/**
+ * One entry in a user's notification bell. Every row belongs to exactly one
+ * recipient — a broadcast to 500 users writes 500 of these — so "read" and
+ * "dismissed" are per-person without any extra bookkeeping.
+ */
+export interface AppNotification {
+  id: string;
+  type: NotificationType;
+  /** One-line headline, e.g. "New message from Rafiq Ahmed". */
+  title: string;
+  /** Supporting detail, e.g. the message preview. */
+  body: string;
+  /** In-app path to open on click, e.g. "/projects/123". */
+  link?: string;
+  /** The person who caused it, when there is one (shows their avatar). */
+  actor?: { id: string; name: string; avatarUrl?: string };
+  /** ISO timestamp of when the user read it; absent while still unread. */
+  readAt?: string;
+  createdAt: string;
+}
+
+/** The bell's payload: a page of notifications plus the badge number. */
+export interface NotificationFeed {
+  items: AppNotification[];
+  /** Unread across the whole account, not just this page. */
+  unreadCount: number;
+}
+
+/** Socket.IO channel the server uses to push notifications as they happen. */
+export const NOTIFICATION_EVENTS = {
+  /** server → client: one freshly created AppNotification. */
+  created: "notification:created",
+} as const;
+
 /* ---------- Admin console ---------- */
+
+/**
+ * One announcement an admin sent out. The Notification rows it produced are
+ * the copies each recipient sees; this is the campaign record behind them,
+ * kept so the console can show a send history.
+ */
+export interface Broadcast {
+  id: string;
+  type: NotificationType.PROMOTION | NotificationType.SYSTEM;
+  title: string;
+  body: string;
+  link?: string;
+  /** A UserRole, or "ALL" for every user on the platform. */
+  audience: BroadcastAudience;
+  /** How many notification rows this send created. */
+  recipients: number;
+  sentBy: { id: string; name: string };
+  createdAt: string;
+}
 
 /** One point of a per-day time series (date is "YYYY-MM-DD", Dhaka time). */
 export interface DayPoint {
