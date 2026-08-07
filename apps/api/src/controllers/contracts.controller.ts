@@ -5,6 +5,7 @@ import {
   ContractStatus,
   DeliverableKind,
   DeliverableStatus,
+  NotificationType,
   PaymentKind,
   PaymentMethod,
   ProjectStatus,
@@ -15,6 +16,7 @@ import {
 import { Contract, type ContractDoc } from "../models/Contract";
 import { Project } from "../models/Project";
 import { Proposal } from "../models/Proposal";
+import { notify } from "../services/notifications";
 import { findProjectOr404 } from "./projects.controller";
 
 // Sandbox payment form: the payer picks a channel and types the transaction
@@ -57,6 +59,29 @@ const withRefs = [
   { path: "client", select: "name username" },
   { path: "architect", select: "name username profile.company" },
 ];
+
+/** Money inside notification text, e.g. "৳ 45,000". */
+function bdt(amount: number): string {
+  return `৳ ${amount.toLocaleString("en-US")}`;
+}
+
+/**
+ * The three things every contract notification needs: who the two sides are,
+ * and where to send the reader. Call only on a `withRefs`-populated document.
+ */
+function contractParties(doc: HydratedDocument<ContractDoc>) {
+  const project = doc.project as unknown as ProjectRef;
+  const client = doc.client as unknown as PopulatedRef;
+  const architect = doc.architect as unknown as PopulatedRef;
+  return {
+    projectTitle: project.title,
+    clientId: String(client._id),
+    clientName: client.name,
+    architectId: String(architect._id),
+    architectName: architect.name,
+    link: `/projects/${String(project._id)}`,
+  };
+}
 
 /** Shapes a contract (project + both parties populated) for the client. */
 function toContractDto(doc: HydratedDocument<ContractDoc>): ContractDto {
@@ -180,6 +205,17 @@ export async function payConceptFee(req: Request, res: Response) {
   await doc.save();
 
   const populated = await doc.populate(withRefs);
+
+  // The architect can start the concept now that the fee has landed.
+  const parties = contractParties(populated);
+  notify(parties.architectId, {
+    type: NotificationType.PAYMENT,
+    title: `Concept fee paid — ${bdt(doc.conceptFeeBdt)}`,
+    body: `${parties.clientName} paid the concept fee for "${parties.projectTitle}". You can start the concept brief.`,
+    link: parties.link,
+    actorId: parties.clientId,
+  });
+
   return res.json({ data: { contract: toContractDto(populated) } });
 }
 
@@ -221,6 +257,17 @@ export async function fundEscrow(req: Request, res: Response) {
   await Project.updateOne({ _id: doc.project }, { status: ProjectStatus.DESIGN_IN_PROGRESS });
 
   const populated = await doc.populate(withRefs);
+
+  // The design fee is now held in escrow — the architect is safe to begin.
+  const parties = contractParties(populated);
+  notify(parties.architectId, {
+    type: NotificationType.PAYMENT,
+    title: `Escrow funded — ${bdt(doc.designFeeBdt)}`,
+    body: `${parties.clientName} deposited the design fee for "${parties.projectTitle}". Design work can begin.`,
+    link: parties.link,
+    actorId: parties.clientId,
+  });
+
   return res.json({ data: { contract: toContractDto(populated) } });
 }
 
@@ -269,6 +316,18 @@ export async function submitDeliverable(req: Request, res: Response) {
   await doc.save();
 
   const populated = await doc.populate(withRefs);
+
+  // The client has something waiting for their review.
+  const parties = contractParties(populated);
+  const what = kind === DeliverableKind.CONCEPT ? "concept" : "design";
+  notify(parties.clientId, {
+    type: NotificationType.CONTRACT,
+    title: `${parties.architectName} submitted the ${what}`,
+    body: `"${parsed.data.title}" on ${parties.projectTitle} is waiting for your review.`,
+    link: parties.link,
+    actorId: parties.architectId,
+  });
+
   return res.status(201).json({ data: { contract: toContractDto(populated) } });
 }
 
@@ -346,6 +405,42 @@ export async function decideDeliverable(req: Request, res: Response) {
   }
 
   const populated = await doc.populate(withRefs);
+
+  // Tell the architect what the client decided. Approving the design is the
+  // one that also moves money, so it's filed as a payment rather than a
+  // contract update.
+  const parties = contractParties(populated);
+  const what = deliverable.kind === DeliverableKind.CONCEPT ? "concept" : "design";
+  if (action === "request-changes") {
+    notify(parties.architectId, {
+      type: NotificationType.CONTRACT,
+      title: `Changes requested on the ${what}`,
+      body:
+        note?.trim() ||
+        `${parties.clientName} asked for changes to "${deliverable.title}" on ${parties.projectTitle}.`,
+      link: parties.link,
+      actorId: parties.clientId,
+    });
+  } else if (deliverable.kind === DeliverableKind.CONCEPT) {
+    notify(parties.architectId, {
+      type: NotificationType.CONTRACT,
+      title: "Your concept was approved",
+      body: `${parties.clientName} approved the concept for "${parties.projectTitle}" — the escrow deposit is next.`,
+      link: parties.link,
+      actorId: parties.clientId,
+    });
+  } else {
+    notify(parties.architectId, {
+      type: NotificationType.PAYMENT,
+      // Set just above, when the design was approved — the fallback only keeps
+      // the type checker happy about the field being optional on the schema.
+      title: `Escrow released — ${bdt(doc.releasedToArchitectBdt ?? 0)}`,
+      body: `${parties.clientName} approved the design for "${parties.projectTitle}". Your fee has been released (after the ${Math.round(doc.commissionRate * 100)}% platform commission).`,
+      link: parties.link,
+      actorId: parties.clientId,
+    });
+  }
+
   return res.json({ data: { contract: toContractDto(populated) } });
 }
 
@@ -386,5 +481,15 @@ export async function cancelContract(req: Request, res: Response) {
   );
 
   const populated = await doc.populate(withRefs);
+
+  const parties = contractParties(populated);
+  notify(parties.architectId, {
+    type: NotificationType.CONTRACT,
+    title: "A contract was cancelled",
+    body: `${parties.clientName} cancelled the design contract for "${parties.projectTitle}".`,
+    link: parties.link,
+    actorId: parties.clientId,
+  });
+
   return res.json({ data: { contract: toContractDto(populated) } });
 }

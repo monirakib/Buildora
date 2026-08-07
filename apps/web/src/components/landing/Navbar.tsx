@@ -6,6 +6,8 @@ import { UserRole, type SessionUser } from "@buildora/shared";
 import { smoothScrollToId } from "@/lib/smoothScroll";
 import { logoutUser } from "@/lib/api";
 import { useSession } from "@/store/useSession";
+import { useNotifications } from "@/store/useNotifications";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { ThemeToggle } from "./ThemeToggle";
 
 /**
@@ -372,6 +374,9 @@ export function Navbar({ showGetStarted = true }: { showGetStarted?: boolean }) 
   // race against a soft push. A document load also resets all in-memory state.
   function handleLogout() {
     if (token) logoutUser(token).catch(() => {});
+    // Close the notification socket and drop the feed before the session goes,
+    // so the next person to sign in on this browser starts empty.
+    useNotifications.getState().disconnect();
     clearSession();
     setMenuOpen(false);
     window.location.assign("/");
@@ -442,8 +447,10 @@ export function Navbar({ showGetStarted = true }: { showGetStarted?: boolean }) 
           ))}
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <ThemeToggle />
+          {/* Bell only exists for a signed-in user — it renders null otherwise */}
+          {loggedIn && <NotificationBell tone="dark" />}
           {loggedIn && user ? (
             <UserChip user={user} onLogout={handleLogout} />
           ) : (

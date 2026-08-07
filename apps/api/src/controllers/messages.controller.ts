@@ -6,6 +6,7 @@ import { Conversation, sortPair, type ConversationDoc } from "../models/Conversa
 import { Message, type MessageDoc } from "../models/Message";
 import { User } from "../models/User";
 import { isUserOnline } from "../realtime/signaling";
+import { notifyNewMessage, preview } from "../services/notifications";
 
 const openConversationSchema = z.object({
   userId: z.string().min(1, "Choose who to message"),
@@ -216,6 +217,17 @@ export async function sendMessage(req: Request, res: Response) {
   await doc.save();
 
   const sender = await User.findById(req.auth!.sub).select("name");
+
+  // Ring the other participant's bell. Collapsed per sender, so a burst of
+  // messages leaves one entry rather than flooding the feed.
+  const me = req.auth!.sub;
+  const recipient = String(doc.userA) === me ? String(doc.userB) : String(doc.userA);
+  notifyNewMessage(recipient, me, {
+    title: `New message from ${sender?.name ?? "someone"}`,
+    body: preview(created.body),
+    link: "/messages",
+  });
+
   return res.status(201).json({ data: { message: toChatMessage(created, sender?.name ?? "You") } });
 }
 

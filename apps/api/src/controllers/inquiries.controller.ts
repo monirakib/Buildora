@@ -1,9 +1,15 @@
 import type { Request, Response } from "express";
 import { isValidObjectId, type HydratedDocument } from "mongoose";
 import { z } from "zod";
-import { InquiryStatus, UserRole, type Inquiry as InquiryDto } from "@buildora/shared";
+import {
+  InquiryStatus,
+  NotificationType,
+  UserRole,
+  type Inquiry as InquiryDto,
+} from "@buildora/shared";
 import { Inquiry, type InquiryDoc } from "../models/Inquiry";
 import { User } from "../models/User";
+import { notify, preview } from "../services/notifications";
 
 const createInquirySchema = z.object({
   architectId: z.string().min(1, "Choose an architect"),
@@ -98,6 +104,17 @@ export async function createInquiry(req: Request, res: Response) {
     message,
   });
   const populated = await created.populate(withRefs);
+
+  // Tell the architect a client is asking for them.
+  const landOwner = populated.landOwner as unknown as PopulatedRef;
+  notify(architectId, {
+    type: NotificationType.INQUIRY,
+    title: `New request from ${landOwner.name}`,
+    body: preview(message),
+    link: "/inquiries",
+    actorId: req.auth.sub,
+  });
+
   return res.status(201).json({ data: { inquiry: toInquiryDto(populated) } });
 }
 

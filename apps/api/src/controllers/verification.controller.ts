@@ -3,6 +3,7 @@ import { isValidObjectId } from "mongoose";
 import type { HydratedDocument } from "mongoose";
 import { z } from "zod";
 import {
+  NotificationType,
   UserRole,
   VerificationStatus,
   computeCompletion,
@@ -11,6 +12,7 @@ import {
 } from "@buildora/shared";
 import { User, type UserDoc } from "../models/User";
 import { VerificationRequest, type VerificationRequestDoc } from "../models/VerificationRequest";
+import { notify, notifyMany } from "../services/notifications";
 
 // The professional field is populated on every query in this file, so the
 // document's ObjectId ref has been replaced by the actual user document.
@@ -106,6 +108,20 @@ export async function submitVerification(req: Request, res: Response) {
   await user.save();
 
   await request.populate("professional");
+
+  // Put it in front of the supervisors so the queue doesn't sit unnoticed.
+  const admins = await User.find({ role: UserRole.ADMIN }).select("_id");
+  notifyMany(
+    admins.map((a) => a._id.toString()),
+    {
+      type: NotificationType.VERIFICATION,
+      title: "New verification request",
+      body: `${user.name} (${user.role.replace(/_/g, " ").toLowerCase()}) submitted their documents for review.`,
+      link: "/supervisor",
+      actorId: user._id.toString(),
+    }
+  );
+
   return res.status(201).json({
     data: { request: toVerificationRequest(request as unknown as PopulatedRequest) },
   });
@@ -139,7 +155,11 @@ export async function listVerificationRequests(req: Request, res: Response) {
   // and ones a supervisor has already opened.
   const filter =
     status === VerificationStatus.UNDER_REVIEW
-      ? { status: { $in: [VerificationStatus.DOCUMENTS_SUBMITTED, VerificationStatus.UNDER_REVIEW] } }
+      ? {
+          status: {
+            $in: [VerificationStatus.DOCUMENTS_SUBMITTED, VerificationStatus.UNDER_REVIEW],
+          },
+        }
       : { status };
 
   const docs = await VerificationRequest.find(filter)
@@ -238,6 +258,17 @@ export async function decideVerificationRequest(req: Request, res: Response) {
 
   doc.professional.verificationStatus = doc.status;
   await doc.professional.save();
+
+  notify(doc.professional._id.toString(), {
+    type: NotificationType.VERIFICATION,
+    title: approved ? "You're Platform Verified ✅" : "Verification not approved",
+    body: approved
+      ? "Your documents checked out. The verified badge is now on your profile and listings."
+      : parsed.data.note?.trim() ||
+        "A supervisor reviewed your documents and couldn't approve them. Update your profile and submit again.",
+    link: "/profile/professional",
+    actorId: req.auth!.sub,
+  });
 
   return res.json({ data: { request: toVerificationRequest(doc) } });
 }

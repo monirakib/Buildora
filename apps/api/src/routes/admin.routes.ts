@@ -4,8 +4,10 @@ import {
   getOverview,
   listAllOrders,
   listAllProducts,
+  listBroadcasts,
   listUsers,
   revokeUserSessions,
+  sendBroadcast,
   setProductActive,
   updateUserRole,
 } from "../controllers/admin.controller";
@@ -24,3 +26,5 @@ adminRouter.post("/users/:id/revoke-sessions", revokeUserSessions);
 adminRouter.get("/market/products", listAllProducts);
 adminRouter.patch("/market/products/:id", setProductActive);
 adminRouter.get("/market/orders", listAllOrders);
+adminRouter.post("/broadcasts", sendBroadcast);
+adminRouter.get("/broadcasts", listBroadcasts);
