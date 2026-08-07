@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Manrope } from "next/font/google";
 import "./globals.css";
+import { AmbientBackground } from "@/components/AmbientBackground";
 import { CursorGlow } from "@/components/CursorGlow";
 import { SessionSync } from "@/components/SessionSync";
 import { PageTransition } from "@/components/PageTransition";
@@ -25,8 +26,12 @@ const themeScript = `try{if(localStorage.getItem("buildora-theme")==="night")doc
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={manrope.variable} suppressHydrationWarning>
-      <body className="min-h-screen bg-stone-50 font-sans text-stone-900 antialiased transition-colors duration-500 dark:bg-[#060a15] dark:text-slate-100">
+      {/* The day canvas is a warm off-white, not stone-50: the glass panels are
+          only 30% white, so on a near-white page they had nothing to stand out
+          against. A few shades deeper and every card reads as a card. */}
+      <body className="min-h-screen bg-[#f5f2ec] font-sans text-stone-900 antialiased transition-colors duration-500 dark:bg-[#060a15] dark:text-slate-100">
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        <AmbientBackground />
         <CursorGlow />
         <SessionSync />
         <AssistantWidget />

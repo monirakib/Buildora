@@ -8,6 +8,42 @@
 
   --animate-fade-up: fade-up 0.9s ease-out both;
   --animate-fade-down: fade-down 0.7s ease-out both;
+
+  /* The three colour washes in the site backdrop drift on their own, very
+     slowly and out of sync, so the page never looks like a static image.
+     `alternate` sends each one back the way it came — no jump on repeat. */
+  --animate-drift-a: drift-a 34s ease-in-out infinite alternate;
+  --animate-drift-b: drift-b 46s ease-in-out infinite alternate;
+  --animate-drift-c: drift-c 40s ease-in-out infinite alternate;
+}
+
+/**
+ * Backdrop palette (see components/AmbientBackground).
+ *
+ * Kept as custom properties rather than `dark:` utilities so the component
+ * writes one set of gradients and the theme just swaps the colours underneath
+ * — no duplicated markup, and nothing to keep in sync between the two modes.
+ */
+:root {
+  /* Day: warm amber, a cool blue, and a soft rose over the warm canvas. */
+  --ambient-a: rgba(245, 180, 0, 0.3);
+  --ambient-b: rgba(56, 132, 255, 0.22);
+  --ambient-c: rgba(244, 114, 182, 0.18);
+  /* Faint blueprint ruling — on brand for a construction platform. */
+  --ambient-grid: rgba(28, 25, 23, 0.05);
+  /* Edge darkening that pushes the content forward. */
+  --ambient-vignette: rgba(28, 25, 23, 0.07);
+  --ambient-grain: 0.03;
+}
+
+.dark {
+  /* Night: the same three lights, cooler and deeper, over #060a15. */
+  --ambient-a: rgba(245, 180, 0, 0.2);
+  --ambient-b: rgba(70, 110, 255, 0.28);
+  --ambient-c: rgba(20, 184, 166, 0.18);
+  --ambient-grid: rgba(255, 255, 255, 0.045);
+  --ambient-vignette: rgba(2, 4, 10, 0.7);
+  --ambient-grain: 0.05;
 }
 
 @keyframes fade-up {
@@ -29,6 +65,35 @@
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+/* Each wash travels a few percent of the viewport and back. Transform-only,
+   so the browser can composite it on the GPU without repainting the page. */
+@keyframes drift-a {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  to {
+    transform: translate3d(6%, 4%, 0) scale(1.12);
+  }
+}
+
+@keyframes drift-b {
+  from {
+    transform: translate3d(0, 0, 0) scale(1.08);
+  }
+  to {
+    transform: translate3d(-7%, 5%, 0) scale(1);
+  }
+}
+
+@keyframes drift-c {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  to {
+    transform: translate3d(5%, -6%, 0) scale(1.1);
   }
 }
 

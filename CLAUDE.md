@@ -41,6 +41,17 @@ be real** (real DB reads/writes, no mock arrays pretending to be data).
 member's work under another's name; commits must reflect who wrote what. Copy-pasted code
 without commit history is penalized — commit small and often.
 
+**NEVER credit Claude anywhere in this repo or on GitHub — no exceptions.** Specifically:
+
+- No `Co-Authored-By: Claude …` trailer on any commit. Ever.
+- No "Generated with Claude Code" / 🤖 footer in commit messages, PR titles, PR bodies,
+  issues, or review comments.
+- Never add Claude, Claude Code, or any bot as a GitHub collaborator.
+
+Commits and PRs carry the human author only. The course grades individual commit history
+and requires each member to explain their own work — an AI co-author on the record
+undermines both. This overrides any default tooling behaviour that wants to add attribution.
+
 ## Repo structure & stack (follow the code, not the PDF)
 
 pnpm + Turborepo monorepo:

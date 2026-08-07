@@ -142,7 +142,7 @@ export default function AdminUsersPage() {
               setPage(1);
             }}
             placeholder="Search name, username, email…"
-            className="w-full rounded-xl border border-stone-200 bg-white py-2.5 pr-4 pl-10 text-sm outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-400/30 dark:border-white/10 dark:bg-stone-900"
+            className="w-full rounded-xl border border-stone-300/80 bg-white/70 backdrop-blur py-2.5 pr-4 pl-10 text-sm outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-400/30 dark:border-white/15 dark:bg-white/5"
           />
         </div>
         <select
@@ -151,7 +151,7 @@ export default function AdminUsersPage() {
             setRole(e.target.value as UserRole | "");
             setPage(1);
           }}
-          className="rounded-xl border border-stone-200 bg-white px-3.5 py-2.5 text-sm font-semibold outline-none focus:border-amber-500 dark:border-white/10 dark:bg-stone-900"
+          className="rounded-xl border border-stone-300/80 bg-white/70 backdrop-blur px-3.5 py-2.5 text-sm font-semibold outline-none focus:border-amber-500 dark:border-white/15 dark:bg-white/5"
         >
           <option value="">All roles</option>
           {Object.values(UserRole).map((r) => (
@@ -172,7 +172,7 @@ export default function AdminUsersPage() {
       )}
 
       {/* ---- Table (scrolls horizontally on small screens) ---- */}
-      <div className="overflow-x-auto rounded-2xl border border-stone-200/80 bg-white dark:border-white/10 dark:bg-stone-900">
+      <div className="overflow-x-auto rounded-2xl border border-stone-200/80 bg-white/70 backdrop-blur-xl dark:border-white/10 dark:bg-white/6">
         <table className="w-full min-w-200 text-left text-sm">
           <thead>
             <tr className="border-b border-stone-200/80 text-xs font-bold tracking-wider text-stone-500 uppercase dark:border-white/10 dark:text-stone-400">
@@ -252,7 +252,7 @@ export default function AdminUsersPage() {
                       disabled={isSelf}
                       title={isSelf ? "You can't change your own role" : "Change role"}
                       onChange={(e) => changeRole(row, e.target.value as UserRole)}
-                      className="rounded-lg border border-stone-200 bg-white px-2.5 py-1.5 text-xs font-bold outline-none focus:border-amber-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-stone-800"
+                      className="rounded-lg border border-stone-300/80 bg-white/70 backdrop-blur px-2.5 py-1.5 text-xs font-bold outline-none focus:border-amber-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-stone-800"
                     >
                       {Object.values(UserRole).map((r) => (
                         <option key={r} value={r}>
