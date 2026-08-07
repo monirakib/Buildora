@@ -64,6 +64,49 @@ export async function listDapZones(req: Request, res: Response) {
   return res.json({ data: { zones: docs.map(toDapZoneDto) } });
 }
 
+/** True when `needle` appears inside `haystack` as a whole word. */
+function containsWord(haystack: string, needle: string): boolean {
+  const safe = needle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`\\b${safe}\\b`, "i").test(haystack);
+}
+
+/**
+ * GET /api/permits/dap-zone-for?area=Dhanmondi — the one zone that governs a
+ * locality, for the brief form's "which zone is my plot in?" check.
+ *
+ * This matches differently from /dap-zones?search=. There the user types part
+ * of a name and we widen ("Dhanm" → "Dhanmondi"). Here the name arrives from
+ * the map, longer and more specific than the zone table ("Gulshan 2",
+ * "Dhanmondi Residential Area"), so the zone name has to be found *inside* the
+ * locality. The match therefore runs both ways, most specific first.
+ */
+export async function findDapZoneForArea(req: Request, res: Response) {
+  const area = String(req.query.area ?? "").trim();
+  if (area.length < 2) {
+    return res.status(400).json({ error: { message: "Enter the area first" } });
+  }
+
+  // The zone table is admin-maintained and small, so ranking the candidates in
+  // code here is clearer than expressing two-way containment as a Mongo query.
+  const zones = await DapZone.find().limit(200);
+
+  const ranked = zones
+    .map((zone) => {
+      const name = zone.areaName;
+      let rank = 0;
+      if (name.toLowerCase() === area.toLowerCase()) rank = 3;
+      else if (containsWord(area, name)) rank = 2; // "Gulshan 2" is in zone "Gulshan"
+      else if (containsWord(name, area)) rank = 1; // "Gulshan" typed, zone "Gulshan Model Town"
+      return { zone, rank };
+    })
+    .filter((c) => c.rank > 0)
+    // Best rank first; ties go to the longer zone name, as the more specific one.
+    .sort((a, b) => b.rank - a.rank || b.zone.areaName.length - a.zone.areaName.length);
+
+  const best = ranked[0];
+  return res.json({ data: { zone: best ? toDapZoneDto(best.zone) : null } });
+}
+
 // ---------- Public: RAJUK fee calculator ----------
 
 /** GET /api/permits/fee-rules — the current rate table. */

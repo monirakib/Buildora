@@ -1,5 +1,5 @@
 import { Schema, model, Types } from "mongoose";
-import { BuildingType, ProjectStatus } from "@buildora/shared";
+import { BuildingType, ProjectStatus, type PlotLocation } from "@buildora/shared";
 
 /**
  * A land owner's construction project. It starts as a brief (what they want to
@@ -15,6 +15,8 @@ export interface ProjectDoc {
   address: string;
   /** Locality used to match a DAP zone, e.g. "Dhanmondi". */
   areaName: string;
+  /** Map pin the owner dropped, plus the outline they traced (both optional). */
+  location?: PlotLocation;
   landAreaKatha: number;
   buildingType: BuildingType;
   floors: number;
@@ -42,6 +44,27 @@ export interface ProjectDoc {
   updatedAt: Date;
 }
 
+/** One corner of a traced plot outline. `_id: false` keeps the array clean. */
+const latLngSchema = new Schema(
+  {
+    lat: { type: Number, required: true, min: -90, max: 90 },
+    lng: { type: Number, required: true, min: -180, max: 180 },
+  },
+  { _id: false }
+);
+
+/** The map pin, the address it resolved to, and the optional traced outline. */
+const plotLocationSchema = new Schema(
+  {
+    lat: { type: Number, required: true, min: -90, max: 90 },
+    lng: { type: Number, required: true, min: -180, max: 180 },
+    formattedAddress: { type: String, trim: true, maxlength: 300 },
+    boundary: { type: [latLngSchema], default: undefined },
+    boundaryAreaSqft: { type: Number, min: 0 },
+  },
+  { _id: false }
+);
+
 const projectSchema = new Schema<ProjectDoc>(
   {
     owner: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
@@ -50,6 +73,7 @@ const projectSchema = new Schema<ProjectDoc>(
     description: { type: String, required: true, trim: true, maxlength: 3000 },
     address: { type: String, required: true, trim: true, maxlength: 200 },
     areaName: { type: String, required: true, trim: true, maxlength: 80 },
+    location: { type: plotLocationSchema, default: undefined },
     landAreaKatha: { type: Number, required: true, min: 0 },
     buildingType: { type: String, enum: Object.values(BuildingType), required: true },
     floors: { type: Number, required: true, min: 1, max: 50 },

@@ -13,6 +13,25 @@ import {
 import { Project, type ProjectDoc } from "../models/Project";
 import { Proposal } from "../models/Proposal";
 
+const latLngSchema = z.object({
+  lat: z.coerce.number().min(-90).max(90),
+  lng: z.coerce.number().min(-180).max(180),
+});
+
+/**
+ * The map pin the owner dropped, with the outline they traced around the plot.
+ * Both the outline and its area are optional — dropping a pin is enough.
+ */
+const plotLocationSchema = latLngSchema.extend({
+  formattedAddress: z.string().trim().max(300).optional(),
+  boundary: z
+    .array(latLngSchema)
+    .min(3, "A plot outline needs at least 3 corners")
+    .max(60, "That outline has too many corners")
+    .optional(),
+  boundaryAreaSqft: z.coerce.number().min(0).optional(),
+});
+
 const briefSchema = z
   .object({
     title: z.string().trim().min(5, "Give the project a short title").max(120),
@@ -23,6 +42,8 @@ const briefSchema = z
       .max(3000),
     address: z.string().trim().min(5, "Enter the plot address").max(200),
     areaName: z.string().trim().min(2, "Enter the area, e.g. Dhanmondi").max(80),
+    // `null` clears a pin the owner had dropped earlier; absent leaves it alone.
+    location: z.preprocess((v) => (v == null ? undefined : v), plotLocationSchema.optional()),
     landAreaKatha: z.coerce.number().positive("Enter the land size in katha"),
     buildingType: z.enum(BuildingType, { message: "Choose a building type" }),
     floors: z.coerce.number().int().min(1, "At least one floor").max(50),
@@ -113,6 +134,17 @@ export function toProjectDto(
     description: doc.description,
     address: doc.address,
     areaName: doc.areaName,
+    // Mongoose hands back a subdocument; spread it into a plain object so the
+    // DTO carries only the fields the client cares about.
+    location: doc.location
+      ? {
+          lat: doc.location.lat,
+          lng: doc.location.lng,
+          formattedAddress: doc.location.formattedAddress,
+          boundary: doc.location.boundary?.map((p) => ({ lat: p.lat, lng: p.lng })),
+          boundaryAreaSqft: doc.location.boundaryAreaSqft,
+        }
+      : undefined,
     landAreaKatha: doc.landAreaKatha,
     buildingType: doc.buildingType,
     floors: doc.floors,
