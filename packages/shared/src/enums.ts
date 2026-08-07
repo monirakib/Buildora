@@ -180,3 +180,37 @@ export enum DocumentCategory {
   SITE = "SITE",
   OTHER = "OTHER",
 }
+
+/**
+ * What a notification is about. Drives the icon and accent colour in the bell
+ * menu, and lets the user filter the feed down to one kind.
+ */
+export enum NotificationType {
+  /** Someone sent you a chat message. */
+  MESSAGE = "MESSAGE",
+  /** A land owner sent you a contact request. */
+  INQUIRY = "INQUIRY",
+  /** A proposal arrived on your brief, or yours was accepted/declined. */
+  PROPOSAL = "PROPOSAL",
+  /** A design contract moved on — a submission, a review, a cancellation. */
+  CONTRACT = "CONTRACT",
+  /** Money moved: concept fee, escrow deposit, escrow release. */
+  PAYMENT = "PAYMENT",
+  /** A marketplace order was placed, confirmed, delivered, or cancelled. */
+  ORDER = "ORDER",
+  /** A supervisor decided your verification request. */
+  VERIFICATION = "VERIFICATION",
+  /** You missed a call. */
+  CALL = "CALL",
+  /** A marketing announcement sent by an admin. */
+  PROMOTION = "PROMOTION",
+  /** A platform-wide notice sent by an admin (maintenance, policy, …). */
+  SYSTEM = "SYSTEM",
+}
+
+/**
+ * Who an admin broadcast goes to: everyone, or just the users holding one
+ * role. Stored as a string so `"ALL"` and the role names share one field.
+ */
+export const BROADCAST_ALL = "ALL";
+export type BroadcastAudience = UserRole | typeof BROADCAST_ALL;

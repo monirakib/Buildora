@@ -1,7 +1,10 @@
 import type {
   AdminOverview,
   AdminUserRow,
+  Broadcast,
+  BroadcastAudience,
   MarketOrder,
+  NotificationType,
   OrderStatus,
   Paginated,
   Product,
@@ -92,6 +95,43 @@ export async function listAdminOrders(
   if (params.status) q.set("status", params.status);
   if (params.page) q.set("page", String(params.page));
   const res = await request<{ data: Paginated<MarketOrder> }>(`/api/admin/market/orders?${q}`, {
+    headers: auth(token),
+  });
+  return res.data;
+}
+
+/** What the announcement composer sends. */
+export interface BroadcastDraft {
+  type: NotificationType.PROMOTION | NotificationType.SYSTEM;
+  title: string;
+  body: string;
+  /** Optional in-app path, e.g. "/marketplace". */
+  link?: string;
+  audience: BroadcastAudience;
+}
+
+/**
+ * POST /api/admin/broadcasts — send an announcement. The server fans it out
+ * into one notification per recipient and returns the campaign record, whose
+ * `recipients` is how many bells it actually landed in.
+ */
+export async function sendBroadcast(token: string, draft: BroadcastDraft): Promise<Broadcast> {
+  const res = await request<{ data: { broadcast: Broadcast } }>("/api/admin/broadcasts", {
+    method: "POST",
+    headers: auth(token),
+    body: JSON.stringify(draft),
+  });
+  return res.data.broadcast;
+}
+
+/** GET /api/admin/broadcasts — the send history, newest first. */
+export async function listBroadcasts(
+  token: string,
+  params: { page?: number } = {}
+): Promise<Paginated<Broadcast>> {
+  const q = new URLSearchParams();
+  if (params.page) q.set("page", String(params.page));
+  const res = await request<{ data: Paginated<Broadcast> }>(`/api/admin/broadcasts?${q}`, {
     headers: auth(token),
   });
   return res.data;

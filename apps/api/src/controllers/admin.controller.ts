@@ -2,6 +2,8 @@ import type { Request, Response } from "express";
 import { isValidObjectId, Types } from "mongoose";
 import { z } from "zod";
 import {
+  BROADCAST_ALL,
+  NotificationType,
   OrderStatus,
   PaymentKind,
   ProjectStatus,
@@ -10,12 +12,14 @@ import {
   type AdminActivityItem,
   type AdminOverview,
   type AdminUserRow,
+  type Broadcast as BroadcastShape,
   type DayPoint,
   type MarketOrder as MarketOrderShape,
   type Paginated,
   type Product as ProductShape,
 } from "@buildora/shared";
 import { User } from "../models/User";
+import { Broadcast } from "../models/Broadcast";
 import { Session, sessionCutoffs } from "../models/Session";
 import { Project } from "../models/Project";
 import { Proposal } from "../models/Proposal";
@@ -25,6 +29,7 @@ import { Message } from "../models/Message";
 import { Product } from "../models/Product";
 import { MarketOrder } from "../models/MarketOrder";
 import { VerificationRequest } from "../models/VerificationRequest";
+import { notifyMany } from "../services/notifications";
 import { sellerSelect, toOrder, toProduct } from "./marketplace.controller";
 
 // All analytics buckets use Dhaka days, so "today" matches what the team sees.
@@ -477,6 +482,115 @@ export async function listAllOrders(req: Request, res: Response) {
 
   const result: Paginated<MarketOrderShape> = {
     items: docs.map(toOrder),
+    total,
+    page,
+    pageSize: MARKET_PAGE_SIZE,
+  };
+  return res.json({ data: result });
+}
+
+/* ---------- Announcements (promotional + system broadcasts) ---------- */
+
+const broadcastSchema = z.object({
+  type: z.enum([NotificationType.PROMOTION, NotificationType.SYSTEM], {
+    message: "Choose promotional or system",
+  }),
+  title: z.string().trim().min(3, "Give the announcement a headline").max(140),
+  body: z.string().trim().min(10, "Write the announcement body").max(500),
+  // An in-app path like "/marketplace". Kept optional — plenty of announcements
+  // have nothing to click through to.
+  link: z.preprocess(
+    (v) => (v === "" || v == null ? undefined : v),
+    z
+      .string()
+      .trim()
+      .max(300)
+      .refine((v) => v.startsWith("/"), "The link must be an in-app path starting with /")
+      .optional()
+  ),
+  audience: z.enum([BROADCAST_ALL, ...Object.values(UserRole)], {
+    message: "Choose who receives this",
+  }),
+});
+
+/** Shapes a broadcast (with sentBy populated) for the console. */
+function toBroadcast(doc: InstanceType<typeof Broadcast>): BroadcastShape {
+  const sender = doc.sentBy as unknown as { _id: unknown; name?: string };
+  return {
+    id: doc._id.toString(),
+    type: doc.type,
+    title: doc.title,
+    body: doc.body,
+    link: doc.link,
+    audience: doc.audience as BroadcastShape["audience"],
+    recipients: doc.recipients,
+    // A deleted admin account leaves the campaign behind; don't lose the row.
+    sentBy: { id: String(sender?._id ?? ""), name: sender?.name ?? "Removed admin" },
+    createdAt: doc.createdAt.toISOString(),
+  };
+}
+
+/**
+ * POST /api/admin/broadcasts — send an announcement.
+ *
+ * The audience is resolved to real user ids, then one notification row is
+ * written per recipient (that's the copy each person reads and dismisses).
+ * The campaign itself is stored too, so the console can show a send history.
+ * Admins are excluded from "everyone" — a promo aimed at users shouldn't fill
+ * the sender's own bell.
+ */
+export async function sendBroadcast(req: Request, res: Response) {
+  const parsed = broadcastSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({
+      error: {
+        message: parsed.error.issues[0]?.message ?? "Invalid input",
+        details: parsed.error.issues,
+      },
+    });
+  }
+  const { type, title, body, link, audience } = parsed.data;
+
+  const filter =
+    audience === BROADCAST_ALL ? { role: { $ne: UserRole.ADMIN } } : { role: audience };
+  const recipients = await User.find(filter).select("_id");
+  if (recipients.length === 0) {
+    return res.status(400).json({ error: { message: "No users match that audience" } });
+  }
+
+  const sent = await notifyMany(
+    recipients.map((u) => u._id.toString()),
+    { type, title, body, link, actorId: req.auth!.sub }
+  );
+
+  const record = await Broadcast.create({
+    type,
+    title,
+    body,
+    link,
+    audience,
+    recipients: sent,
+    sentBy: req.auth!.sub,
+  });
+  await record.populate("sentBy", "name");
+
+  return res.status(201).json({ data: { broadcast: toBroadcast(record) } });
+}
+
+/** GET /api/admin/broadcasts — what's been sent, newest first. */
+export async function listBroadcasts(req: Request, res: Response) {
+  const page = Math.max(1, Number(req.query.page) || 1);
+  const [total, docs] = await Promise.all([
+    Broadcast.countDocuments(),
+    Broadcast.find()
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * MARKET_PAGE_SIZE)
+      .limit(MARKET_PAGE_SIZE)
+      .populate("sentBy", "name"),
+  ]);
+
+  const result: Paginated<BroadcastShape> = {
+    items: docs.map(toBroadcast),
     total,
     page,
     pageSize: MARKET_PAGE_SIZE,

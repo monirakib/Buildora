@@ -6,6 +6,7 @@ import {
   CALL_EVENTS,
   CallMedia,
   CallStatus,
+  NotificationType,
   type CallDescriptionPayload,
   type CallIcePayload,
   type CallMediaStatePayload,
@@ -17,25 +18,13 @@ import { env } from "../config/env";
 import { Call } from "../models/Call";
 import { touchSession } from "../models/Session";
 import { User } from "../models/User";
+import { notify } from "../services/notifications";
+import { isUserOnline, registerIo, userRoom } from "./push";
 
-/** The room every one of a user's tabs joins, so we can ring all their devices. */
-function userRoom(userId: string) {
-  return `user:${userId}`;
-}
-
-// The running signaling server, kept here so REST controllers (e.g. the message
-// inbox) can ask who is online without holding a reference themselves.
-let ioRef: Server | null = null;
-
-/**
- * True when at least one of the user's tabs is connected. Presence is derived
- * from live sockets rather than stored, so it can never get stuck "online" —
- * if the socket is gone, so is the green dot.
- */
-export function isUserOnline(userId: string) {
-  const room = ioRef?.sockets.adapter.rooms.get(userRoom(userId));
-  return !!room && room.size > 0;
-}
+// Presence and per-user pushes live in ./push, which holds the io reference.
+// Re-exported here so the REST controllers that already ask signaling "is this
+// user online?" keep working unchanged.
+export { isUserOnline } from "./push";
 
 /** Stamps "last seen" so an offline user can be shown as "Active 5 mins ago". */
 async function touchLastSeen(userId: string) {
@@ -52,7 +41,7 @@ export function attachSignaling(server: HttpServer) {
   const io = new Server(server, {
     cors: { origin: env.CORS_ORIGIN, credentials: true },
   });
-  ioRef = io;
+  registerIo(io);
 
   // Active calls kept in memory so we can route each signal to the right peer
   // and enforce that only participants can signal on a call. The DB row is the
@@ -94,6 +83,21 @@ export function attachSignaling(server: HttpServer) {
       );
     }
     await call.save().catch(() => null);
+
+    // A call nobody picked up is the one call outcome worth a notification —
+    // the callee never saw it ring, so the bell is how they find out.
+    if (status === CallStatus.MISSED) {
+      const caller = await User.findById(call.caller)
+        .select("name")
+        .catch(() => null);
+      notify(String(call.callee), {
+        type: NotificationType.CALL,
+        title: `Missed ${call.media === CallMedia.VIDEO ? "video " : ""}call from ${caller?.name ?? "someone"}`,
+        body: "They tried to reach you. Open the conversation to call them back.",
+        link: "/messages",
+        actorId: String(call.caller),
+      });
+    }
   }
 
   // --- Handshake auth: verify the JWT and its session, exactly like the REST
