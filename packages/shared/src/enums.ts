@@ -170,6 +170,16 @@ export enum CallMedia {
   VIDEO = "VIDEO",
 }
 
+/**
+ * What kind of hole is cut into a wall on a 2D floor plan. Doors and windows
+ * are drawn with different symbols but are otherwise the same thing: a gap of
+ * a given width, sitting a given distance along a wall.
+ */
+export enum OpeningKind {
+  DOOR = "DOOR",
+  WINDOW = "WINDOW",
+}
+
 /** Filing category for the project document archive. */
 export enum DocumentCategory {
   DESIGN = "DESIGN",
