@@ -16,7 +16,9 @@ import { Navbar } from "@/components/landing/Navbar";
 import { ProposalsSection } from "@/components/project/ProposalsSection";
 import { ContractSection } from "@/components/project/ContractSection";
 import { EcpsSection } from "@/components/project/EcpsSection";
+import { FloorPlanSection } from "@/components/project/FloorPlanSection";
 import { DocumentsSection } from "@/components/project/DocumentsSection";
+import { PlotMapView } from "@/components/project/PlotMapView";
 import {
   buildingTypeLabels,
   formatBdt,
@@ -26,7 +28,7 @@ import {
 } from "@/components/app/projectStatus";
 
 const cardClass =
-  "rounded-3xl border border-white/40 bg-white/40 p-5 shadow-xl shadow-black/5 backdrop-blur-xl sm:p-6 dark:border-white/10 dark:bg-white/5";
+  "rounded-2xl border border-white/50 bg-white/55 p-5 shadow-xl shadow-black/5 backdrop-blur-xl sm:p-6 dark:border-white/10 dark:bg-white/5";
 
 /** The owner's one-click stage moves, mirroring the API's allowed transitions. */
 const nextStatusActions: Partial<Record<ProjectStatus, { to: ProjectStatus; label: string }>> = {
@@ -293,6 +295,12 @@ export default function ProjectDetailPage() {
                   </dd>
                 </div>
               </dl>
+              {project.location && (
+                <div className="mt-5">
+                  <p className="mb-2 text-xs text-stone-500 dark:text-slate-500">On the map</p>
+                  <PlotMapView location={project.location} />
+                </div>
+              )}
               <p className="mt-4 text-xs text-stone-500 dark:text-slate-500">
                 Owner: {project.owner.name}
                 {project.architect && <> · Architect: {project.architect.name}</>}
@@ -317,6 +325,11 @@ export default function ProjectDetailPage() {
                 load(); // contract actions can move the project status too
               }}
             />
+          )}
+
+          {/* 2D floor plan — the architect's design, once one is engaged ---- */}
+          {(isOwner || isAssignedArchitect) && project.architect && (
+            <FloorPlanSection project={project} token={token} />
           )}
 
           {/* Permit tracker + archive (participants only) ------------------ */}
