@@ -2,11 +2,11 @@ import type { Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
-import type { HydratedDocument } from "mongoose";
-import { PaymentMethod, UserRole, type SessionUser } from "@buildora/shared";
+import { Types, type HydratedDocument } from "mongoose";
+import { PaymentMethod, UserRole, type AccountSession, type SessionUser } from "@buildora/shared";
 import { env } from "../config/env";
 import { User, type UserDoc } from "../models/User";
-import { Session } from "../models/Session";
+import { Session, liveSessionFilter } from "../models/Session";
 
 // Account fields every signup shares (land owner and professional alike).
 const accountFields = {
@@ -486,6 +486,72 @@ export async function changePassword(req: Request, res: Response) {
   );
 
   return res.json({ data: { ok: true } });
+}
+
+/**
+ * GET /api/auth/sessions — the logged-in user's own live logins, newest use
+ * first. `liveSessionFilter` is the same rule requireAuth enforces, so this
+ * lists exactly the logins that would still be accepted — no separate notion of
+ * "active" to drift out of sync.
+ */
+export async function listSessions(req: Request, res: Response) {
+  if (!req.auth) {
+    return res.status(401).json({ error: { message: "Authentication required" } });
+  }
+  const rows = await Session.find({ user: req.auth.sub, ...liveSessionFilter() })
+    .sort({ lastSeenAt: -1 })
+    .lean();
+
+  const sessions: AccountSession[] = rows.map((row) => ({
+    id: row._id.toString(),
+    userAgent: row.userAgent,
+    lastSeenAt: row.lastSeenAt.toISOString(),
+    createdAt: row.createdAt.toISOString(),
+    current: row._id.toString() === req.auth?.sid,
+  }));
+
+  return res.json({ data: { sessions } });
+}
+
+const revokeSessionsSchema = z.object({
+  ids: z.array(z.string()).min(1, "Choose at least one device to sign out"),
+});
+
+/**
+ * POST /api/auth/sessions/revoke — end other logins, one or many at once.
+ *
+ * The `user` clause is what makes this safe: ids come from the client, so the
+ * query is scoped to the caller's own sessions and a guessed id from someone
+ * else's account simply matches nothing. The caller's own session is excluded
+ * too — signing yourself out is what the Log out button is for.
+ */
+export async function revokeSessions(req: Request, res: Response) {
+  if (!req.auth) {
+    return res.status(401).json({ error: { message: "Authentication required" } });
+  }
+  const parsed = revokeSessionsSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({
+      error: {
+        message: parsed.error.issues[0]?.message ?? "Invalid input",
+        details: parsed.error.issues,
+      },
+    });
+  }
+
+  // Mongoose casts the id strings for us, but a malformed one would throw
+  // rather than simply not match — so drop anything that isn't an ObjectId.
+  const ids = parsed.data.ids.filter((id) => Types.ObjectId.isValid(id) && id !== req.auth?.sid);
+  if (ids.length === 0) {
+    return res.status(400).json({ error: { message: "Nothing to sign out" } });
+  }
+
+  const result = await Session.updateMany(
+    { _id: { $in: ids }, user: req.auth.sub, revokedAt: { $exists: false } },
+    { $set: { revokedAt: new Date() } }
+  );
+
+  return res.json({ data: { revoked: result.modifiedCount } });
 }
 
 /** GET /api/auth/me — load the logged-in user from the verified token. */

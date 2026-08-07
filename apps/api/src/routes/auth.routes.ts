@@ -2,11 +2,13 @@ import { Router } from "express";
 import {
   changeEmail,
   changePassword,
+  listSessions,
   login,
   logout,
   me,
   register,
   registerProfessional,
+  revokeSessions,
   updateAccount,
   updateProfile,
 } from "../controllers/auth.controller";
@@ -25,3 +27,7 @@ authRouter.patch("/profile", requireAuth, updateProfile);
 authRouter.patch("/account", requireAuth, updateAccount);
 authRouter.post("/change-email", requireAuth, changeEmail);
 authRouter.post("/change-password", requireAuth, changePassword);
+
+// Devices — the logins currently able to use this account, and ending them.
+authRouter.get("/sessions", requireAuth, listSessions);
+authRouter.post("/sessions/revoke", requireAuth, revokeSessions);
