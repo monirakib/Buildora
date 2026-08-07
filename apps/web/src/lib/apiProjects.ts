@@ -2,6 +2,7 @@ import type {
   Contract,
   EcpsApplication,
   Paginated,
+  PlotLocation,
   Project,
   ProjectDocument,
   ProjectStatus,
@@ -22,6 +23,8 @@ export interface BriefInput {
   description: string;
   address: string;
   areaName: string;
+  /** The map pin, or null when nothing has been picked. */
+  location?: PlotLocation | null;
   landAreaKatha: string;
   buildingType: string;
   floors: string;

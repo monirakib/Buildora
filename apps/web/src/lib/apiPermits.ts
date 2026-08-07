@@ -14,6 +14,22 @@ export async function listDapZones(search: string): Promise<DapZone[]> {
   return res.data.zones;
 }
 
+/**
+ * GET /api/permits/dap-zone-for — the single zone governing a locality, or null
+ * when no zone record covers it. Used by the brief form once the plot's area is
+ * known; the wider /dap-zones search is for people browsing by hand.
+ */
+export async function findDapZoneFor(
+  area: string,
+  signal?: AbortSignal
+): Promise<DapZone | null> {
+  const res = await request<{ data: { zone: DapZone | null } }>(
+    `/api/permits/dap-zone-for?area=${encodeURIComponent(area)}`,
+    { signal }
+  );
+  return res.data.zone;
+}
+
 /** GET /api/permits/fee-rules — the current RAJUK rate table. */
 export async function listFeeRules(): Promise<FeeRule[]> {
   const res = await request<{ data: { rules: FeeRule[] } }>("/api/permits/fee-rules");

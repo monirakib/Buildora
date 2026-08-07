@@ -1,4 +1,4 @@
-import { ProjectStatus } from "@buildora/shared";
+import { LandUse, ProjectStatus } from "@buildora/shared";
 
 /** Human labels for each project stage, shared by the projects pages. */
 export const projectStatusLabels: Record<ProjectStatus, string> = {
@@ -41,6 +41,15 @@ export const buildingTypeLabels: Record<string, string> = {
   RESIDENTIAL: "Residential",
   COMMERCIAL: "Commercial",
   MIXED_USE: "Mixed use",
+};
+
+/** Human labels for a DAP zone's permitted land use. */
+export const landUseLabels: Record<string, string> = {
+  [LandUse.RESIDENTIAL]: "Residential",
+  [LandUse.COMMERCIAL]: "Commercial",
+  [LandUse.MIXED_USE]: "Mixed use",
+  [LandUse.INDUSTRIAL]: "Industrial",
+  [LandUse.INSTITUTIONAL]: "Institutional",
 };
 
 /** "12,00,000 BDT"-style money formatting (en-IN grouping ≈ lakh/crore). */
