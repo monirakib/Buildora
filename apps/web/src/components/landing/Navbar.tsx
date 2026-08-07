@@ -96,15 +96,34 @@ const megaMenu = [
   },
 ];
 
-/** One mega-menu item: label button + hover/focus dropdown panel. Pure CSS
- *  (group-hover + focus-within) — no state, works with keyboard tabbing. */
+/**
+ * Drops focus after a click inside the menu.
+ *
+ * The panel is shown by `group-focus-within`, so anything left focused inside
+ * it keeps the panel open — after clicking a link you'd jump to the section
+ * with the menu still hanging over the page. Blurring hands focus back to the
+ * document and the panel closes on its own.
+ */
+function blurOnClick(e: React.MouseEvent<HTMLElement>) {
+  e.currentTarget.blur();
+}
+
+/** One mega-menu item: label + hover/focus dropdown panel. Pure CSS
+ *  (group-hover + focus-within) — no state, works with keyboard tabbing.
+ *
+ *  The label opens the panel on hover only; it is deliberately inert on click.
+ *  `onMouseDown` preventing its default is what makes that work: a mouse click
+ *  never focuses the button, so it can't pin the panel open via
+ *  `group-focus-within`. Tabbing to it still focuses it as normal, which is
+ *  how keyboard users open the panel — so this costs nothing in access. */
 function MegaMenuItem({ group }: { group: (typeof megaMenu)[number] }) {
   return (
     <div className="group relative">
       <button
         type="button"
         aria-haspopup="true"
-        className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold text-white/80 transition group-hover:text-white group-focus-within:text-white"
+        onMouseDown={(e) => e.preventDefault()}
+        className="flex cursor-default items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold text-white/80 transition group-hover:text-white group-focus-within:text-white"
       >
         {group.label}
         {/* Chevron flips while the panel is open */}
@@ -131,7 +150,10 @@ function MegaMenuItem({ group }: { group: (typeof megaMenu)[number] }) {
                 <a
                   key={l.href}
                   href={l.href}
-                  onClick={onAnchorClick}
+                  onClick={(e) => {
+                    onAnchorClick(e);
+                    blurOnClick(e);
+                  }}
                   className="rounded-xl px-3 py-2.5 transition hover:bg-white/5"
                 >
                   <span className="block text-sm font-bold text-white transition group-hover:text-white">
@@ -143,6 +165,7 @@ function MegaMenuItem({ group }: { group: (typeof megaMenu)[number] }) {
                 <Link
                   key={l.href}
                   href={l.href}
+                  onClick={blurOnClick}
                   className="rounded-xl px-3 py-2.5 transition hover:bg-white/5"
                 >
                   <span className="block text-sm font-bold text-white">{l.label}</span>
@@ -155,6 +178,7 @@ function MegaMenuItem({ group }: { group: (typeof megaMenu)[number] }) {
           {/* Featured CTA card (the Turner “Become a Subcontractor” move) */}
           <Link
             href={group.featured.href}
+            onClick={blurOnClick}
             className="flex flex-col justify-between rounded-xl bg-amber-400 p-4 text-stone-950 transition hover:bg-amber-300"
           >
             <div>

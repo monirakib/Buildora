@@ -62,6 +62,24 @@ export interface BillingInfo {
   tin?: string;
 }
 
+/**
+ * One live login, as shown in the account console's "Devices" list. Deliberately
+ * carries no token — only enough to recognise a login and decide whether to end
+ * it. The raw User-Agent string comes over as-is; the web app turns it into a
+ * readable device name.
+ */
+export interface AccountSession {
+  id: string;
+  /** Raw User-Agent captured when this login started; absent on old sessions. */
+  userAgent?: string;
+  /** ISO timestamp — when this login was last used. */
+  lastSeenAt: string;
+  /** ISO timestamp — when this login started. */
+  createdAt: string;
+  /** True for the login making the request; it can't be signed out from here. */
+  current: boolean;
+}
+
 /** One degree/qualification on a professional's profile. */
 export interface EducationEntry {
   /** e.g. "B.Arch", "M.Sc in Structural Engineering". */
@@ -300,6 +318,43 @@ export interface UserRef {
   company?: string;
 }
 
+/** A single point on the map. */
+export interface LatLng {
+  lat: number;
+  lng: number;
+}
+
+/**
+ * Where the plot actually sits, picked on the map instead of typed. `lat`/`lng`
+ * is the pin the owner dropped; `boundary` is the outline they traced around
+ * the plot, which is optional — plenty of owners will just drop a pin.
+ */
+export interface PlotLocation extends LatLng {
+  /** The address OpenStreetMap reported for the pin, kept for reference. */
+  formattedAddress?: string;
+  /** The traced plot outline — at least 3 corners when it's there at all. */
+  boundary?: LatLng[];
+  /** Area enclosed by `boundary`, in square feet (1 katha = 720 sqft). */
+  boundaryAreaSqft?: number;
+}
+
+/** One suggestion from the map search box. */
+export interface GeoPlace {
+  /** Full name OpenStreetMap gave, e.g. "Road 5, Dhanmondi, Dhaka". */
+  label: string;
+  lat: number;
+  lng: number;
+  /** Locality guess, used to match a DAP zone. */
+  areaName?: string;
+}
+
+/** What a reverse lookup gives back for a dropped pin. */
+export interface GeoAddress {
+  formattedAddress: string;
+  /** Locality guess, e.g. "Dhanmondi" — feeds the DAP zone checker. */
+  areaName?: string;
+}
+
 /**
  * A land owner's construction project. Starts life as a posted brief that
  * architects respond to; `status` then tracks it through concept, design,
@@ -315,6 +370,8 @@ export interface Project {
   address: string;
   /** Locality used to match a DAP zone, e.g. "Dhanmondi". */
   areaName: string;
+  /** Map pin (and optional traced outline) for the plot. */
+  location?: PlotLocation;
   landAreaKatha: number;
   buildingType: BuildingType;
   floors: number;

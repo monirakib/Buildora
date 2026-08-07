@@ -311,7 +311,7 @@ export default function MarketplacePage() {
           {loading ? (
             <p className="mt-10 text-sm text-stone-500 dark:text-slate-500">Loading…</p>
           ) : products.length === 0 ? (
-            <div className="mt-10 rounded-3xl border border-white/40 bg-white/40 p-10 text-center backdrop-blur-xl dark:border-white/10 dark:bg-white/5">
+            <div className="mt-10 rounded-2xl border border-white/50 bg-white/55 p-10 text-center backdrop-blur-xl dark:border-white/10 dark:bg-white/5">
               <p className="font-bold">No products found</p>
               <p className="mt-1 text-sm text-stone-600 dark:text-slate-400">
                 {search || category
@@ -331,7 +331,7 @@ export default function MarketplacePage() {
                 {products.map((p) => (
                   <article
                     key={p.id}
-                    className="flex flex-col overflow-hidden rounded-3xl border border-white/40 bg-white/40 shadow-xl shadow-black/5 backdrop-blur-xl transition hover:-translate-y-0.5 hover:border-amber-400/60 dark:border-white/10 dark:bg-white/5"
+                    className="flex flex-col overflow-hidden rounded-2xl border border-white/50 bg-white/55 shadow-xl shadow-black/5 backdrop-blur-xl transition hover:-translate-y-0.5 hover:border-amber-400/60 dark:border-white/10 dark:bg-white/5"
                   >
                     {p.imageUrl ? (
                       /* eslint-disable-next-line @next/next/no-img-element -- Cloudinary-hosted */

@@ -26,6 +26,14 @@ const envSchema = z.object({
   // https://aistudio.google.com; the assistant 503s until it's set.
   GEMINI_API_KEY: z.string().optional(),
   GEMINI_MODEL: z.string().default("gemini-flash-latest"),
+  // OpenStreetMap's Nominatim geocoder — powers the plot map picker's search
+  // box and the address lookup for a dropped pin. Free and keyless, but its
+  // usage policy wants an identifying User-Agent with a contact address and at
+  // most one request a second, both of which geo.controller.ts handles.
+  // Put a real email or repo URL in NOMINATIM_CONTACT: Nominatim blocks any
+  // User-Agent carrying a placeholder domain like example.com outright (403).
+  NOMINATIM_BASE_URL: z.string().default("https://nominatim.openstreetmap.org"),
+  NOMINATIM_CONTACT: z.string().default("buildora-cse471"),
   // WebRTC ICE servers for voice calls. STUN handles NAT discovery and works
   // for the demo on most networks (defaults to Google's public STUN). Set the
   // TURN_* vars later to relay calls that can't connect peer-to-peer across

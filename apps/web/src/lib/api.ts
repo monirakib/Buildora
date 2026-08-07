@@ -1,4 +1,5 @@
 import type {
+  AccountSession,
   AchievementEntry,
   EducationEntry,
   Inquiry,
@@ -163,6 +164,28 @@ export async function changePassword(
     headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify(input),
   });
+}
+
+/** GET /api/auth/sessions — every login currently able to use this account. */
+export async function listSessions(token: string): Promise<AccountSession[]> {
+  const res = await request<{ data: { sessions: AccountSession[] } }>("/api/auth/sessions", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return res.data.sessions;
+}
+
+/**
+ * POST /api/auth/sessions/revoke — end other logins. Takes an array so the
+ * device list can sign out a whole selection in one request; returns how many
+ * were actually revoked.
+ */
+export async function revokeSessions(token: string, ids: string[]): Promise<number> {
+  const res = await request<{ data: { revoked: number } }>("/api/auth/sessions/revoke", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ ids }),
+  });
+  return res.data.revoked;
 }
 
 /**

@@ -8,6 +8,7 @@ import {
   deleteEcpsStep,
   deleteFeeRule,
   estimateFee,
+  findDapZoneForArea,
   listDapZones,
   listEcpsSteps,
   listFeeRules,
@@ -22,6 +23,7 @@ export const permitsRouter = Router();
 
 // Public tools — anyone can check zones, estimate fees, and read the guide.
 permitsRouter.get("/dap-zones", listDapZones);
+permitsRouter.get("/dap-zone-for", findDapZoneForArea);
 permitsRouter.get("/fee-rules", listFeeRules);
 permitsRouter.post("/fee-estimate", estimateFee);
 permitsRouter.get("/ecps-steps", listEcpsSteps);

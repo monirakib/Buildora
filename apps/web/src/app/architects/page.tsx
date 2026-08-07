@@ -21,7 +21,7 @@ function ArchitectCard({ a }: { a: PublicProfessional }) {
   return (
     <Link
       href={`/architects/${a.id}`}
-      className="group flex flex-col rounded-3xl border border-white/40 bg-white/40 p-5 shadow-xl shadow-black/5 backdrop-blur-xl transition hover:-translate-y-0.5 hover:border-amber-400/60 dark:border-white/10 dark:bg-white/5"
+      className="group flex flex-col rounded-2xl border border-white/50 bg-white/55 p-5 shadow-xl shadow-black/5 backdrop-blur-xl transition hover:-translate-y-0.5 hover:border-amber-400/60 dark:border-white/10 dark:bg-white/5"
     >
       <div className="flex items-center gap-3">
         <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-amber-400 text-lg font-extrabold text-stone-950">

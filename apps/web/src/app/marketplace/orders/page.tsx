@@ -11,7 +11,7 @@ import { formatDate } from "@/components/app/projectStatus";
 import { formatBdt, statusLabels, statusStyles } from "@/components/market/market";
 
 const cardClass =
-  "rounded-3xl border border-white/40 bg-white/40 p-5 shadow-xl shadow-black/5 backdrop-blur-xl sm:p-6 dark:border-white/10 dark:bg-white/5";
+  "rounded-2xl border border-white/50 bg-white/55 p-5 shadow-xl shadow-black/5 backdrop-blur-xl sm:p-6 dark:border-white/10 dark:bg-white/5";
 
 /** Marketplace orders — buyers track what they ordered; sellers fulfil. */
 export default function MarketOrdersPage() {

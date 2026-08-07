@@ -1,75 +1,72 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   AtSign,
   BadgeCheck,
-  Building2,
   Camera,
   Check,
-  ChevronRight,
   CreditCard,
-  IdCard,
   Landmark,
+  Laptop,
   Loader2,
   Lock,
   LogOut,
-  Mail,
+  type LucideIcon,
   MapPin,
   Minus,
+  Monitor,
   Moon,
   Palette,
-  PenLine,
   Phone,
+  Shield,
   ShieldCheck,
+  Smartphone,
   Sun,
   Trash2,
+  TriangleAlert,
   Upload,
   User,
   Wallet,
 } from "lucide-react";
-import { PaymentMethod, UserRole, VerificationStatus, type SessionUser } from "@buildora/shared";
-import { changeEmail, changePassword, logoutUser, updateAccount, uploadImage } from "@/lib/api";
-import { smoothScrollToId } from "@/lib/smoothScroll";
+import {
+  PaymentMethod,
+  UserRole,
+  VerificationStatus,
+  type AccountSession,
+  type SessionUser,
+} from "@buildora/shared";
+import {
+  changeEmail,
+  changePassword,
+  listSessions,
+  revokeSessions,
+  updateAccount,
+  uploadImage,
+} from "@/lib/api";
 import { useSession } from "@/store/useSession";
 import { useTheme } from "@/store/useTheme";
-import { Navbar } from "@/components/landing/Navbar";
-import { Reveal } from "@/components/landing/Reveal";
-
-const inputClass =
-  "block w-full rounded-xl border border-stone-300/80 bg-white/70 px-4 py-2.5 text-sm text-stone-900 placeholder-stone-400 backdrop-blur transition outline-none focus:border-amber-500 focus:bg-white/90 focus:ring-2 focus:ring-amber-400/30 dark:border-white/15 dark:bg-white/5 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:bg-white/10";
-
-/** Small caps label, the way the settings mock-up letters its fields. */
-const labelClass =
-  "mb-1.5 block text-[0.68rem] font-bold tracking-[0.12em] text-stone-500 uppercase dark:text-slate-400";
-
-/** The eyebrow above each card title ("PROFILE", "BILLING", …). */
-const eyebrowClass =
-  "text-[0.68rem] font-bold tracking-[0.16em] text-stone-500 uppercase dark:text-slate-400";
-
-/** Liquid-glass surface, matching the navbar and auth cards. */
-const glassClass =
-  "relative overflow-hidden rounded-3xl border border-white/40 bg-white/30 shadow-2xl shadow-black/10 backdrop-blur-2xl backdrop-saturate-150 before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-40 before:bg-linear-to-b before:from-white/40 before:to-transparent before:content-[''] dark:border-white/15 dark:bg-white/10 dark:shadow-black/40 dark:before:from-white/15";
-
-const sectionClass = `${glassClass} scroll-mt-28 p-6 sm:p-8`;
-
-const primaryButtonClass =
-  "inline-flex items-center justify-center gap-2 rounded-full bg-amber-400 px-6 py-2.5 text-sm font-bold text-stone-950 shadow-lg transition hover:scale-[1.02] hover:bg-amber-300 disabled:scale-100 disabled:opacity-50";
-
-/** Quiet secondary action — "Discard", "Upload", the row buttons. */
-const ghostButtonClass =
-  "inline-flex items-center justify-center gap-2 rounded-full border border-stone-300/80 bg-white/60 px-5 py-2.5 text-sm font-bold text-stone-700 backdrop-blur transition hover:bg-white/90 disabled:opacity-40 dark:border-white/15 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10";
-
-/** Inset panel used for the photo row, the security rows and the theme tiles. */
-const innerPanelClass =
-  "rounded-2xl border border-white/50 bg-white/45 dark:border-white/10 dark:bg-white/5";
-
-const okClass =
-  "rounded-xl bg-emerald-100 px-4 py-2.5 text-sm font-medium text-emerald-800 dark:bg-emerald-400/15 dark:text-emerald-300";
-const errClass =
-  "rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-medium text-rose-800 dark:bg-rose-400/15 dark:text-rose-300";
+import { AccountShell, initialsOf, type NavGroup } from "@/components/account/AccountShell";
+import {
+  ActionRow,
+  Card,
+  EmptyState,
+  FieldRow,
+  List,
+  Meter,
+  Modal,
+  StatTile,
+  StatusPill,
+  Tabs,
+  ToastStack,
+  dangerButtonClass,
+  ghostButtonClass,
+  inputClass,
+  primaryButtonClass,
+  useToasts,
+} from "@/components/account/ui";
 
 const roleLabels: Record<string, string> = {
   LAND_OWNER: "Land owner",
@@ -87,10 +84,10 @@ const methodLabels: Record<PaymentMethod, string> = {
 };
 
 const verificationLabels: Record<VerificationStatus, string> = {
-  [VerificationStatus.PENDING_VERIFICATION]: "Not submitted yet",
-  [VerificationStatus.DOCUMENTS_SUBMITTED]: "Documents submitted",
+  [VerificationStatus.PENDING_VERIFICATION]: "Not submitted",
+  [VerificationStatus.DOCUMENTS_SUBMITTED]: "Submitted",
   [VerificationStatus.UNDER_REVIEW]: "Under review",
-  [VerificationStatus.APPROVED]: "Platform verified",
+  [VerificationStatus.APPROVED]: "Verified",
   [VerificationStatus.REJECTED]: "Needs attention",
 };
 
@@ -101,14 +98,7 @@ const PROFESSIONAL_ROLES: UserRole[] = [
   UserRole.SUPPLIER,
 ];
 
-/** Left rail entries — each one jumps to the card with the matching id. */
-const sections = [
-  { id: "profile", label: "Profile", Icon: User },
-  { id: "contact", label: "Contact", Icon: Phone },
-  { id: "security", label: "Security", Icon: ShieldCheck },
-  { id: "billing", label: "Billing", Icon: CreditCard },
-  { id: "appearance", label: "Appearance", Icon: Palette },
-];
+type SectionId = "profile" | "contact" | "security" | "billing" | "appearance";
 
 /** Everything is kept as strings; the API coerces and drops blanks. */
 function formFromUser(user: SessionUser) {
@@ -144,152 +134,109 @@ function formFromUser(user: SessionUser) {
 
 type FormState = ReturnType<typeof formFromUser>;
 
-/** "Monir Akib" → "MA", for when there's no profile photo. */
-function initialsOf(name: string): string {
-  return name
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((word) => word[0] ?? "")
-    .join("")
-    .toUpperCase();
-}
-
-/** Card shell: eyebrow + title + optional right-hand slot, on glass. */
-function Card({
-  id,
-  eyebrow,
-  title,
-  description,
-  action,
-  delay,
-  children,
-}: {
-  id: string;
-  eyebrow: string;
-  title: string;
-  description?: string;
-  /** Rendered top-right, opposite the title. */
-  action?: React.ReactNode;
-  delay?: number;
-  children: React.ReactNode;
-}) {
-  return (
-    <Reveal delay={delay}>
-      <section id={id} className={sectionClass}>
-        <div className="relative z-10">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className={eyebrowClass}>{eyebrow}</p>
-              <h2 className="mt-2 text-xl font-extrabold tracking-tight sm:text-2xl">{title}</h2>
-              {description && (
-                <p className="mt-1.5 text-sm text-stone-500 dark:text-slate-400">{description}</p>
-              )}
-            </div>
-            {action}
-          </div>
-          <div className="mt-6">{children}</div>
-        </div>
-      </section>
-    </Reveal>
-  );
-}
-
-/** One labelled field. `hint` is the grey "(optional)" note beside the label. */
-function Field({
-  htmlFor,
-  label,
-  hint,
-  className = "",
-  children,
-}: {
-  htmlFor: string;
-  label: string;
-  hint?: string;
-  className?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className={className}>
-      <label htmlFor={htmlFor} className={labelClass}>
-        {label}
-        {hint && (
-          <span className="ml-1.5 font-medium tracking-normal normal-case text-stone-400 dark:text-slate-500">
-            {hint}
-          </span>
-        )}
-      </label>
-      {children}
-    </div>
-  );
-}
-
 /**
- * A row in the security card: icon, title, sub-line, and an action on the
- * right — the list layout from the settings mock-up.
+ * The details that count towards a complete account, grouped by the section
+ * they're edited in. Only optional fields are listed — `name` is required at
+ * signup, so counting it would inflate every score by the same amount.
  */
-function SecurityRow({
-  Icon,
-  title,
-  sub,
-  actionLabel,
-  onAction,
-  danger,
-}: {
-  Icon: typeof Lock;
-  title: string;
-  sub: string;
-  actionLabel: string;
-  onAction: () => void;
-  danger?: boolean;
-}) {
-  return (
-    <div className="flex flex-wrap items-center gap-3 px-4 py-3.5">
-      <span
-        className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${
-          danger
-            ? "bg-rose-500/15 text-rose-600 dark:text-rose-400"
-            : "bg-amber-400/20 text-amber-700 dark:text-amber-300"
-        }`}
-      >
-        <Icon className="h-4 w-4" />
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-bold">{title}</p>
-        <p className="truncate text-xs text-stone-500 dark:text-slate-400">{sub}</p>
-      </div>
-      <button
-        type="button"
-        onClick={onAction}
-        className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-bold transition ${
-          danger
-            ? "text-rose-600 hover:bg-rose-500/10 dark:text-rose-400"
-            : "text-amber-700 hover:bg-amber-400/15 dark:text-amber-300"
-        }`}
-      >
-        {actionLabel}
-        <ChevronRight className="h-3.5 w-3.5" />
-      </button>
-    </div>
-  );
+const COMPLETENESS: Record<"profile" | "contact" | "billing", (keyof FormState)[]> = {
+  profile: ["avatarUrl", "nid", "company", "bio"],
+  contact: ["phone", "altPhone", "recoveryEmail"],
+  billing: ["billingName", "addressLine1", "city", "postcode", "country", "preferredMethod"],
+};
+
+/** How much of the account is filled in, overall and per section. */
+function completenessOf(form: FormState) {
+  const missing = { profile: 0, contact: 0, billing: 0 };
+  let filled = 0;
+  let total = 0;
+
+  for (const [section, fields] of Object.entries(COMPLETENESS)) {
+    for (const field of fields) {
+      total += 1;
+      if (form[field].trim()) filled += 1;
+      else missing[section as keyof typeof missing] += 1;
+    }
+  }
+
+  return { filled, total, missing, percent: total === 0 ? 0 : (filled / total) * 100 };
 }
 
 /**
- * Account settings — personal details, contact points, billing, security and
- * appearance, laid out as a settings console with a sticky section rail.
+ * Turns a User-Agent string into something a person recognises, e.g.
+ * "Chrome on Windows". Deliberately a handful of checks rather than a parsing
+ * library: it only has to be good enough to tell your own logins apart.
  *
- * Open to every role. This is deliberately *not* the profile: a professional's
- * credentials are edited in the verification editor, and a land owner's plot
- * details belong to the project brief they post.
+ * Order matters. Every browser on iOS is Safari underneath and says so in its
+ * User-Agent, so the iOS-specific markers (CriOS, FxiOS, EdgiOS, OPiOS) have to
+ * be tested before the plain Safari check or they all come out as "Safari".
+ * Chromium browsers that deliberately impersonate Chrome — Brave, Vivaldi —
+ * can't be told apart here, and show up as Chrome.
+ */
+function describeDevice(userAgent?: string): { name: string; Icon: LucideIcon } {
+  if (!userAgent) return { name: "Unknown device", Icon: Monitor };
+
+  const browser = /Edg\/|EdgiOS\//.test(userAgent)
+    ? "Edge"
+    : /OPR\/|OPiOS\//.test(userAgent)
+      ? "Opera"
+      : /Firefox\/|FxiOS\//.test(userAgent)
+        ? "Firefox"
+        : /Chrome\/|CriOS\//.test(userAgent)
+          ? "Chrome"
+          : /Safari\//.test(userAgent)
+            ? "Safari"
+            : "Browser";
+
+  const mobile = /Android|iPhone|iPad|Mobile/.test(userAgent);
+  const platform = /Windows/.test(userAgent)
+    ? "Windows"
+    : /iPhone|iPad|iPod/.test(userAgent)
+      ? "iOS"
+      : /Mac OS X/.test(userAgent)
+        ? "macOS"
+        : /Android/.test(userAgent)
+          ? "Android"
+          : /Linux/.test(userAgent)
+            ? "Linux"
+            : "another platform";
+
+  return { name: `${browser} on ${platform}`, Icon: mobile ? Smartphone : Laptop };
+}
+
+/** "3 minutes ago" from an ISO timestamp. */
+function timeAgo(iso: string): string {
+  const seconds = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
+  if (seconds < 60) return "just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes} minute${minutes === 1 ? "" : "s"} ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+  const days = Math.floor(hours / 24);
+  return `${days} day${days === 1 ? "" : "s"} ago`;
+}
+
+/**
+ * Account console — the settings for personal details, contact points,
+ * security, billing and appearance, laid out as a dashboard: a sidebar spine
+ * on the left, this account's standing across the top, and one section of
+ * editable lists at a time.
+ *
+ * Open to every role. This is deliberately *not* the public profile: a
+ * professional's credentials are edited in the verification editor, and a land
+ * owner's plot details belong to the project brief they post.
  */
 export default function AccountPage() {
   const router = useRouter();
-  const { user, token, setSession, clearSession } = useSession();
+  const { user, token, setSession } = useSession();
   const themeMode = useTheme((s) => s.mode);
   const setThemeMode = useTheme((s) => s.setMode);
+  const { toasts, pushToast, dismissToast } = useToasts();
+
+  const [section, setSection] = useState<SectionId>("profile");
+  const [billingTab, setBillingTab] = useState<"address" | "payout">("address");
 
   const [form, setForm] = useState<FormState | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
 
   // Profile photo upload (goes to Cloudinary through the API, same as the
@@ -297,25 +244,23 @@ export default function AccountPage() {
   const photoInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
 
-  // Which security panel is expanded — only one at a time, like the mock-up.
-  const [openPanel, setOpenPanel] = useState<"email" | "password" | null>(null);
-
-  // Rail highlight: the card currently nearest the top of the viewport.
-  const [activeSection, setActiveSection] = useState("profile");
-
-  // Email change (own form — it needs the password).
+  // Security dialogs — blocking, because each one has to be finished or cancelled.
+  const [dialog, setDialog] = useState<"email" | "password" | null>(null);
   const [emailForm, setEmailForm] = useState({ email: "", currentPassword: "" });
-  const [emailMsg, setEmailMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [emailBusy, setEmailBusy] = useState(false);
-
-  // Password change.
+  const [emailError, setEmailError] = useState<string | null>(null);
   const [pwForm, setPwForm] = useState({
     currentPassword: "",
     newPassword: "",
     confirmPassword: "",
   });
-  const [pwMsg, setPwMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [pwBusy, setPwBusy] = useState(false);
+  const [pwError, setPwError] = useState<string | null>(null);
+
+  // Active logins, plus which rows are ticked.
+  const [sessions, setSessions] = useState<AccountSession[] | null>(null);
+  const [selected, setSelected] = useState<string[]>([]);
+  const [revoking, setRevoking] = useState(false);
 
   // The session store hydrates from localStorage, so wait for mount before
   // trusting `user` (same pattern as the other authenticated pages).
@@ -333,75 +278,64 @@ export default function AccountPage() {
     setEmailForm((f) => (f.email ? f : { ...f, email: user.email }));
   }, [mounted, user, router]);
 
-  // Highlight the rail entry for whichever card is in view. The rootMargin
-  // ignores the top 120px (the fixed navbar) and the bottom 55%, so the
-  // "current" card is the topmost one in the reading area.
-  const ready = !!form && !!user;
-  useEffect(() => {
-    if (!ready) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((e) => e.isIntersecting)
-          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
-        if (visible) setActiveSection(visible.target.id);
-      },
-      { rootMargin: "-120px 0px -55% 0px" }
-    );
-    for (const s of sections) {
-      const el = document.getElementById(s.id);
-      if (el) observer.observe(el);
+  const loadSessions = useCallback(async () => {
+    if (!token) return;
+    try {
+      setSessions(await listSessions(token));
+    } catch {
+      // Not fatal — the rest of the console still works, so show an empty
+      // list rather than blocking the page on it.
+      setSessions([]);
     }
-    return () => observer.disconnect();
-  }, [ready]);
+  }, [token]);
+
+  useEffect(() => {
+    loadSessions();
+  }, [loadSessions]);
 
   const set =
     (field: keyof FormState) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-      setSaved(false);
       setForm((f) => (f ? { ...f, [field]: e.target.value } : f));
     };
 
   /** Same as `set`, for values that don't come from an input event. */
   function setValue(field: keyof FormState, value: string) {
-    setSaved(false);
     setForm((f) => (f ? { ...f, [field]: value } : f));
   }
 
   async function handlePhoto(file: File | undefined) {
     if (!file || !token) return;
     if (!file.type.startsWith("image/")) {
-      setError("Only image files can be used as a profile photo");
+      pushToast("Only image files can be used as a profile photo", "error");
       return;
     }
-    setError(null);
     setUploading(true);
     try {
       setValue("avatarUrl", await uploadImage(token, file));
+      pushToast("Photo uploaded — save to make it live");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload failed");
+      pushToast(err instanceof Error ? err.message : "Upload failed", "error");
     } finally {
       setUploading(false);
     }
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleSave() {
     if (!form || !token) return;
-    setError(null);
-    setSaved(false);
     setSaving(true);
     try {
       const updated = await updateAccount(token, form);
-      setSession(updated, token); // keep the navbar and the rest of the app in sync
-      setSaved(true);
+      setSession(updated, token); // keep the rest of the app in sync
+      pushToast("Account information saved.");
     } catch (err) {
-      setError(
+      pushToast(
         err instanceof TypeError
           ? "Can't reach the server. Please try again in a moment."
           : err instanceof Error
             ? err.message
-            : "Something went wrong"
+            : "Something went wrong",
+        "error"
       );
     } finally {
       setSaving(false);
@@ -411,18 +345,17 @@ export default function AccountPage() {
   async function handleEmail(e: React.FormEvent) {
     e.preventDefault();
     if (!token) return;
-    setEmailMsg(null);
+    setEmailError(null);
     setEmailBusy(true);
     try {
       const updated = await changeEmail(token, emailForm);
       setSession(updated, token);
       setEmailForm({ email: updated.email, currentPassword: "" });
-      setEmailMsg({ ok: true, text: "Email updated. Use it to sign in from now on." });
+      setDialog(null);
+      // The dialog covered the page while this ran, so confirm it afterwards.
+      pushToast("Email updated. Use it to sign in from now on.");
     } catch (err) {
-      setEmailMsg({
-        ok: false,
-        text: err instanceof Error ? err.message : "Couldn't change your email",
-      });
+      setEmailError(err instanceof Error ? err.message : "Couldn't change your email");
     } finally {
       setEmailBusy(false);
     }
@@ -431,876 +364,956 @@ export default function AccountPage() {
   async function handlePassword(e: React.FormEvent) {
     e.preventDefault();
     if (!token) return;
-    setPwMsg(null);
+    setPwError(null);
     setPwBusy(true);
     try {
       await changePassword(token, pwForm);
       setPwForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
-      setPwMsg({
-        ok: true,
-        text: "Password changed. Any other device you were signed in on has been signed out.",
-      });
+      setDialog(null);
+      pushToast("Password changed. Every other login has been signed out.");
+      loadSessions(); // those other logins are gone now
     } catch (err) {
-      setPwMsg({
-        ok: false,
-        text: err instanceof Error ? err.message : "Couldn't change your password",
-      });
+      setPwError(err instanceof Error ? err.message : "Couldn't change your password");
     } finally {
       setPwBusy(false);
     }
   }
 
-  // Revoke the session server-side, then leave for the landing page — the same
-  // hard navigation the navbar's Log out does.
-  function handleSignOut() {
-    if (token) logoutUser(token).catch(() => {});
-    clearSession();
-    window.location.assign("/");
+  /**
+   * Sign out the ticked logins. The rows disappear immediately rather than
+   * after the round trip — the request almost always succeeds, and waiting for
+   * it just makes the console feel slow. If it does fail, the rows come back
+   * and a toast says why.
+   */
+  async function handleRevokeSelected() {
+    if (!token || selected.length === 0 || !sessions) return;
+    const ids = selected;
+    const previous = sessions;
+
+    setSessions(previous.filter((s) => !ids.includes(s.id)));
+    setSelected([]);
+    setRevoking(true);
+    try {
+      await revokeSessions(token, ids);
+      pushToast(`Signed out ${ids.length} login${ids.length === 1 ? "" : "s"}.`);
+    } catch (err) {
+      setSessions(previous); // put them back — nothing actually changed
+      pushToast(err instanceof Error ? err.message : "Couldn't sign those logins out", "error");
+    } finally {
+      setRevoking(false);
+    }
   }
 
-  const isProfessional = !!user && PROFESSIONAL_ROLES.includes(user.role);
+  // Signing out lives in the navbar's account menu, on every page — so there's
+  // deliberately no sign-out handler here.
+
+  if (!mounted || !user || !form) {
+    return (
+      <div className="grid min-h-screen place-items-center">
+        <p className="text-sm text-stone-500 dark:text-slate-400">Loading your account…</p>
+      </div>
+    );
+  }
+
+  const isProfessional = PROFESSIONAL_ROLES.includes(user.role);
   // Bank fields only matter for a bank transfer; the wallet number only for
   // bKash/Nagad. Showing all of them at once is just noise.
-  const wantsBank = form?.preferredMethod === PaymentMethod.BANK;
+  const wantsBank = form.preferredMethod === PaymentMethod.BANK;
   const wantsWallet =
-    form?.preferredMethod === PaymentMethod.BKASH || form?.preferredMethod === PaymentMethod.NAGAD;
+    form.preferredMethod === PaymentMethod.BKASH || form.preferredMethod === PaymentMethod.NAGAD;
 
-  // "Has anything been typed since the last save?" — the saved form is rebuilt
-  // from the session user, so comparing the two objects answers it.
-  const dirty = !!form && !!user && JSON.stringify(form) !== JSON.stringify(formFromUser(user));
+  // "What's been typed since the last save?" — the saved form is rebuilt from
+  // the session user, so comparing the two field by field answers it, and the
+  // count is what the unsaved-changes bar reports.
+  const saved = formFromUser(user);
+  const changedFields = (Object.keys(form) as (keyof FormState)[]).filter(
+    (field) => form[field] !== saved[field]
+  );
+  const dirty = changedFields.length > 0;
+
+  const progress = completenessOf(form);
+  const otherSessions = sessions?.filter((s) => !s.current) ?? [];
+  const allOthersSelected = otherSessions.length > 0 && selected.length === otherSessions.length;
+
+  const navGroups: NavGroup[] = [
+    {
+      heading: "Account",
+      items: [
+        {
+          id: "profile",
+          label: "Profile",
+          icon: <User className="h-4.5 w-4.5" />,
+          badge: progress.missing.profile,
+        },
+        {
+          id: "contact",
+          label: "Contact",
+          icon: <Phone className="h-4.5 w-4.5" />,
+          badge: progress.missing.contact,
+        },
+        { id: "security", label: "Security", icon: <ShieldCheck className="h-4.5 w-4.5" /> },
+        {
+          id: "billing",
+          label: "Billing",
+          icon: <CreditCard className="h-4.5 w-4.5" />,
+          badge: progress.missing.billing,
+        },
+      ],
+    },
+    {
+      heading: "Preferences",
+      items: [{ id: "appearance", label: "Appearance", icon: <Palette className="h-4.5 w-4.5" /> }],
+    },
+  ];
+
+  const sectionTitles: Record<SectionId, { title: string; subtitle: string }> = {
+    profile: { title: "Profile", subtitle: "The details people see on Buildora" },
+    contact: { title: "Contact", subtitle: "For project updates, payments and permit notices" },
+    security: { title: "Security", subtitle: "How you sign in, and where you're signed in" },
+    billing: { title: "Billing", subtitle: "Where invoices go and how you're paid" },
+    appearance: { title: "Appearance", subtitle: "Saved in this browser" },
+  };
+
+  /** The nudge card at the foot of the sidebar — only when there's a real one. */
+  const notice =
+    isProfessional && user.verificationStatus !== VerificationStatus.APPROVED ? (
+      <Link
+        href="/profile/professional"
+        className="block rounded-2xl border border-amber-400/40 bg-amber-400/10 p-3 transition hover:bg-amber-400/20"
+      >
+        <p className="flex items-center gap-1.5 text-xs font-extrabold text-amber-800 dark:text-amber-200">
+          <BadgeCheck className="h-3.5 w-3.5" />
+          Get verified
+        </p>
+        <p className="mt-1 text-[0.7rem] leading-relaxed text-stone-600 dark:text-slate-400">
+          Verified professionals appear first in the directory. Finish your credentials to apply.
+        </p>
+      </Link>
+    ) : progress.filled < progress.total ? (
+      <div className="rounded-2xl border border-white/50 bg-white/60 p-3 dark:border-white/10 dark:bg-white/5">
+        <p className="text-xs font-extrabold">Almost there</p>
+        <p className="mt-1 text-[0.7rem] leading-relaxed text-stone-600 dark:text-slate-400">
+          {progress.total - progress.filled} more detail
+          {progress.total - progress.filled === 1 ? "" : "s"} and your account is complete.
+        </p>
+      </div>
+    ) : null;
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <Navbar />
+    <AccountShell
+      user={user}
+      avatarUrl={form.avatarUrl}
+      roleLabel={roleLabels[user.role] ?? user.role}
+      groups={navGroups}
+      active={section}
+      onSelect={(id) => setSection(id as SectionId)}
+      title={sectionTitles[section].title}
+      subtitle={sectionTitles[section].subtitle}
+      notice={notice}
+    >
+      {/* ============ What matters most, across the top ============ */}
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <StatTile
+          label="Profile completeness"
+          value={`${Math.round(progress.percent)}%`}
+          foot={`${progress.filled} of ${progress.total} details added`}
+        >
+          <Meter percent={progress.percent} label="Profile completeness" />
+        </StatTile>
 
-      {/* pt-28 clears the fixed navbar (top-4 + h-14) */}
-      <main className="flex-1 px-5 pt-28 pb-16 sm:px-8">
-        {!form || !user ? (
-          <p className="text-center text-sm text-stone-500 dark:text-slate-500">Loading…</p>
+        <StatTile
+          label="Active logins"
+          value={sessions === null ? "—" : `${sessions.length}`}
+          icon={<Monitor className="h-4 w-4" />}
+          foot={
+            sessions === null
+              ? "Loading…"
+              : sessions.length === 1
+                ? "This login only"
+                : `${otherSessions.length} other login${otherSessions.length === 1 ? "" : "s"}`
+          }
+        />
+
+        {isProfessional ? (
+          <StatTile
+            label="Verification"
+            value={verificationLabels[user.verificationStatus]}
+            icon={<Shield className="h-4 w-4" />}
+            foot={
+              user.verificationStatus === VerificationStatus.APPROVED ? (
+                <StatusPill tone="good" icon={<BadgeCheck className="h-3.5 w-3.5" />}>
+                  Platform verified
+                </StatusPill>
+              ) : user.verificationStatus === VerificationStatus.REJECTED ? (
+                <StatusPill tone="critical" icon={<TriangleAlert className="h-3.5 w-3.5" />}>
+                  Action needed
+                </StatusPill>
+              ) : (
+                <StatusPill tone="warning" icon={<Shield className="h-3.5 w-3.5" />}>
+                  {roleLabels[user.role] ?? user.role}
+                </StatusPill>
+              )
+            }
+          />
         ) : (
-          <div className="mx-auto grid w-full max-w-7xl gap-6 lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-8">
-            {/* ---- Section rail: a sidebar on desktop, a chip strip on mobile ---- */}
-            <aside className="lg:sticky lg:top-28 lg:self-start">
-              <nav className={`${glassClass} p-3`}>
-                <div className="relative z-10 flex gap-1 overflow-x-auto lg:flex-col lg:overflow-visible">
-                  {sections.map(({ id, label, Icon }) => (
-                    <a
-                      key={id}
-                      href={`#${id}`}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        smoothScrollToId(id);
-                      }}
-                      className={`flex shrink-0 items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
-                        activeSection === id
-                          ? "bg-amber-400/25 text-stone-900 dark:bg-amber-400/15 dark:text-amber-200"
-                          : "text-stone-600 hover:bg-white/50 hover:text-stone-900 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white"
+          <StatTile
+            label="Preferred payout"
+            value={
+              form.preferredMethod
+                ? methodLabels[form.preferredMethod as PaymentMethod]
+                : "Not set"
+            }
+            icon={<Wallet className="h-4 w-4" />}
+            foot={`Signed in as @${user.username}`}
+          />
+        )}
+      </div>
+
+      {/* ============ The section you picked in the sidebar ============ */}
+      <div className="mt-5 grid gap-4">
+        {section === "profile" && (
+          <>
+            <Card title="Profile photo" description="How you appear across the platform.">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                <span className="relative shrink-0">
+                  {form.avatarUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- Cloudinary-hosted
+                    <img
+                      src={form.avatarUrl}
+                      alt=""
+                      className="h-16 w-16 rounded-full object-cover"
+                    />
+                  ) : (
+                    <span className="grid h-16 w-16 place-items-center rounded-full bg-amber-400 text-xl font-extrabold text-stone-950">
+                      {initialsOf(user.name)}
+                    </span>
+                  )}
+                  <span className="absolute -right-1 -bottom-1 grid h-6 w-6 place-items-center rounded-full bg-stone-900 text-white dark:bg-white dark:text-stone-900">
+                    {uploading ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Camera className="h-3.5 w-3.5" />
+                    )}
+                  </span>
+                </span>
+
+                <p className="min-w-0 flex-1 text-xs text-stone-500 dark:text-slate-400">
+                  A clear, friendly photo helps clients and professionals recognise you. It goes
+                  live when you save.
+                </p>
+
+                <input
+                  ref={photoInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    e.target.value = ""; // allow re-picking the same file later
+                    handlePhoto(file);
+                  }}
+                />
+                <div className="flex shrink-0 gap-2">
+                  <button
+                    type="button"
+                    disabled={uploading}
+                    onClick={() => photoInputRef.current?.click()}
+                    className={ghostButtonClass}
+                  >
+                    <Upload className="h-3.5 w-3.5" />
+                    {uploading ? "Uploading…" : "Upload"}
+                  </button>
+                  {form.avatarUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setValue("avatarUrl", "")}
+                      className="inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-bold text-stone-500 transition hover:bg-rose-500/10 hover:text-rose-600 dark:text-slate-400 dark:hover:text-rose-400"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      Remove
+                    </button>
+                  )}
+                </div>
+              </div>
+            </Card>
+
+            <Card title="Personal details" description="Who you are on Buildora." bodyClassName="">
+              <List>
+                <FieldRow label="Username" hint="Permanent — chosen at signup" htmlFor="username">
+                  <input
+                    id="username"
+                    type="text"
+                    value={user.username}
+                    readOnly
+                    disabled
+                    className={`${inputClass} cursor-not-allowed opacity-60`}
+                  />
+                </FieldRow>
+                <FieldRow label="Full name" htmlFor="name">
+                  <input
+                    id="name"
+                    type="text"
+                    required
+                    minLength={2}
+                    autoComplete="name"
+                    value={form.name}
+                    onChange={set("name")}
+                    className={inputClass}
+                  />
+                </FieldRow>
+                <FieldRow label="NID number" hint="Used for verification" htmlFor="nid">
+                  <input
+                    id="nid"
+                    type="text"
+                    placeholder="10, 13 or 17 digits"
+                    value={form.nid}
+                    onChange={set("nid")}
+                    className={inputClass}
+                  />
+                </FieldRow>
+                <FieldRow label="Company" hint="Optional" htmlFor="company">
+                  <input
+                    id="company"
+                    type="text"
+                    placeholder="Firm or organisation"
+                    value={form.company}
+                    onChange={set("company")}
+                    className={inputClass}
+                  />
+                </FieldRow>
+                <FieldRow label="About you" hint="Optional · max 500 characters" htmlFor="bio">
+                  <textarea
+                    id="bio"
+                    rows={3}
+                    maxLength={500}
+                    placeholder="A few lines about yourself."
+                    value={form.bio}
+                    onChange={set("bio")}
+                    className={inputClass}
+                  />
+                </FieldRow>
+              </List>
+            </Card>
+
+            {isProfessional && (
+              <p className="text-xs text-stone-500 dark:text-slate-400">
+                Your public profile — credentials, portfolio and verification — is edited on{" "}
+                <Link
+                  href="/profile/professional"
+                  className="font-bold text-amber-600 dark:text-amber-400"
+                >
+                  your profile page
+                </Link>
+                .
+              </p>
+            )}
+          </>
+        )}
+
+        {section === "contact" && (
+          <Card
+            title="Where we reach you"
+            description="For project updates, payments, and permit notices."
+            bodyClassName=""
+          >
+            <List>
+              <FieldRow label="Primary phone" htmlFor="phone">
+                <div className="relative">
+                  <Phone className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-stone-400 dark:text-slate-500" />
+                  <input
+                    id="phone"
+                    type="tel"
+                    autoComplete="tel"
+                    placeholder="01XXXXXXXXX"
+                    value={form.phone}
+                    onChange={set("phone")}
+                    className={`${inputClass} pl-9`}
+                  />
+                </div>
+              </FieldRow>
+              <FieldRow label="Alternate phone" hint="Office or site contact" htmlFor="altPhone">
+                <div className="relative">
+                  <Phone className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-stone-400 dark:text-slate-500" />
+                  <input
+                    id="altPhone"
+                    type="tel"
+                    placeholder="Optional"
+                    value={form.altPhone}
+                    onChange={set("altPhone")}
+                    className={`${inputClass} pl-9`}
+                  />
+                </div>
+              </FieldRow>
+              <FieldRow
+                label="Recovery email"
+                hint="Receipts and account recovery"
+                htmlFor="recoveryEmail"
+              >
+                <div className="relative">
+                  <AtSign className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-stone-400 dark:text-slate-500" />
+                  <input
+                    id="recoveryEmail"
+                    type="email"
+                    placeholder="another@example.com"
+                    value={form.recoveryEmail}
+                    onChange={set("recoveryEmail")}
+                    className={`${inputClass} pl-9`}
+                  />
+                </div>
+              </FieldRow>
+            </List>
+          </Card>
+        )}
+
+        {section === "security" && (
+          <>
+            <Card
+              title="Sign-in"
+              description="The address you sign in with, and the password that guards it."
+              bodyClassName=""
+              action={
+                <StatusPill tone="good" icon={<ShieldCheck className="h-3.5 w-3.5" />}>
+                  Protected
+                </StatusPill>
+              }
+            >
+              <List>
+                <ActionRow
+                  icon={<AtSign className="h-4 w-4" />}
+                  title="Login email"
+                  sub={user.email}
+                  actionLabel="Change"
+                  onAction={() => {
+                    setEmailError(null);
+                    setDialog("email");
+                  }}
+                />
+                <ActionRow
+                  icon={<Lock className="h-4 w-4" />}
+                  title="Password"
+                  sub="Changing it signs you out of every other login"
+                  actionLabel="Change"
+                  onAction={() => {
+                    setPwError(null);
+                    setDialog("password");
+                  }}
+                />
+              </List>
+            </Card>
+
+            {/* Active logins — a list you can act on, not just read. Ticking
+                rows reveals the bulk action, so the button only exists when
+                there's something for it to do.
+
+                Called "logins" rather than "devices" on purpose: a row is one
+                sign-in, and nothing here fingerprints the machine it came
+                from, so the same browser signing in twice is honestly two
+                rows rather than one device we'd be guessing at. */}
+            <Card
+              title="Active logins"
+              description="Everywhere your account is currently signed in. Each sign-in is its own entry, so one browser can appear more than once."
+              bodyClassName=""
+              action={
+                selected.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={handleRevokeSelected}
+                    disabled={revoking}
+                    className={dangerButtonClass}
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Sign out {selected.length} login{selected.length === 1 ? "" : "s"}
+                  </button>
+                ) : undefined
+              }
+            >
+              {sessions === null ? (
+                <p className="px-5 py-6 text-sm text-stone-500 dark:text-slate-400">
+                  Loading your logins…
+                </p>
+              ) : sessions.length === 0 ? (
+                <EmptyState
+                  icon={<Monitor className="h-5 w-5" />}
+                  title="Nothing to show"
+                  sub="We couldn't load your active logins just now. Refresh to try again."
+                />
+              ) : (
+                <List>
+                  {/* Select-all sits in the list header, where the tick column is */}
+                  {otherSessions.length > 1 && (
+                    <label className="flex cursor-pointer items-center gap-3 bg-stone-900/2 px-4 py-2 text-xs font-bold text-stone-500 sm:px-5 dark:bg-white/2 dark:text-slate-400">
+                      <input
+                        type="checkbox"
+                        checked={allOthersSelected}
+                        onChange={(e) =>
+                          setSelected(e.target.checked ? otherSessions.map((s) => s.id) : [])
+                        }
+                        className="h-4 w-4 rounded border-stone-300 accent-amber-500"
+                      />
+                      Select every other login
+                    </label>
+                  )}
+
+                  {sessions.map((item) => {
+                    const { name, Icon } = describeDevice(item.userAgent);
+                    const isSelected = selected.includes(item.id);
+                    return (
+                      <div
+                        key={item.id}
+                        className={`flex items-center gap-3 px-4 py-3 transition sm:px-5 ${
+                          isSelected ? "bg-amber-400/10" : ""
+                        }`}
+                      >
+                        {item.current ? (
+                          // No tick: you can't sign this one out from here —
+                          // that's what the Sign out button is for.
+                          <span className="h-4 w-4 shrink-0" />
+                        ) : (
+                          <input
+                            type="checkbox"
+                            aria-label={`Select login from ${name}`}
+                            checked={isSelected}
+                            onChange={(e) =>
+                              setSelected((current) =>
+                                e.target.checked
+                                  ? [...current, item.id]
+                                  : current.filter((id) => id !== item.id)
+                              )
+                            }
+                            className="h-4 w-4 shrink-0 rounded border-stone-300 accent-amber-500"
+                          />
+                        )}
+                        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-stone-900/5 text-stone-600 dark:bg-white/10 dark:text-slate-300">
+                          <Icon className="h-4 w-4" />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="flex items-center gap-2 text-sm font-bold">
+                            <span className="truncate">{name}</span>
+                            {item.current && (
+                              <span className="shrink-0 rounded-full bg-emerald-400/15 px-2 py-0.5 text-[0.62rem] font-extrabold text-emerald-700 dark:text-emerald-300">
+                                This login
+                              </span>
+                            )}
+                          </p>
+                          <p className="truncate text-xs text-stone-500 dark:text-slate-400">
+                            Last used {timeAgo(item.lastSeenAt)} · signed in{" "}
+                            {timeAgo(item.createdAt)}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </List>
+              )}
+            </Card>
+          </>
+        )}
+
+        {section === "billing" && (
+          <Card
+            title="Billing"
+            description="Used to pre-fill escrow deposits and payouts. We never store card numbers."
+            bodyClassName=""
+            action={
+              <Tabs
+                tabs={[
+                  { id: "address" as const, label: "Address" },
+                  { id: "payout" as const, label: "Payout method" },
+                ]}
+                active={billingTab}
+                onChange={setBillingTab}
+              />
+            }
+          >
+            {billingTab === "address" ? (
+              <List>
+                <FieldRow
+                  label="Billed to"
+                  hint="If different from your name"
+                  htmlFor="billingName"
+                >
+                  <input
+                    id="billingName"
+                    type="text"
+                    value={form.billingName}
+                    onChange={set("billingName")}
+                    className={inputClass}
+                  />
+                </FieldRow>
+                <FieldRow label="Address" htmlFor="addressLine1">
+                  <div className="relative">
+                    <MapPin className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-stone-400 dark:text-slate-500" />
+                    <input
+                      id="addressLine1"
+                      type="text"
+                      autoComplete="address-line1"
+                      placeholder="House, road"
+                      value={form.addressLine1}
+                      onChange={set("addressLine1")}
+                      className={`${inputClass} pl-9`}
+                    />
+                  </div>
+                </FieldRow>
+                <FieldRow label="Address line 2" hint="Optional" htmlFor="addressLine2">
+                  <input
+                    id="addressLine2"
+                    type="text"
+                    autoComplete="address-line2"
+                    placeholder="Area, thana"
+                    value={form.addressLine2}
+                    onChange={set("addressLine2")}
+                    className={inputClass}
+                  />
+                </FieldRow>
+                <FieldRow label="City / district" htmlFor="city">
+                  <input
+                    id="city"
+                    type="text"
+                    placeholder="Dhaka"
+                    value={form.city}
+                    onChange={set("city")}
+                    className={inputClass}
+                  />
+                </FieldRow>
+                <FieldRow label="Post code" htmlFor="postcode">
+                  <input
+                    id="postcode"
+                    type="text"
+                    placeholder="1207"
+                    value={form.postcode}
+                    onChange={set("postcode")}
+                    className={inputClass}
+                  />
+                </FieldRow>
+                <FieldRow label="Country" htmlFor="country">
+                  <input
+                    id="country"
+                    type="text"
+                    placeholder="Bangladesh"
+                    value={form.country}
+                    onChange={set("country")}
+                    className={inputClass}
+                  />
+                </FieldRow>
+                <FieldRow label="TIN" hint="Optional" htmlFor="tin">
+                  <input
+                    id="tin"
+                    type="text"
+                    value={form.tin}
+                    onChange={set("tin")}
+                    className={inputClass}
+                  />
+                </FieldRow>
+              </List>
+            ) : (
+              <div className="p-4 sm:p-5">
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {[
+                    { value: PaymentMethod.BKASH, label: "bKash", Icon: Wallet },
+                    { value: PaymentMethod.NAGAD, label: "Nagad", Icon: Wallet },
+                    { value: PaymentMethod.BANK, label: "Bank transfer", Icon: Landmark },
+                    { value: "", label: "No preference", Icon: Minus },
+                  ].map(({ value, label, Icon }) => (
+                    <button
+                      key={value || "none"}
+                      type="button"
+                      onClick={() => setValue("preferredMethod", value)}
+                      aria-pressed={form.preferredMethod === value}
+                      className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left text-sm font-bold transition ${
+                        form.preferredMethod === value
+                          ? "border-amber-400 bg-amber-400/15 text-stone-900 dark:text-amber-100"
+                          : "border-stone-300/70 bg-white/50 text-stone-600 hover:bg-white dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10"
                       }`}
                     >
-                      <Icon className="h-4 w-4" />
-                      {label}
-                    </a>
+                      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-stone-900/5 dark:bg-white/10">
+                        <Icon className="h-4 w-4" />
+                      </span>
+                      <span className="min-w-0 flex-1 truncate">{label}</span>
+                      {form.preferredMethod === value && (
+                        <Check className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-300" />
+                      )}
+                    </button>
                   ))}
                 </div>
 
-                {/* Who's signed in — mirrors the workspace chip in the mock-up */}
-                <div className="relative z-10 mt-3 hidden border-t border-black/10 pt-3 lg:block dark:border-white/15">
-                  <Link
-                    href="/dashboard"
-                    className="flex items-center gap-2.5 rounded-xl px-2 py-2 transition hover:bg-white/50 dark:hover:bg-white/10"
-                  >
-                    {form.avatarUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element -- Cloudinary-hosted
-                      <img
-                        src={form.avatarUrl}
-                        alt=""
-                        className="h-8 w-8 rounded-full object-cover"
-                      />
-                    ) : (
-                      <span className="grid h-8 w-8 place-items-center rounded-full bg-amber-400 text-xs font-extrabold text-stone-950">
-                        {initialsOf(user.name)}
-                      </span>
-                    )}
-                    <span className="min-w-0">
-                      <span className="block truncate text-xs font-extrabold">{user.name}</span>
-                      <span className="block truncate text-[0.7rem] text-stone-500 dark:text-slate-400">
-                        {roleLabels[user.role] ?? user.role}
-                      </span>
-                    </span>
-                  </Link>
-                </div>
-              </nav>
-            </aside>
-
-            {/* ---- Content column ---- */}
-            <div>
-              <header>
-                <p className={eyebrowClass}>
-                  Settings <span className="mx-1 text-stone-400 dark:text-slate-600">/</span>{" "}
-                  Account
-                </p>
-                <h1 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">
-                  Your account, finely tuned.
-                </h1>
-                <p className="mt-2 text-sm text-stone-500 dark:text-slate-400">
-                  {user.email} · {roleLabels[user.role] ?? user.role}
-                </p>
-              </header>
-
-              {isProfessional && (
-                <p className="mt-5 rounded-2xl border border-white/40 bg-white/40 px-4 py-3 text-sm text-stone-600 backdrop-blur dark:border-white/10 dark:bg-white/5 dark:text-slate-400">
-                  These are your account settings. Your public profile — credentials, portfolio and
-                  verification — is edited on{" "}
-                  <Link
-                    href="/profile/professional"
-                    className="font-bold text-amber-600 dark:text-amber-400"
-                  >
-                    your profile page
-                  </Link>
-                  .
-                </p>
-              )}
-
-              {/* Wide screens split the settings in two: a main editing column
-                  and a narrower side stack. Below xl everything stacks in
-                  reading order, so nothing is lost on a phone. */}
-              <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_21rem] xl:items-start">
-                {/* ================= Main column ================= */}
-                <div className="flex flex-col gap-6">
-                  {/* ---- Personal details + contact + billing (one form, one save) ---- */}
-                  <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-                    <Card
-                      id="profile"
-                      eyebrow="Profile"
-                      title="The details people see"
-                      description="Who you are on Buildora."
-                      action={
-                        saved ? (
-                          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-emerald-400/15 px-3 py-1 text-xs font-bold text-emerald-700 dark:text-emerald-300">
-                            <Check className="h-3.5 w-3.5" /> Saved
-                          </span>
-                        ) : undefined
-                      }
+                {/* Only the fields the chosen method actually needs. */}
+                {wantsWallet && (
+                  <div className="mt-4 max-w-sm">
+                    <label
+                      htmlFor="mobileWalletNumber"
+                      className="mb-1.5 block text-sm font-semibold"
                     >
-                      {/* Profile photo */}
-                      <div
-                        className={`${innerPanelClass} flex flex-col gap-4 p-4 sm:flex-row sm:items-center`}
-                      >
-                        <span className="relative shrink-0">
-                          {form.avatarUrl ? (
-                            // eslint-disable-next-line @next/next/no-img-element -- Cloudinary-hosted
-                            <img
-                              src={form.avatarUrl}
-                              alt=""
-                              className="h-16 w-16 rounded-full object-cover"
-                            />
-                          ) : (
-                            <span className="grid h-16 w-16 place-items-center rounded-full bg-amber-400 text-xl font-extrabold text-stone-950">
-                              {initialsOf(user.name)}
-                            </span>
-                          )}
-                          <span className="absolute -right-1 -bottom-1 grid h-6 w-6 place-items-center rounded-full bg-stone-900 text-white dark:bg-white dark:text-stone-900">
-                            {uploading ? (
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            ) : (
-                              <Camera className="h-3.5 w-3.5" />
-                            )}
-                          </span>
-                        </span>
+                      {methodLabels[form.preferredMethod as PaymentMethod]} account number
+                    </label>
+                    <div className="relative">
+                      <Wallet className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-stone-400 dark:text-slate-500" />
+                      <input
+                        id="mobileWalletNumber"
+                        type="tel"
+                        placeholder="01XXXXXXXXX"
+                        value={form.mobileWalletNumber}
+                        onChange={set("mobileWalletNumber")}
+                        className={`${inputClass} pl-9`}
+                      />
+                    </div>
+                  </div>
+                )}
 
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-bold">Profile photo</p>
-                          <p className="mt-0.5 text-xs text-stone-500 dark:text-slate-400">
-                            A clear, friendly photo helps clients and professionals recognise you.
-                            It goes live when you save.
-                          </p>
-                        </div>
-
+                {wantsBank && (
+                  <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                    {(
+                      [
+                        ["bankAccountName", "Account name", ""],
+                        ["bankAccountNumber", "Account number", ""],
+                        ["bankName", "Bank", "e.g. BRAC Bank"],
+                        ["bankBranch", "Branch", ""],
+                      ] as const
+                    ).map(([field, label, placeholder]) => (
+                      <div key={field}>
+                        <label htmlFor={field} className="mb-1.5 block text-sm font-semibold">
+                          {label}
+                        </label>
                         <input
-                          ref={photoInputRef}
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            e.target.value = ""; // allow re-picking the same file later
-                            handlePhoto(file);
-                          }}
+                          id={field}
+                          type="text"
+                          placeholder={placeholder}
+                          value={form[field]}
+                          onChange={set(field)}
+                          className={inputClass}
                         />
-                        <div className="flex shrink-0 gap-2">
-                          <button
-                            type="button"
-                            disabled={uploading}
-                            onClick={() => photoInputRef.current?.click()}
-                            className={`${ghostButtonClass} px-4 py-2 text-xs`}
-                          >
-                            <Upload className="h-3.5 w-3.5" />
-                            {uploading ? "Uploading…" : "Upload"}
-                          </button>
-                          {form.avatarUrl && (
-                            <button
-                              type="button"
-                              onClick={() => setValue("avatarUrl", "")}
-                              className="inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-bold text-stone-500 transition hover:bg-rose-500/10 hover:text-rose-600 dark:text-slate-400 dark:hover:text-rose-400"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                              Remove
-                            </button>
-                          )}
-                        </div>
                       </div>
+                    ))}
+                  </div>
+                )}
 
-                      <div className="mt-5 grid gap-4 sm:grid-cols-2">
-                        <Field
-                          htmlFor="username"
-                          label="Username"
-                          hint="(permanent)"
-                          className="sm:col-span-2"
-                        >
-                          <input
-                            id="username"
-                            type="text"
-                            value={user.username}
-                            readOnly
-                            disabled
-                            className={`${inputClass} cursor-not-allowed opacity-70`}
-                          />
-                        </Field>
-                        <Field htmlFor="name" label="Full name">
-                          <input
-                            id="name"
-                            type="text"
-                            required
-                            minLength={2}
-                            autoComplete="name"
-                            value={form.name}
-                            onChange={set("name")}
-                            className={inputClass}
-                          />
-                        </Field>
-                        <Field htmlFor="nid" label="NID number" hint="(for verification)">
-                          <input
-                            id="nid"
-                            type="text"
-                            placeholder="10, 13 or 17 digits"
-                            value={form.nid}
-                            onChange={set("nid")}
-                            className={inputClass}
-                          />
-                        </Field>
-                        <Field
-                          htmlFor="company"
-                          label="Company / organisation"
-                          hint="(optional)"
-                          className="sm:col-span-2"
-                        >
-                          <input
-                            id="company"
-                            type="text"
-                            value={form.company}
-                            onChange={set("company")}
-                            className={inputClass}
-                          />
-                        </Field>
-                        <Field
-                          htmlFor="bio"
-                          label="About you"
-                          hint="(optional)"
-                          className="sm:col-span-2"
-                        >
-                          <textarea
-                            id="bio"
-                            rows={3}
-                            maxLength={500}
-                            placeholder="A few lines about yourself."
-                            value={form.bio}
-                            onChange={set("bio")}
-                            className={inputClass}
-                          />
-                        </Field>
-                      </div>
-                    </Card>
-
-                    <Card
-                      id="contact"
-                      eyebrow="Contact"
-                      title="Where we reach you"
-                      description="For project updates, payments, and permit notices."
-                      delay={60}
-                    >
-                      <div className="grid gap-4 sm:grid-cols-2">
-                        <Field htmlFor="phone" label="Primary phone">
-                          <div className="relative">
-                            <Phone className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-stone-400 dark:text-slate-500" />
-                            <input
-                              id="phone"
-                              type="tel"
-                              autoComplete="tel"
-                              placeholder="01XXXXXXXXX"
-                              value={form.phone}
-                              onChange={set("phone")}
-                              className={`${inputClass} pl-10`}
-                            />
-                          </div>
-                        </Field>
-                        <Field htmlFor="altPhone" label="Alternate phone" hint="(optional)">
-                          <div className="relative">
-                            <Phone className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-stone-400 dark:text-slate-500" />
-                            <input
-                              id="altPhone"
-                              type="tel"
-                              placeholder="Office or site contact"
-                              value={form.altPhone}
-                              onChange={set("altPhone")}
-                              className={`${inputClass} pl-10`}
-                            />
-                          </div>
-                        </Field>
-                        <Field
-                          htmlFor="recoveryEmail"
-                          label="Recovery email"
-                          hint="(receipts and account recovery)"
-                          className="sm:col-span-2"
-                        >
-                          <div className="relative">
-                            <Mail className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-stone-400 dark:text-slate-500" />
-                            <input
-                              id="recoveryEmail"
-                              type="email"
-                              placeholder="another@example.com"
-                              value={form.recoveryEmail}
-                              onChange={set("recoveryEmail")}
-                              className={`${inputClass} pl-10`}
-                            />
-                          </div>
-                        </Field>
-                      </div>
-                    </Card>
-
-                    <Card
-                      id="billing"
-                      eyebrow="Billing"
-                      title="Where invoices go"
-                      description="Used to pre-fill escrow deposits and payouts. We never store card numbers."
-                      delay={60}
-                    >
-                      <div className="grid gap-4 sm:grid-cols-2">
-                        <Field
-                          htmlFor="billingName"
-                          label="Billed to"
-                          hint="(if different from your name)"
-                          className="sm:col-span-2"
-                        >
-                          <input
-                            id="billingName"
-                            type="text"
-                            value={form.billingName}
-                            onChange={set("billingName")}
-                            className={inputClass}
-                          />
-                        </Field>
-                        <Field htmlFor="addressLine1" label="Address" className="sm:col-span-2">
-                          <div className="relative">
-                            <MapPin className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-stone-400 dark:text-slate-500" />
-                            <input
-                              id="addressLine1"
-                              type="text"
-                              autoComplete="address-line1"
-                              placeholder="House, road"
-                              value={form.addressLine1}
-                              onChange={set("addressLine1")}
-                              className={`${inputClass} pl-10`}
-                            />
-                          </div>
-                        </Field>
-                        <Field
-                          htmlFor="addressLine2"
-                          label="Address line 2"
-                          hint="(optional)"
-                          className="sm:col-span-2"
-                        >
-                          <input
-                            id="addressLine2"
-                            type="text"
-                            autoComplete="address-line2"
-                            placeholder="Area, thana"
-                            value={form.addressLine2}
-                            onChange={set("addressLine2")}
-                            className={inputClass}
-                          />
-                        </Field>
-                        <Field htmlFor="city" label="City / district">
-                          <input
-                            id="city"
-                            type="text"
-                            placeholder="Dhaka"
-                            value={form.city}
-                            onChange={set("city")}
-                            className={inputClass}
-                          />
-                        </Field>
-                        <Field htmlFor="postcode" label="Post code">
-                          <input
-                            id="postcode"
-                            type="text"
-                            placeholder="1207"
-                            value={form.postcode}
-                            onChange={set("postcode")}
-                            className={inputClass}
-                          />
-                        </Field>
-                        <Field htmlFor="country" label="Country">
-                          <input
-                            id="country"
-                            type="text"
-                            placeholder="Bangladesh"
-                            value={form.country}
-                            onChange={set("country")}
-                            className={inputClass}
-                          />
-                        </Field>
-                        <Field htmlFor="tin" label="TIN" hint="(optional)">
-                          <input
-                            id="tin"
-                            type="text"
-                            value={form.tin}
-                            onChange={set("tin")}
-                            className={inputClass}
-                          />
-                        </Field>
-                      </div>
-                    </Card>
-
-                    {error && <p className={errClass}>{error}</p>}
-
-                    {/* Save bar — sticks to the bottom of the viewport while you
-                    work through the cards, so Save is never off-screen.
-                    Deliberately outside <Reveal>: its transform would break
-                    `sticky`. */}
-                    <div
-                      className={`${glassClass} sticky bottom-4 z-20 flex flex-wrap items-center justify-between gap-3 px-4 py-3`}
-                    >
-                      <p className="relative z-10 text-sm font-semibold text-stone-500 dark:text-slate-400">
-                        {dirty
-                          ? "You have unsaved changes"
-                          : saved
-                            ? "Account information saved."
-                            : "Everything is up to date"}
-                      </p>
-                      <div className="relative z-10 flex gap-2">
-                        <button
-                          type="button"
-                          disabled={!dirty || saving}
-                          onClick={() => {
-                            setForm(formFromUser(user));
-                            setError(null);
-                            setSaved(false);
-                          }}
-                          className={ghostButtonClass}
-                        >
-                          Discard
-                        </button>
-                        <button
-                          type="submit"
-                          disabled={saving || !dirty}
-                          className={primaryButtonClass}
-                        >
-                          {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-                          {saving ? "Saving…" : "Save changes"}
-                        </button>
-                      </div>
-                    </div>
-                  </form>
-
-                  {/* ---- Sign-in & security ---- */}
-                  <Card
-                    id="security"
-                    eyebrow="Sign-in & security"
-                    title="Protected by you"
-                    description="The address you sign in with, and the password that guards it."
-                    action={
-                      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-emerald-400/15 text-emerald-600 dark:text-emerald-300">
-                        <ShieldCheck className="h-4.5 w-4.5" />
-                      </span>
-                    }
-                  >
-                    <div
-                      className={`${innerPanelClass} divide-y divide-black/5 dark:divide-white/10`}
-                    >
-                      <SecurityRow
-                        Icon={AtSign}
-                        title="Login email"
-                        sub={user.email}
-                        actionLabel={openPanel === "email" ? "Close" : "Update"}
-                        onAction={() => setOpenPanel(openPanel === "email" ? null : "email")}
-                      />
-                      {openPanel === "email" && (
-                        <form onSubmit={handleEmail} className="flex flex-col gap-4 p-4">
-                          <p className="text-xs text-stone-500 dark:text-slate-400">
-                            This is the address you sign in with. Changing it needs your password.
-                          </p>
-                          <Field htmlFor="loginEmail" label="New email address">
-                            <input
-                              id="loginEmail"
-                              type="email"
-                              required
-                              autoComplete="email"
-                              value={emailForm.email}
-                              onChange={(e) => {
-                                setEmailMsg(null);
-                                setEmailForm((f) => ({ ...f, email: e.target.value }));
-                              }}
-                              className={inputClass}
-                            />
-                          </Field>
-                          <Field htmlFor="emailPassword" label="Current password">
-                            <input
-                              id="emailPassword"
-                              type="password"
-                              required
-                              autoComplete="current-password"
-                              value={emailForm.currentPassword}
-                              onChange={(e) => {
-                                setEmailMsg(null);
-                                setEmailForm((f) => ({ ...f, currentPassword: e.target.value }));
-                              }}
-                              className={inputClass}
-                            />
-                          </Field>
-                          {emailMsg && (
-                            <p className={emailMsg.ok ? okClass : errClass}>{emailMsg.text}</p>
-                          )}
-                          <button
-                            type="submit"
-                            disabled={emailBusy}
-                            className={`${primaryButtonClass} self-start`}
-                          >
-                            {emailBusy ? "Updating…" : "Update email"}
-                          </button>
-                        </form>
-                      )}
-
-                      <SecurityRow
-                        Icon={Lock}
-                        title="Password"
-                        sub="Changing it signs you out on every other device"
-                        actionLabel={openPanel === "password" ? "Close" : "Update"}
-                        onAction={() => setOpenPanel(openPanel === "password" ? null : "password")}
-                      />
-                      {openPanel === "password" && (
-                        <form onSubmit={handlePassword} className="flex flex-col gap-4 p-4">
-                          <Field htmlFor="currentPassword" label="Current password">
-                            <input
-                              id="currentPassword"
-                              type="password"
-                              required
-                              autoComplete="current-password"
-                              value={pwForm.currentPassword}
-                              onChange={(e) => {
-                                setPwMsg(null);
-                                setPwForm((f) => ({ ...f, currentPassword: e.target.value }));
-                              }}
-                              className={inputClass}
-                            />
-                          </Field>
-                          <div className="grid gap-4 sm:grid-cols-2">
-                            <Field htmlFor="newPassword" label="New password">
-                              <input
-                                id="newPassword"
-                                type="password"
-                                required
-                                minLength={8}
-                                autoComplete="new-password"
-                                placeholder="At least 8 characters"
-                                value={pwForm.newPassword}
-                                onChange={(e) => {
-                                  setPwMsg(null);
-                                  setPwForm((f) => ({ ...f, newPassword: e.target.value }));
-                                }}
-                                className={inputClass}
-                              />
-                            </Field>
-                            <Field htmlFor="confirmPassword" label="Confirm new password">
-                              <input
-                                id="confirmPassword"
-                                type="password"
-                                required
-                                minLength={8}
-                                autoComplete="new-password"
-                                value={pwForm.confirmPassword}
-                                onChange={(e) => {
-                                  setPwMsg(null);
-                                  setPwForm((f) => ({ ...f, confirmPassword: e.target.value }));
-                                }}
-                                className={inputClass}
-                              />
-                            </Field>
-                          </div>
-                          {pwMsg && <p className={pwMsg.ok ? okClass : errClass}>{pwMsg.text}</p>}
-                          <button
-                            type="submit"
-                            disabled={pwBusy}
-                            className={`${primaryButtonClass} self-start`}
-                          >
-                            {pwBusy ? "Changing…" : "Change password"}
-                          </button>
-                        </form>
-                      )}
-                    </div>
-                  </Card>
-                </div>
-
-                {/* ================= Side column ================= */}
-                <div className="flex flex-col gap-6">
-                  {/* ---- Role card: the dark "plan" panel from the mock-up, but
-                        carrying real account standing ---- */}
-                  <Reveal>
-                    <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-stone-950 p-6 text-white shadow-2xl shadow-black/30 sm:p-8">
-                      {/* Warm glow behind the top-right corner */}
-                      <span
-                        aria-hidden
-                        className="pointer-events-none absolute -top-24 -right-16 h-56 w-56 rounded-full bg-amber-400/25 blur-3xl"
-                      />
-                      <div className="relative z-10 flex flex-wrap items-start justify-between gap-4">
-                        <div>
-                          <p className="text-[0.68rem] font-bold tracking-[0.16em] text-white/50 uppercase">
-                            Your role on Buildora
-                          </p>
-                          <h2 className="mt-2 text-2xl font-extrabold tracking-tight">
-                            {roleLabels[user.role] ?? user.role}
-                          </h2>
-                          <p className="mt-1.5 text-sm text-white/60">
-                            Signed in as @{user.username}
-                          </p>
-                        </div>
-                        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-white/10">
-                          <IdCard className="h-5 w-5 text-amber-300" />
-                        </span>
-                      </div>
-
-                      {/* Verification standing only means something for the
-                        professional roles — land owners never submit documents. */}
-                      {isProfessional && (
-                        <div className="relative z-10 mt-6 flex flex-wrap items-center gap-3">
-                          <span
-                            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${
-                              user.verificationStatus === VerificationStatus.APPROVED
-                                ? "bg-emerald-400/20 text-emerald-300"
-                                : user.verificationStatus === VerificationStatus.REJECTED
-                                  ? "bg-rose-400/20 text-rose-300"
-                                  : "bg-amber-400/20 text-amber-200"
-                            }`}
-                          >
-                            <BadgeCheck className="h-3.5 w-3.5" />
-                            {verificationLabels[user.verificationStatus]}
-                          </span>
-                        </div>
-                      )}
-
-                      <Link
-                        href={
-                          isProfessional
-                            ? "/profile/professional"
-                            : user.role === UserRole.ADMIN
-                              ? "/admin"
-                              : "/projects/new"
-                        }
-                        className="relative z-10 mt-6 flex items-center justify-between gap-3 rounded-2xl bg-white/10 px-4 py-3 text-sm font-bold transition hover:bg-white/15"
-                      >
-                        <span className="inline-flex items-center gap-2">
-                          {isProfessional ? (
-                            <>
-                              <PenLine className="h-4 w-4 text-amber-300" />
-                              Manage your public profile
-                            </>
-                          ) : user.role === UserRole.ADMIN ? (
-                            <>
-                              <ShieldCheck className="h-4 w-4 text-amber-300" />
-                              Open the admin console
-                            </>
-                          ) : (
-                            <>
-                              <Building2 className="h-4 w-4 text-amber-300" />
-                              Post a project brief
-                            </>
-                          )}
-                        </span>
-                        <ChevronRight className="h-4 w-4 text-white/60" />
-                      </Link>
-                    </div>
-                  </Reveal>
-
-                  {/* ---- Payment method. Sits outside the account <form> — every
-                        value is React state, so the Save button in the main
-                        column still sends these along. ---- */}
-                  <Card
-                    id="payment"
-                    eyebrow="Billing"
-                    title="Payment method"
-                    description="How you prefer to send and receive money."
-                    delay={40}
-                  >
-                    <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
-                      {[
-                        { value: PaymentMethod.BKASH, label: "bKash", Icon: Wallet },
-                        { value: PaymentMethod.NAGAD, label: "Nagad", Icon: Wallet },
-                        { value: PaymentMethod.BANK, label: "Bank transfer", Icon: Landmark },
-                        { value: "", label: "No preference", Icon: Minus },
-                      ].map(({ value, label, Icon }) => (
-                        <button
-                          key={value || "none"}
-                          type="button"
-                          onClick={() => setValue("preferredMethod", value)}
-                          aria-pressed={form.preferredMethod === value}
-                          className={`flex items-center gap-3 rounded-2xl border px-3 py-3 text-left text-sm font-bold transition ${
-                            form.preferredMethod === value
-                              ? "border-amber-400 bg-amber-400/20 text-stone-900 dark:text-amber-100"
-                              : "border-white/50 bg-white/45 text-stone-600 hover:bg-white/70 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10"
-                          }`}
-                        >
-                          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-stone-900/10 dark:bg-white/10">
-                            <Icon className="h-4 w-4" />
-                          </span>
-                          <span className="min-w-0 flex-1 truncate">{label}</span>
-                          {form.preferredMethod === value && (
-                            <Check className="h-4 w-4 shrink-0 text-amber-700 dark:text-amber-300" />
-                          )}
-                        </button>
-                      ))}
-                    </div>
-
-                    {/* Only the fields the chosen method actually needs. */}
-                    {wantsWallet && (
-                      <div className="mt-4">
-                        <Field
-                          htmlFor="mobileWalletNumber"
-                          label={`${methodLabels[form.preferredMethod as PaymentMethod]} account number`}
-                        >
-                          <div className="relative">
-                            <Wallet className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-stone-400 dark:text-slate-500" />
-                            <input
-                              id="mobileWalletNumber"
-                              type="tel"
-                              placeholder="01XXXXXXXXX"
-                              value={form.mobileWalletNumber}
-                              onChange={set("mobileWalletNumber")}
-                              className={`${inputClass} pl-10`}
-                            />
-                          </div>
-                        </Field>
-                      </div>
-                    )}
-
-                    {wantsBank && (
-                      <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
-                        <Field htmlFor="bankAccountName" label="Account name">
-                          <input
-                            id="bankAccountName"
-                            type="text"
-                            value={form.bankAccountName}
-                            onChange={set("bankAccountName")}
-                            className={inputClass}
-                          />
-                        </Field>
-                        <Field htmlFor="bankAccountNumber" label="Account number">
-                          <input
-                            id="bankAccountNumber"
-                            type="text"
-                            value={form.bankAccountNumber}
-                            onChange={set("bankAccountNumber")}
-                            className={inputClass}
-                          />
-                        </Field>
-                        <Field htmlFor="bankName" label="Bank">
-                          <input
-                            id="bankName"
-                            type="text"
-                            placeholder="e.g. BRAC Bank"
-                            value={form.bankName}
-                            onChange={set("bankName")}
-                            className={inputClass}
-                          />
-                        </Field>
-                        <Field htmlFor="bankBranch" label="Branch">
-                          <input
-                            id="bankBranch"
-                            type="text"
-                            value={form.bankBranch}
-                            onChange={set("bankBranch")}
-                            className={inputClass}
-                          />
-                        </Field>
-                      </div>
-                    )}
-                  </Card>
-
-                  {/* ---- Appearance ---- */}
-                  <Card
-                    id="appearance"
-                    eyebrow="Preferences"
-                    title="How Buildora looks"
-                    description="Saved in this browser, applied the moment you pick."
-                    delay={60}
-                  >
-                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
-                      {[
-                        {
-                          mode: "day" as const,
-                          label: "Day",
-                          sub: "Warm stone and daylight",
-                          Icon: Sun,
-                        },
-                        {
-                          mode: "night" as const,
-                          label: "Night",
-                          sub: "Deep slate, easier after dark",
-                          Icon: Moon,
-                        },
-                      ].map(({ mode, label, sub, Icon }) => (
-                        <button
-                          key={mode}
-                          type="button"
-                          onClick={() => setThemeMode(mode)}
-                          aria-pressed={themeMode === mode}
-                          className={`flex items-center gap-3 rounded-2xl border p-4 text-left transition ${
-                            themeMode === mode
-                              ? "border-amber-400 bg-amber-400/20"
-                              : "border-white/50 bg-white/45 hover:bg-white/70 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10"
-                          }`}
-                        >
-                          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-stone-900/10 text-stone-700 dark:bg-white/10 dark:text-amber-200">
-                            <Icon className="h-5 w-5" />
-                          </span>
-                          <span className="min-w-0 flex-1">
-                            <span className="block text-sm font-bold">{label}</span>
-                            <span className="block truncate text-xs text-stone-500 dark:text-slate-400">
-                              {sub}
-                            </span>
-                          </span>
-                          {themeMode === mode && (
-                            <Check className="h-4 w-4 shrink-0 text-amber-700 dark:text-amber-300" />
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  </Card>
-
-                  {/* Quiet, deliberately last: revokes this login server-side and
-                    drops you back on the landing page. */}
-                  <button
-                    type="button"
-                    onClick={handleSignOut}
-                    className="inline-flex items-center gap-2 self-start rounded-full px-3 py-2 text-sm font-bold text-rose-600 transition hover:bg-rose-500/10 dark:text-rose-400"
-                  >
-                    <LogOut className="h-4 w-4" />
-                    Sign out of this device
-                  </button>
-                </div>
+                {!form.preferredMethod && (
+                  <p className="mt-4 text-xs text-stone-500 dark:text-slate-400">
+                    Pick a method and we&apos;ll pre-fill it on escrow deposits and payouts.
+                  </p>
+                )}
               </div>
+            )}
+          </Card>
+        )}
+
+        {section === "appearance" && (
+          <Card
+            title="How Buildora looks"
+            description="Saved in this browser, applied the moment you pick — no save needed."
+          >
+            <div className="grid gap-3 sm:grid-cols-2">
+              {[
+                { mode: "day" as const, label: "Day", sub: "Warm stone and daylight", Icon: Sun },
+                {
+                  mode: "night" as const,
+                  label: "Night",
+                  sub: "Deep slate, easier after dark",
+                  Icon: Moon,
+                },
+              ].map(({ mode, label, sub, Icon }) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => setThemeMode(mode)}
+                  aria-pressed={themeMode === mode}
+                  className={`flex items-center gap-3 rounded-xl border p-4 text-left transition ${
+                    themeMode === mode
+                      ? "border-amber-400 bg-amber-400/15"
+                      : "border-stone-300/70 bg-white/50 hover:bg-white dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10"
+                  }`}
+                >
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-stone-900/5 text-stone-700 dark:bg-white/10 dark:text-amber-200">
+                    <Icon className="h-5 w-5" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-bold">{label}</span>
+                    <span className="block truncate text-xs text-stone-500 dark:text-slate-400">
+                      {sub}
+                    </span>
+                  </span>
+                  {themeMode === mode && (
+                    <Check className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-300" />
+                  )}
+                </button>
+              ))}
+            </div>
+          </Card>
+        )}
+      </div>
+
+      {/* Spacer so the floating bar never covers the last row */}
+      {dirty && <div className="h-20" />}
+
+      {/* ============ Contextual bar: only while there's something to save ============ */}
+      {dirty && (
+        <div className="pointer-events-none fixed inset-x-0 bottom-4 z-40 flex justify-center px-4">
+          <div className="pointer-events-auto flex w-full max-w-2xl flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/50 bg-white/90 px-4 py-3 shadow-2xl shadow-black/20 backdrop-blur-xl dark:border-white/15 dark:bg-slate-900/90">
+            <p className="text-sm font-semibold text-stone-600 dark:text-slate-300">
+              {changedFields.length} unsaved change{changedFields.length === 1 ? "" : "s"}
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => setForm(formFromUser(user))}
+                className={ghostButtonClass}
+              >
+                Discard
+              </button>
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={saving}
+                className={primaryButtonClass}
+              >
+                {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+                {saving ? "Saving…" : "Save changes"}
+              </button>
             </div>
           </div>
-        )}
-      </main>
-    </div>
+        </div>
+      )}
+
+      {/* ============ Blocking dialogs ============ */}
+      <Modal
+        open={dialog === "email"}
+        onClose={() => setDialog(null)}
+        title="Change login email"
+        description="This is the address you sign in with, so we need your password to change it."
+      >
+        <form onSubmit={handleEmail} className="flex flex-col gap-4">
+          <div>
+            <label htmlFor="loginEmail" className="mb-1.5 block text-sm font-semibold">
+              New email address
+            </label>
+            <input
+              id="loginEmail"
+              type="email"
+              required
+              autoComplete="email"
+              value={emailForm.email}
+              onChange={(e) => {
+                setEmailError(null);
+                setEmailForm((f) => ({ ...f, email: e.target.value }));
+              }}
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <label htmlFor="emailPassword" className="mb-1.5 block text-sm font-semibold">
+              Current password
+            </label>
+            <input
+              id="emailPassword"
+              type="password"
+              required
+              autoComplete="current-password"
+              value={emailForm.currentPassword}
+              onChange={(e) => {
+                setEmailError(null);
+                setEmailForm((f) => ({ ...f, currentPassword: e.target.value }));
+              }}
+              className={inputClass}
+            />
+          </div>
+          {emailError && (
+            <p className="rounded-xl bg-rose-100 px-3 py-2 text-sm font-medium text-rose-800 dark:bg-rose-400/15 dark:text-rose-300">
+              {emailError}
+            </p>
+          )}
+          <div className="flex justify-end gap-2">
+            <button type="button" onClick={() => setDialog(null)} className={ghostButtonClass}>
+              Cancel
+            </button>
+            <button type="submit" disabled={emailBusy} className={primaryButtonClass}>
+              {emailBusy && <Loader2 className="h-4 w-4 animate-spin" />}
+              {emailBusy ? "Updating…" : "Update email"}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal
+        open={dialog === "password"}
+        onClose={() => setDialog(null)}
+        title="Change password"
+        description="Every other login on your account will be signed out."
+      >
+        <form onSubmit={handlePassword} className="flex flex-col gap-4">
+          <div>
+            <label htmlFor="currentPassword" className="mb-1.5 block text-sm font-semibold">
+              Current password
+            </label>
+            <input
+              id="currentPassword"
+              type="password"
+              required
+              autoComplete="current-password"
+              value={pwForm.currentPassword}
+              onChange={(e) => {
+                setPwError(null);
+                setPwForm((f) => ({ ...f, currentPassword: e.target.value }));
+              }}
+              className={inputClass}
+            />
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label htmlFor="newPassword" className="mb-1.5 block text-sm font-semibold">
+                New password
+              </label>
+              <input
+                id="newPassword"
+                type="password"
+                required
+                minLength={8}
+                autoComplete="new-password"
+                placeholder="At least 8 characters"
+                value={pwForm.newPassword}
+                onChange={(e) => {
+                  setPwError(null);
+                  setPwForm((f) => ({ ...f, newPassword: e.target.value }));
+                }}
+                className={inputClass}
+              />
+            </div>
+            <div>
+              <label htmlFor="confirmPassword" className="mb-1.5 block text-sm font-semibold">
+                Confirm new password
+              </label>
+              <input
+                id="confirmPassword"
+                type="password"
+                required
+                minLength={8}
+                autoComplete="new-password"
+                value={pwForm.confirmPassword}
+                onChange={(e) => {
+                  setPwError(null);
+                  setPwForm((f) => ({ ...f, confirmPassword: e.target.value }));
+                }}
+                className={inputClass}
+              />
+            </div>
+          </div>
+          {pwError && (
+            <p className="rounded-xl bg-rose-100 px-3 py-2 text-sm font-medium text-rose-800 dark:bg-rose-400/15 dark:text-rose-300">
+              {pwError}
+            </p>
+          )}
+          <div className="flex justify-end gap-2">
+            <button type="button" onClick={() => setDialog(null)} className={ghostButtonClass}>
+              Cancel
+            </button>
+            <button type="submit" disabled={pwBusy} className={primaryButtonClass}>
+              {pwBusy && <Loader2 className="h-4 w-4 animate-spin" />}
+              {pwBusy ? "Changing…" : "Change password"}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      <ToastStack toasts={toasts} onDismiss={dismissToast} />
+    </AccountShell>
   );
 }

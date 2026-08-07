@@ -1,12 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { BuildingType, UserRole } from "@buildora/shared";
+import { BuildingType, UserRole, type DapZone, type PlotLocation } from "@buildora/shared";
 import { uploadImage } from "@/lib/api";
 import { createProject } from "@/lib/apiProjects";
 import { useSession } from "@/store/useSession";
 import { Navbar } from "@/components/landing/Navbar";
+import { PlotMapPicker } from "@/components/project/PlotMapPicker";
+import { DapZoneCard } from "@/components/project/DapZoneCard";
+import { surfaceBodyClass, surfaceClass } from "@/components/ui/surface";
 
 const inputClass =
   "block w-full rounded-xl border border-stone-300/80 bg-white/70 px-4 py-2.5 text-sm text-stone-900 placeholder-stone-400 backdrop-blur transition outline-none focus:border-amber-500 focus:bg-white/90 focus:ring-2 focus:ring-amber-400/30 dark:border-white/15 dark:bg-white/5 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:bg-white/10";
@@ -17,9 +20,14 @@ const optionalTag = (
   <span className="font-medium text-stone-500 dark:text-slate-400">(optional)</span>
 );
 
-/** Liquid-glass section card, same surface as the rest of the app. */
-const sectionClass =
-  "relative overflow-hidden rounded-3xl border border-white/40 bg-white/30 p-6 shadow-2xl shadow-black/10 backdrop-blur-2xl backdrop-saturate-150 sm:p-8 before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-40 before:bg-linear-to-b before:from-white/40 before:to-transparent before:content-[''] dark:border-white/15 dark:bg-white/10 dark:shadow-black/40 dark:before:from-white/15";
+/**
+ * Form section card. Pads its sides and foot only — SectionHeading supplies the
+ * space at the top, because it runs edge to edge to draw its divider.
+ */
+const sectionClass = `${surfaceClass} px-4 pb-4 sm:px-5 sm:pb-5`;
+
+/** A panel with no heading, so it pads all four sides itself. */
+const panelClass = `${surfaceClass} ${surfaceBodyClass}`;
 
 const buildingTypes = [
   { value: BuildingType.RESIDENTIAL, label: "Residential", hint: "Family homes & apartments" },
@@ -57,20 +65,27 @@ const emptyForm = {
   timeline: "",
   ownershipDocsReady: false,
   photoUrls: [] as string[],
+  location: null as PlotLocation | null,
 };
 
 type FormState = typeof emptyForm;
 
-/** Numbered editorial heading for each form section. */
+/**
+ * Numbered heading for each form section, styled as the card's header strip.
+ *
+ * The negative margins cancel the card's own side padding so the hairline
+ * divider reaches both edges — that divider is what separates "header" from
+ * "content" instead of leaving one undifferentiated box.
+ */
 function SectionHeading({ n, title, sub }: { n: number; title: string; sub: string }) {
   return (
-    <div className="relative z-10 mb-5 flex items-start gap-4">
-      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-stone-900 text-sm font-extrabold text-amber-400 dark:bg-amber-400 dark:text-stone-950">
+    <div className="-mx-4 mb-4 flex items-start gap-3 border-b border-black/5 px-4 py-3.5 sm:-mx-5 sm:mb-5 sm:px-5 dark:border-white/10">
+      <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-stone-900 text-xs font-extrabold text-amber-400 dark:bg-amber-400 dark:text-stone-950">
         {n}
       </span>
-      <div>
-        <h2 className="text-lg font-extrabold tracking-tight">{title}</h2>
-        <p className="text-sm text-stone-600 dark:text-slate-400">{sub}</p>
+      <div className="min-w-0">
+        <h2 className="text-sm font-extrabold tracking-tight">{title}</h2>
+        <p className="mt-0.5 text-xs text-stone-500 dark:text-slate-400">{sub}</p>
       </div>
     </div>
   );
@@ -115,6 +130,9 @@ export default function NewProjectPage() {
   const token = useSession((s) => s.token);
 
   const [form, setForm] = useState<FormState>(emptyForm);
+  // The DAP zone matched to the plot's area. The card below fetches it; the
+  // page keeps it so the sticky preview can show it while section 3 is filled in.
+  const [dapZone, setDapZone] = useState<DapZone | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -134,6 +152,31 @@ export default function NewProjectPage() {
 
   const flip = (field: keyof FormState) => () =>
     setForm((f) => ({ ...f, [field]: !f[field] }));
+
+  // ---- What the map hands back ----
+  // Both of these overwrite the typed fields, because filling them in is the
+  // whole point of picking on the map. They stay editable afterwards.
+
+  const takeMapLocation = useCallback(
+    (location: PlotLocation | null) => setForm((f) => ({ ...f, location })),
+    []
+  );
+
+  const takeMapAddress = useCallback((found: { formattedAddress: string; areaName?: string }) => {
+    // OpenStreetMap's address runs all the way out to "Bangladesh"; the first
+    // two parts are the house-and-road bit that belongs in the address field.
+    const shortAddress = found.formattedAddress.split(",").slice(0, 2).join(",").trim();
+    setForm((f) => ({
+      ...f,
+      address: shortAddress || f.address,
+      areaName: found.areaName ?? f.areaName,
+    }));
+  }, []);
+
+  const takeMapArea = useCallback(
+    (katha: number) => setForm((f) => ({ ...f, landAreaKatha: katha.toFixed(2) })),
+    []
+  );
 
   async function addPhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -168,10 +211,15 @@ export default function NewProjectPage() {
 
   // Completeness meter: required fields count double, extras count once.
   const required = [form.title, form.description, form.address, form.areaName, form.landAreaKatha, form.buildingType, form.floors];
-  const extras = [form.budgetMinBdt || form.budgetMaxBdt, form.roadWidthFt, form.plotFacing, form.unitsPerFloor, form.parkingSpaces, form.designStyle, form.timeline, form.photoUrls.length > 0 ? "y" : ""];
+  const extras = [form.budgetMinBdt || form.budgetMaxBdt, form.roadWidthFt, form.plotFacing, form.unitsPerFloor, form.parkingSpaces, form.designStyle, form.timeline, form.photoUrls.length > 0 ? "y" : "", form.location ? "y" : ""];
   const score =
     required.filter(Boolean).length * 2 + extras.filter(Boolean).length;
   const completeness = Math.round((score / (required.length * 2 + extras.length)) * 100);
+
+  // Same check the zone card makes, repeated in the preview so it stays visible
+  // while the floors field itself is being filled in further down the form.
+  const overZoneFloors =
+    !!dapZone?.maxFloors && (Number(form.floors) || 0) > dapZone.maxFloors;
 
   const amenities = [
     form.hasLift && "Lift",
@@ -263,6 +311,21 @@ export default function NewProjectPage() {
                 />
                 <div className="relative z-10 grid gap-4 sm:grid-cols-2">
                   <div className="sm:col-span-2">
+                    <span className={labelClass}>
+                      Find the plot on the map {optionalTag}
+                    </span>
+                    <PlotMapPicker
+                      value={form.location}
+                      onChange={takeMapLocation}
+                      onAddress={takeMapAddress}
+                      onAreaKatha={takeMapArea}
+                    />
+                    <p className="mt-1.5 text-xs font-medium text-stone-500 dark:text-slate-400">
+                      Dropping a pin fills in the address and area below, and tracing the outline
+                      works out the land size. Correct any of them by hand if you know better.
+                    </p>
+                  </div>
+                  <div className="sm:col-span-2">
                     <label htmlFor="address" className={labelClass}>
                       Plot address
                     </label>
@@ -296,12 +359,25 @@ export default function NewProjectPage() {
                       id="landAreaKatha"
                       type="number"
                       min="0.5"
-                      step="0.5"
+                      // "any" rather than 0.5: an outline traced on the map
+                      // measures something like 4.32 katha, and a 0.5 step
+                      // would make the browser reject it as invalid.
+                      step="any"
                       value={form.landAreaKatha}
                       onChange={set("landAreaKatha")}
                       placeholder="5"
                       required
                       className={inputClass}
+                    />
+                  </div>
+                  {/* Sits under Area and Land size because it reads both. */}
+                  <div className="sm:col-span-2">
+                    <DapZoneCard
+                      areaName={form.areaName}
+                      landAreaKatha={form.landAreaKatha}
+                      floors={form.floors}
+                      buildingType={form.buildingType}
+                      onZone={setDapZone}
                     />
                   </div>
                   <div>
@@ -629,7 +705,7 @@ export default function NewProjectPage() {
 
             {/* ---------------- Live preview ---------------- */}
             <aside className="lg:sticky lg:top-28">
-              <div className={sectionClass}>
+              <div className={panelClass}>
                 <div className="relative z-10">
                   <p className="text-xs font-bold tracking-[0.16em] text-stone-500 uppercase dark:text-slate-400">
                     What architects will see
@@ -643,6 +719,27 @@ export default function NewProjectPage() {
                     {form.landAreaKatha ? ` · ${form.landAreaKatha} katha` : ""}
                     {form.plotFacing ? ` · ${form.plotFacing} facing` : ""}
                   </p>
+                  {form.location && (
+                    <p className="mt-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                      📍 Pinned on the map
+                      {form.location.boundary ? " · outline traced" : ""}
+                    </p>
+                  )}
+                  {/* The zone card lives up in section 2, so repeat its limits
+                      here — this panel stays in view while floors are typed. */}
+                  {dapZone && (
+                    <p
+                      className={`mt-1 text-xs font-semibold ${
+                        overZoneFloors
+                          ? "text-rose-600 dark:text-rose-400"
+                          : "text-stone-500 dark:text-slate-400"
+                      }`}
+                    >
+                      {`DAP zone ${dapZone.zoneCode} · FAR ${dapZone.maxFar}`}
+                      {dapZone.maxFloors ? ` · max ${dapZone.maxFloors} floors` : ""}
+                      {overZoneFloors ? ` — your ${form.floors} exceed it` : ""}
+                    </p>
+                  )}
 
                   {/* Fact chips appear as the form fills in */}
                   <div className="mt-3 flex flex-wrap gap-1.5">

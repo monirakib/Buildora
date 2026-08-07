@@ -14,7 +14,7 @@ const inputClass =
   "block w-full rounded-xl border border-stone-300/80 bg-white/70 px-4 py-2.5 text-sm text-stone-900 placeholder-stone-400 backdrop-blur transition outline-none focus:border-amber-500 focus:bg-white/90 focus:ring-2 focus:ring-amber-400/30 dark:border-white/15 dark:bg-white/5 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:bg-white/10";
 
 const cardClass =
-  "block rounded-3xl border border-white/40 bg-white/40 p-5 shadow-xl shadow-black/5 backdrop-blur-xl transition hover:-translate-y-0.5 hover:border-amber-400/60 sm:p-6 dark:border-white/10 dark:bg-white/5";
+  "block rounded-2xl border border-white/50 bg-white/55 p-5 shadow-xl shadow-black/5 backdrop-blur-xl transition hover:-translate-y-0.5 hover:border-amber-400/60 sm:p-6 dark:border-white/10 dark:bg-white/5";
 
 const PROFESSIONAL_ROLES: UserRole[] = [
   UserRole.ARCHITECT,
@@ -96,7 +96,7 @@ export default function BriefsPage() {
                 {error}
               </p>
             ) : !result || result.items.length === 0 ? (
-              <p className="rounded-3xl border border-white/40 bg-white/40 p-8 text-center text-stone-600 backdrop-blur-xl dark:border-white/10 dark:bg-white/5 dark:text-slate-400">
+              <p className="rounded-2xl border border-white/50 bg-white/55 p-8 text-center text-stone-600 backdrop-blur-xl dark:border-white/10 dark:bg-white/5 dark:text-slate-400">
                 No open briefs right now — check back soon.
               </p>
             ) : (

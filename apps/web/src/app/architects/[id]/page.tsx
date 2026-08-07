@@ -109,7 +109,7 @@ export default function ArchitectDetailPage() {
             {loading ? (
               <p className="mt-8 text-sm text-stone-500 dark:text-slate-500">Loading…</p>
             ) : (
-              <div className="mt-8 rounded-3xl border border-white/40 bg-white/40 p-8 text-center backdrop-blur-xl dark:border-white/10 dark:bg-white/5">
+              <div className="mt-8 rounded-2xl border border-white/50 bg-white/55 p-8 text-center backdrop-blur-xl dark:border-white/10 dark:bg-white/5">
                 <h1 className="text-xl font-extrabold">Architect not found</h1>
                 <p className="mt-2 text-sm text-stone-600 dark:text-slate-400">
                   This profile may have been removed.
@@ -424,7 +424,7 @@ export default function ArchitectDetailPage() {
 
           {/* ---- Contact ---- */}
           <section className="mt-16 border-t border-stone-200 pt-10 dark:border-white/10">
-            <div className="rounded-3xl border border-white/40 bg-white/40 p-6 shadow-xl shadow-black/5 backdrop-blur-xl sm:p-10 dark:border-white/10 dark:bg-white/5">
+            <div className="rounded-2xl border border-white/50 bg-white/55 p-6 shadow-xl shadow-black/5 backdrop-blur-xl sm:p-10 dark:border-white/10 dark:bg-white/5">
               <div className="grid gap-8 lg:grid-cols-[1fr_auto] lg:items-center">
                 <div>
                   <h2 className="text-2xl font-extrabold tracking-tight sm:text-3xl">

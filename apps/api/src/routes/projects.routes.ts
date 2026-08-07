@@ -23,6 +23,11 @@ import {
   deleteProjectDocument,
   listProjectDocuments,
 } from "../controllers/documents.controller";
+import {
+  deleteFloorPlan,
+  listFloorPlans,
+  saveFloorPlan,
+} from "../controllers/floorplans.controller";
 import { requireAuth } from "../middleware/auth";
 import { requireRole } from "../middleware/roles";
 
@@ -52,6 +57,11 @@ projectsRouter.get("/:id/contract", getProjectContract);
 projectsRouter.get("/:id/ecps", getEcpsApplication);
 projectsRouter.post("/:id/ecps", startEcpsApplication);
 projectsRouter.post("/:id/ecps/advance", advanceEcpsApplication);
+
+// 2D floor plans — one per level (participants view, architect edits).
+projectsRouter.get("/:id/floor-plans", listFloorPlans);
+projectsRouter.put("/:id/floor-plans/:level", saveFloorPlan);
+projectsRouter.delete("/:id/floor-plans/:level", deleteFloorPlan);
 
 // Document archive.
 projectsRouter.get("/:id/documents", listProjectDocuments);
