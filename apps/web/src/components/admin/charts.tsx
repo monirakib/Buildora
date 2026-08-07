@@ -409,7 +409,7 @@ export function StatTile({
   spark?: number[];
 }) {
   return (
-    <div className="rounded-2xl border border-stone-200/80 bg-white p-5 dark:border-white/10 dark:bg-stone-900">
+    <div className="rounded-2xl border border-stone-200/80 bg-white/70 p-5 backdrop-blur-xl dark:border-white/10 dark:bg-white/6">
       <p className="text-xs font-bold tracking-wider text-stone-500 uppercase dark:text-stone-400">
         {label}
       </p>

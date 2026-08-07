@@ -27,7 +27,7 @@ function Card({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-2xl border border-stone-200/80 bg-white p-5 dark:border-white/10 dark:bg-stone-900">
+    <section className="rounded-2xl border border-stone-200/80 bg-white/70 p-5 backdrop-blur-xl dark:border-white/10 dark:bg-white/6">
       <div className="mb-4 flex items-center justify-between gap-3">
         <h2 className="text-sm font-extrabold tracking-tight">{title}</h2>
         {action}
@@ -105,7 +105,7 @@ export default function AdminOverviewPage() {
           {Array.from({ length: 8 }).map((_, i) => (
             <div
               key={i}
-              className="h-32 animate-pulse rounded-2xl border border-stone-200/80 bg-white dark:border-white/10 dark:bg-stone-900"
+              className="h-32 animate-pulse rounded-2xl border border-stone-200/80 bg-white/70 backdrop-blur-xl dark:border-white/10 dark:bg-white/6"
             />
           ))}
         </div>

@@ -99,7 +99,7 @@ function Pagination({
 }
 
 const tableWrapClass =
-  "overflow-x-auto rounded-2xl border border-stone-200/80 bg-white dark:border-white/10 dark:bg-stone-900";
+  "overflow-x-auto rounded-2xl border border-stone-200/80 bg-white/70 backdrop-blur-xl dark:border-white/10 dark:bg-white/6";
 const theadClass =
   "border-b border-stone-200/80 text-xs font-bold tracking-wider text-stone-500 uppercase dark:border-white/10 dark:text-stone-400";
 
@@ -222,7 +222,7 @@ export default function AdminMarketPage() {
                 setProductPage(1);
               }}
               placeholder="Search products or brands…"
-              className="w-full rounded-xl border border-stone-200 bg-white px-4 py-2.5 text-sm outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-400/30 sm:max-w-xs dark:border-white/10 dark:bg-stone-900"
+              className="w-full rounded-xl border border-stone-300/80 bg-white/70 backdrop-blur px-4 py-2.5 text-sm outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-400/30 sm:max-w-xs dark:border-white/15 dark:bg-white/5"
             />
           </div>
 
@@ -366,7 +366,7 @@ export default function AdminMarketPage() {
                 setStatus(e.target.value as OrderStatus | "");
                 setOrderPage(1);
               }}
-              className="rounded-xl border border-stone-200 bg-white px-3.5 py-2.5 text-sm font-semibold outline-none focus:border-amber-500 dark:border-white/10 dark:bg-stone-900"
+              className="rounded-xl border border-stone-300/80 bg-white/70 backdrop-blur px-3.5 py-2.5 text-sm font-semibold outline-none focus:border-amber-500 dark:border-white/15 dark:bg-white/5"
             >
               <option value="">All statuses</option>
               {Object.values(OrderStatus).map((s) => (
