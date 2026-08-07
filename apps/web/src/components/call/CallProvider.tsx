@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
+  Maximize,
   Mic,
   MicOff,
+  Minimize,
   Minimize2,
   MonitorOff,
   MonitorUp,
@@ -115,6 +117,10 @@ function VideoStage({
   localScreen,
   attachLocal,
   attachRemote,
+  containerRef,
+  isFullscreen,
+  onToggleFullscreen,
+  children,
 }: {
   peer: CallPeer;
   remoteOn: boolean;
@@ -125,10 +131,22 @@ function VideoStage({
   localScreen: boolean;
   attachLocal: (el: HTMLVideoElement | null) => void;
   attachRemote: (el: HTMLVideoElement | null) => void;
+  /** The element that goes fullscreen — this whole stage, previews included. */
+  containerRef: React.RefObject<HTMLDivElement | null>;
+  isFullscreen: boolean;
+  onToggleFullscreen: () => void;
+  /** Call controls, shown over the video while fullscreen hides the panel's own. */
+  children?: React.ReactNode;
 }) {
   const showRemote = remoteOn && remoteTrackReady;
   return (
-    <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-stone-950">
+    <div
+      ref={containerRef}
+      className={`relative w-full overflow-hidden bg-stone-950 ${
+        // Fullscreen fills the screen, so the 16:9 box and rounded corners go.
+        isFullscreen ? "h-full rounded-none" : "aspect-video rounded-2xl"
+      }`}
+    >
       {/* Muted on purpose: their voice already plays through the <audio>
           element in CallProvider, so an unmuted video would double it up. */}
       <video
@@ -166,10 +184,34 @@ function VideoStage({
           muted
           // Mirrored for the camera (how you expect to see yourself), never for
           // a screen share — mirrored text would be unreadable.
-          className={`absolute right-3 bottom-3 h-24 w-36 rounded-xl border-2 border-white/25 bg-stone-900 object-cover shadow-lg sm:h-28 sm:w-44 ${
-            localScreen ? "" : "-scale-x-100"
-          }`}
+          className={`absolute right-3 bg-stone-900 object-cover shadow-lg ${
+            // Lifted clear of the control bar while fullscreen.
+            isFullscreen
+              ? "bottom-28 h-32 w-52 rounded-2xl border-2 border-white/25"
+              : "bottom-3 h-24 w-36 rounded-xl border-2 border-white/25 sm:h-28 sm:w-44"
+          } ${localScreen ? "" : "-scale-x-100"}`}
         />
+      )}
+
+      {/* Fullscreen is what makes a shared screen actually readable, so the
+          button sits on the video itself rather than down in the controls. */}
+      <button
+        type="button"
+        onClick={onToggleFullscreen}
+        className="absolute top-3 right-3 grid h-9 w-9 place-items-center rounded-full bg-black/60 text-white backdrop-blur transition hover:bg-black/80"
+        aria-label={isFullscreen ? "Exit full screen" : "Full screen"}
+        title={isFullscreen ? "Exit full screen (Esc)" : "Full screen"}
+      >
+        {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+      </button>
+
+      {/* Fullscreen covers the panel, so the controls come along with it. */}
+      {isFullscreen && children && (
+        <div className="absolute inset-x-0 bottom-6 flex justify-center px-4">
+          <div className="flex items-center gap-3 rounded-full bg-black/60 px-4 py-3 shadow-2xl backdrop-blur">
+            {children}
+          </div>
+        </div>
       )}
     </div>
   );
@@ -315,6 +357,39 @@ function CallOverlay() {
   const attachRemoteVideo = useCall((s) => s.attachRemoteVideo);
   const setMinimized = useCall((s) => s.setMinimized);
 
+  const inCall = phase === "connected" || phase === "connecting";
+  const sendingVideo = cameraOn || screenOn;
+  const receivingVideo = remoteCameraOn || remoteScreenOn;
+  // The stage appears as soon as either side has a picture to show.
+  const showStage = inCall && !minimized && (sendingVideo || receivingVideo);
+
+  const stageRef = useRef<HTMLDivElement>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // The browser can leave fullscreen on its own (Esc, or its own control), so
+  // the button follows the document rather than our own bookkeeping.
+  useEffect(() => {
+    const sync = () => setIsFullscreen(document.fullscreenElement === stageRef.current);
+    document.addEventListener("fullscreenchange", sync);
+    return () => document.removeEventListener("fullscreenchange", sync);
+  }, []);
+
+  // Never strand the browser in fullscreen when the video goes away — the call
+  // ended, or the panel was minimized to the pill.
+  useEffect(() => {
+    if (!showStage && document.fullscreenElement) void document.exitFullscreen().catch(() => {});
+  }, [showStage]);
+
+  async function toggleFullscreen() {
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen();
+      else await stageRef.current?.requestFullscreen();
+    } catch {
+      // Some browsers refuse the request (an embedded frame, a policy) — the
+      // call itself is unaffected, so there's nothing to report.
+    }
+  }
+
   // A brief toast after a call ends ("Call declined", etc.).
   if (phase === "idle") {
     if (!notice) return null;
@@ -330,13 +405,35 @@ function CallOverlay() {
   if (!peer) return null;
 
   const statusText = statusLabel(phase, durationSec, media);
-  const inCall = phase === "connected" || phase === "connecting";
   // An incoming ring must be answered or declined, so it's never collapsible.
   const canMinimize = phase !== "incoming";
-  const sendingVideo = cameraOn || screenOn;
-  const receivingVideo = remoteCameraOn || remoteScreenOn;
-  // The stage appears as soon as either side has a picture to show.
-  const showStage = inCall && (sendingVideo || receivingVideo);
+
+  // The same four buttons appear under the panel and, while fullscreen hides
+  // the panel, over the video itself.
+  const callControls = inCall ? (
+    <>
+      <ControlButton onClick={toggleMute} active={muted} label={muted ? "Unmute" : "Mute"}>
+        {muted ? <MicOff className="h-6 w-6" /> : <Mic className="h-6 w-6" />}
+      </ControlButton>
+      <ControlButton
+        onClick={() => void toggleCamera()}
+        active={cameraOn}
+        label={cameraOn ? "Turn camera off" : "Turn camera on"}
+      >
+        {cameraOn ? <Video className="h-6 w-6" /> : <VideoOff className="h-6 w-6" />}
+      </ControlButton>
+      <ControlButton
+        onClick={() => void toggleScreenShare()}
+        active={screenOn}
+        label={screenOn ? "Stop sharing your screen" : "Share your screen"}
+      >
+        {screenOn ? <MonitorOff className="h-6 w-6" /> : <MonitorUp className="h-6 w-6" />}
+      </ControlButton>
+      <ControlButton onClick={hangup} danger label="End call">
+        <PhoneOff className="h-6 w-6" />
+      </ControlButton>
+    </>
+  ) : null;
 
   if (minimized && canMinimize) {
     return (
@@ -378,7 +475,12 @@ function CallOverlay() {
             localScreen={screenOn}
             attachLocal={attachLocalVideo}
             attachRemote={attachRemoteVideo}
-          />
+            containerRef={stageRef}
+            isFullscreen={isFullscreen}
+            onToggleFullscreen={() => void toggleFullscreen()}
+          >
+            {callControls}
+          </VideoStage>
         ) : (
           <span
             className={`mx-auto grid h-24 w-24 place-items-center rounded-full bg-amber-400 text-4xl font-extrabold text-stone-950 ${
@@ -433,40 +535,11 @@ function CallOverlay() {
               </button>
             </>
           ) : (
-            <>
-              {inCall && (
-                <>
-                  <ControlButton
-                    onClick={toggleMute}
-                    active={muted}
-                    label={muted ? "Unmute" : "Mute"}
-                  >
-                    {muted ? <MicOff className="h-6 w-6" /> : <Mic className="h-6 w-6" />}
-                  </ControlButton>
-                  <ControlButton
-                    onClick={() => void toggleCamera()}
-                    active={cameraOn}
-                    label={cameraOn ? "Turn camera off" : "Turn camera on"}
-                  >
-                    {cameraOn ? <Video className="h-6 w-6" /> : <VideoOff className="h-6 w-6" />}
-                  </ControlButton>
-                  <ControlButton
-                    onClick={() => void toggleScreenShare()}
-                    active={screenOn}
-                    label={screenOn ? "Stop sharing your screen" : "Share your screen"}
-                  >
-                    {screenOn ? (
-                      <MonitorOff className="h-6 w-6" />
-                    ) : (
-                      <MonitorUp className="h-6 w-6" />
-                    )}
-                  </ControlButton>
-                </>
-              )}
+            (callControls ?? (
               <ControlButton onClick={hangup} danger label="End call">
                 <PhoneOff className="h-6 w-6" />
               </ControlButton>
-            </>
+            ))
           )}
         </div>
 
