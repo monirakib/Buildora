@@ -82,7 +82,7 @@ export default function InquiriesPage() {
                 {error}
               </p>
             ) : inquiries.length === 0 ? (
-              <div className="rounded-3xl border border-white/40 bg-white/40 p-8 text-center backdrop-blur-xl dark:border-white/10 dark:bg-white/5">
+              <div className="rounded-2xl border border-white/50 bg-white/55 p-8 text-center backdrop-blur-xl dark:border-white/10 dark:bg-white/5">
                 <p className="text-stone-600 dark:text-slate-400">
                   {isLandOwner
                     ? "You haven't contacted any architects yet."
@@ -106,7 +106,7 @@ export default function InquiriesPage() {
                   return (
                     <li
                       key={q.id}
-                      className="rounded-3xl border border-white/40 bg-white/40 p-5 shadow-xl shadow-black/5 backdrop-blur-xl sm:p-6 dark:border-white/10 dark:bg-white/5"
+                      className="rounded-2xl border border-white/50 bg-white/55 p-5 shadow-xl shadow-black/5 backdrop-blur-xl sm:p-6 dark:border-white/10 dark:bg-white/5"
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">

@@ -18,7 +18,7 @@ import { useSession } from "@/store/useSession";
 import { Navbar } from "@/components/landing/Navbar";
 
 const cardClass =
-  "rounded-3xl border border-white/40 bg-white/40 backdrop-blur-xl dark:border-white/10 dark:bg-white/5";
+  "rounded-2xl border border-white/50 bg-white/55 backdrop-blur-xl dark:border-white/10 dark:bg-white/5";
 
 const roleLabels: Record<string, string> = {
   ARCHITECT: "Architect",

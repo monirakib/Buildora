@@ -9,7 +9,7 @@ import { Navbar } from "@/components/landing/Navbar";
 import { Stagger } from "@/components/Stagger";
 
 const cardClass =
-  "group relative overflow-hidden rounded-3xl border border-white/40 bg-white/40 p-6 shadow-xl shadow-black/5 backdrop-blur-xl transition hover:-translate-y-0.5 hover:border-amber-400/60 dark:border-white/10 dark:bg-white/5";
+  "group relative overflow-hidden rounded-2xl border border-white/50 bg-white/55 p-6 shadow-xl shadow-black/5 backdrop-blur-xl transition hover:-translate-y-0.5 hover:border-amber-400/60 dark:border-white/10 dark:bg-white/5";
 
 export default function DashboardPage() {
   const router = useRouter();

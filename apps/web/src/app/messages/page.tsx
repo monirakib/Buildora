@@ -262,7 +262,7 @@ function MessagesInner() {
           <div className="mt-5 flex min-h-0 flex-1 gap-4">
             {/* Inbox — hidden on mobile while a thread is open */}
             <aside
-              className={`${activeId ? "hidden md:flex" : "flex"} w-full flex-col overflow-y-auto rounded-3xl border border-white/40 bg-white/40 p-3 backdrop-blur-xl md:w-80 dark:border-white/10 dark:bg-white/5`}
+              className={`${activeId ? "hidden md:flex" : "flex"} w-full flex-col overflow-y-auto rounded-2xl border border-white/50 bg-white/55 p-3 backdrop-blur-xl md:w-80 dark:border-white/10 dark:bg-white/5`}
             >
               {loading ? (
                 <p className="p-3 text-sm text-stone-500 dark:text-slate-500">Loading…</p>
@@ -310,7 +310,7 @@ function MessagesInner() {
 
             {/* Thread */}
             <section
-              className={`${activeId ? "flex" : "hidden md:flex"} min-w-0 flex-1 flex-col overflow-hidden rounded-3xl border border-white/40 bg-white/40 backdrop-blur-xl dark:border-white/10 dark:bg-white/5`}
+              className={`${activeId ? "flex" : "hidden md:flex"} min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-white/50 bg-white/55 backdrop-blur-xl dark:border-white/10 dark:bg-white/5`}
             >
               {!activeId || !active ? (
                 <div className="grid flex-1 place-items-center p-6 text-center text-sm text-stone-500 dark:text-slate-500">

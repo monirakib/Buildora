@@ -16,7 +16,7 @@ import {
 } from "@/components/app/projectStatus";
 
 const cardClass =
-  "block rounded-3xl border border-white/40 bg-white/40 p-5 shadow-xl shadow-black/5 backdrop-blur-xl transition hover:-translate-y-0.5 hover:border-amber-400/60 sm:p-6 dark:border-white/10 dark:bg-white/5";
+  "block rounded-2xl border border-white/50 bg-white/55 p-5 shadow-xl shadow-black/5 backdrop-blur-xl transition hover:-translate-y-0.5 hover:border-amber-400/60 sm:p-6 dark:border-white/10 dark:bg-white/5";
 
 export default function ProjectsPage() {
   const router = useRouter();
@@ -82,7 +82,7 @@ export default function ProjectsPage() {
                 {error}
               </p>
             ) : projects.length === 0 ? (
-              <div className="rounded-3xl border border-white/40 bg-white/40 p-8 text-center backdrop-blur-xl dark:border-white/10 dark:bg-white/5">
+              <div className="rounded-2xl border border-white/50 bg-white/55 p-8 text-center backdrop-blur-xl dark:border-white/10 dark:bg-white/5">
                 <p className="text-stone-600 dark:text-slate-400">
                   {isLandOwner
                     ? "No projects yet — post your first brief and let architects come to you."

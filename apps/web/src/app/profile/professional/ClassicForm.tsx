@@ -18,15 +18,15 @@ import {
 } from "@/lib/api";
 import { useSession } from "@/store/useSession";
 import { Navbar } from "@/components/landing/Navbar";
+import { surfaceBodyClass, surfaceClass } from "@/components/ui/surface";
 
 const inputClass =
   "block w-full rounded-xl border border-stone-300/80 bg-white/70 px-4 py-2.5 text-sm text-stone-900 placeholder-stone-400 backdrop-blur transition outline-none focus:border-amber-500 focus:bg-white/90 focus:ring-2 focus:ring-amber-400/30 dark:border-white/15 dark:bg-white/5 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:bg-white/10";
 
 const labelClass = "mb-1.5 block text-sm font-semibold";
 
-/** Liquid-glass card, same surface as the land-owner profile page. */
-const sectionClass =
-  "relative overflow-hidden rounded-3xl border border-white/40 bg-white/30 p-6 shadow-2xl shadow-black/10 backdrop-blur-2xl backdrop-saturate-150 sm:p-8 before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-40 before:bg-linear-to-b before:from-white/40 before:to-transparent before:content-[''] dark:border-white/15 dark:bg-white/10 dark:shadow-black/40 dark:before:from-white/15";
+/** Section card — the app-wide surface, padded on all sides. */
+const sectionClass = `${surfaceClass} ${surfaceBodyClass}`;
 
 /** Subtle bordered box for one entry inside a list section. */
 const entryClass =
