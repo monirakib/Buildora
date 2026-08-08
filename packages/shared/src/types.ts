@@ -31,6 +31,13 @@ import type {
  */
 export interface LandOwnerProfile {
   nid?: string;
+  /** Photos of the NID card, so the automated check and a supervisor can read it. */
+  nidFrontUrl?: string;
+  nidBackUrl?: string;
+  /** Result of the automated NID pre-screen — see NidCheck. */
+  nidCheck?: NidCheck;
+  /** ISO "YYYY-MM-DD" — cross-checked against a 17-digit NID's birth year. */
+  dateOfBirth?: string;
   avatarUrl?: string;
   company?: string;
   bio?: string;
@@ -149,6 +156,105 @@ export interface PortfolioProject {
 }
 
 /**
+ * One membership record read back from the Institute of Architects Bangladesh
+ * public directory (https://iab.org.bd/directory/).
+ *
+ * `status` is the directory's own word — "regular", "irregular", "suspended",
+ * "deceased" — and `memberType` is the grade: student, associate, member or
+ * fellow. Both are stored verbatim rather than mapped to our own enum, so the
+ * supervisor sees exactly what IAB published.
+ */
+export interface IabMember {
+  /** Membership number as the directory spells it, e.g. "AA-920". */
+  membershipNo: string;
+  /** Full name on the IAB record — compare this against the applicant's name. */
+  name: string;
+  /**
+   * Email IAB has on file. Every card carries one. Used to prefill the signup
+   * form, and kept as the account's `altEmail` when the architect signs up
+   * under a different address. Never shown on a public profile.
+   */
+  email?: string;
+  /** Tier, as the official label: "Associate Member", "Fellow", … */
+  category?: string;
+  /** Standing, as the official label: "Regular", "Suspended", … */
+  status?: string;
+  /** The directory's own raw words, kept so a tier we don't map still shows. */
+  rawCategory?: string;
+  rawStatus: string;
+  /** True only for "regular" — the one standing that means a valid membership. */
+  isRegular: boolean;
+}
+
+/**
+ * Outcome of an IAB directory lookup, stored on the profile so the supervisor
+ * reviews a result the server fetched rather than one the browser claimed.
+ */
+export interface IabCheck {
+  /** The number that was looked up, normalised (uppercased, dash inserted). */
+  membershipNo: string;
+  /** The matching record, or `null` when the directory has no such number. */
+  member: IabMember | null;
+  /** ISO timestamp of the lookup — the directory changes, this result doesn't. */
+  checkedAt: string;
+  /** The account name this was compared against, as it read at check time. */
+  claimedName?: string;
+  /**
+   * Whether `claimedName` and the directory name look like the same person.
+   * `null` when there was no record to compare against. A `false` here is what
+   * blocks submission unless manual review was requested.
+   */
+  nameMatches?: boolean | null;
+}
+
+/**
+ * Result of the automated NID pre-screen, recorded by the API.
+ *
+ * This is NOT government verification — the Election Commission's Porichoy
+ * gateway is fee-based and issued only to vetted companies, so nothing here
+ * proves the number exists or belongs to this person. It narrows what a
+ * supervisor has to check by hand. Never present it as more than that.
+ */
+export interface NidCheck {
+  /** Digits only, as checked. */
+  nid: string;
+  /** "SMART_10" | "LEGACY_13" | "LEGACY_17", when the shape was recognised. */
+  format?: string;
+  /** Whether the number is one of the three valid shapes. */
+  formatOk: boolean;
+  /** Complaint about the format, if any. */
+  formatIssue?: string;
+  /**
+   * 17-digit numbers carry a birth year — does it agree with the date of birth
+   * on the profile? `null` when there was nothing to compare.
+   */
+  dobMatches?: boolean | null;
+  /** Another account already holds this NID — the one hard failure. */
+  duplicate: boolean;
+  /** What the card image actually said, read by the OCR pass. */
+  ocr?: NidOcrResult;
+  checkedAt: string;
+}
+
+/** What Gemini read off the uploaded NID card, and how it compared. */
+export interface NidOcrResult {
+  /** False when the image couldn't be read at all. */
+  readable: boolean;
+  /** Name printed on the card. */
+  name?: string;
+  /** NID number printed on the card, digits only. */
+  nid?: string;
+  /** Date of birth printed on the card, ISO "YYYY-MM-DD" where legible. */
+  dateOfBirth?: string;
+  /** Whether each printed value agrees with what the user typed. */
+  nameMatches?: boolean | null;
+  nidMatches?: boolean | null;
+  dobMatches?: boolean | null;
+  /** Set when the model refused or the image wasn't an NID card at all. */
+  note?: string;
+}
+
+/**
  * Profile a professional (architect, engineer, contractor, supplier) fills in
  * at signup and refines over time. The credentials here are what a supervisor
  * reviews when the professional requests verification.
@@ -181,6 +287,8 @@ export interface ProfessionalProfile {
   nid?: string;
   nidFrontUrl?: string;
   nidBackUrl?: string;
+  /** Result of the automated NID pre-screen — see NidCheck. */
+  nidCheck?: NidCheck;
 
   // ---- Professional details ----
   /** e.g. "Principal Architect". */
@@ -188,13 +296,22 @@ export interface ProfessionalProfile {
   /** True when practising independently rather than under a firm. */
   isIndependent?: boolean;
   officeAddress?: string;
+  /**
+   * Where they practise — one of BD_DIVISIONS and a district inside it. Kept as
+   * a fixed pair rather than free text so the directory filter is an exact
+   * match; the office address stays for the human-readable version.
+   */
+  practiceDivision?: string;
+  practiceDistrict?: string;
   /** Comma-separated, e.g. "Bangla, English". */
   languages?: string;
   linkedin?: string;
 
   // ---- License / membership ----
-  /** e.g. "Active", "Provisional", "Expired". */
+  /** One of MEMBERSHIP_STATUSES, e.g. "Regular". */
   membershipStatus?: string;
+  /** One of MEMBERSHIP_CATEGORIES, e.g. "Associate Member". */
+  membershipCategory?: string;
   /** ISO dates "YYYY-MM-DD". */
   licenseIssueDate?: string;
   licenseExpiryDate?: string;
@@ -202,6 +319,8 @@ export interface ProfessionalProfile {
   membershipCardUrl?: string;
   rajukEnlistmentNo?: string;
   rajukCertificateUrl?: string;
+  /** Result of the last IAB directory lookup, recorded by the API at submit time. */
+  iabCheck?: IabCheck;
 
   // ---- Structured sections ----
   education?: EducationEntry[];
@@ -272,6 +391,30 @@ export interface PublicProfessional {
   education?: EducationEntry[];
   achievements?: AchievementEntry[];
   portfolio?: PortfolioProject[];
+  /** Where they practise — used by the directory's location filter. */
+  practiceDivision?: string;
+  practiceDistrict?: string;
+  /**
+   * Mean of every review left on a completed contract, 1–5, rounded to one
+   * decimal. Absent until they've been reviewed at least once — `undefined`
+   * means "no ratings yet", which is not the same as a low score.
+   */
+  ratingAvg?: number;
+  /** How many reviews that average is over. */
+  ratingCount?: number;
+}
+
+/** A land owner's rating of an architect they completed a contract with. */
+export interface Review {
+  id: string;
+  /** 1–5 whole stars. */
+  rating: number;
+  comment?: string;
+  /** The reviewer. Reviews are never anonymous — the work was a paid contract. */
+  author: { id: string; name: string; avatarUrl?: string };
+  /** The project the contract was for, so readers can see what was built. */
+  project: { id: string; title: string };
+  createdAt: string;
 }
 
 /**
@@ -295,6 +438,8 @@ export interface VerificationRequest {
   message?: string;
   /** Supervisor's decision note — shown to the professional on rejection. */
   note?: string;
+  /** True when the professional bypassed the automated IAB check. */
+  manualReview?: boolean;
   createdAt: string;
   decidedAt?: string;
 }

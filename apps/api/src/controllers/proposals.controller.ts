@@ -200,6 +200,22 @@ export async function acceptProposal(req: Request, res: Response) {
       .json({ error: { message: "An architect is already engaged on this project" } });
   }
 
+  // The other way a land owner could end up working with an unverified
+  // architect — accepting their bid rather than contacting them directly. This
+  // is the point where a contract and an escrow schedule get created, so the
+  // same rule as createInquiry applies.
+  const bidder = await User.findById(proposal.architect).select("name verificationStatus");
+  if (!bidder || bidder.verificationStatus !== VerificationStatus.APPROVED) {
+    return res.status(403).json({
+      error: {
+        code: "ARCHITECT_NOT_VERIFIED",
+        message:
+          `${bidder?.name ?? "This architect"} isn't Platform Verified yet, so their proposal ` +
+          `can't be accepted. They'll be able to work once a supervisor approves them.`,
+      },
+    });
+  }
+
   proposal.status = ProposalStatus.ACCEPTED;
   await proposal.save();
 

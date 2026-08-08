@@ -7,6 +7,7 @@ import { loginUser, registerLandOwner, registerProfessional } from "@/lib/api";
 import { useSession } from "@/store/useSession";
 import { useTheme } from "@/store/useTheme";
 import { Navbar } from "@/components/landing/Navbar";
+import { IabCheckField } from "@/components/verify/IabCheckField";
 
 /** The three panes of the unified auth page — one login for every role, plus a
  *  signup each for land owners and professionals. */
@@ -182,6 +183,9 @@ export default function AuthPage() {
     company: "",
     licenseAuthority: "",
     licenseNumber: "",
+    // Filled in by the IAB directory lookup, not typed.
+    membershipStatus: "",
+    membershipCategory: "",
     specialties: "",
     yearsExperience: "",
     website: "",
@@ -246,6 +250,8 @@ export default function AuthPage() {
                 company: form.company,
                 licenseAuthority: form.licenseAuthority,
                 licenseNumber: form.licenseNumber,
+                membershipStatus: form.membershipStatus,
+                membershipCategory: form.membershipCategory,
                 specialties: form.specialties,
                 yearsExperience: form.yearsExperience,
                 website: form.website,
@@ -544,19 +550,62 @@ export default function AuthPage() {
                               className={inputClass}
                             />
                           </div>
-                          <div>
-                            <label htmlFor="licenseNumber" className={labelClass}>
-                              License no.
-                            </label>
-                            <input
-                              id="licenseNumber"
-                              type="text"
+                          {/* Architects get the live IAB directory lookup; the
+                              other roles have no such public register, so they
+                              just type the number. */}
+                          {form.role === "ARCHITECT" ? (
+                            <IabCheckField
                               value={form.licenseNumber}
-                              onChange={set("licenseNumber")}
-                              className={inputClass}
+                              onChange={(licenseNumber) =>
+                                setForm((f) => ({ ...f, licenseNumber }))
+                              }
+                              accountName={form.name}
+                              inputClass={inputClass}
+                              labelClass={labelClass}
+                              // Signup fills the name in from the directory so
+                              // the account starts out matching the record —
+                              // it stays editable, and they can see whose
+                              // record they just pulled up.
+                              onResult={(member) =>
+                                setForm((f) => ({
+                                  ...f,
+                                  name: member.name,
+                                  // Offered, not imposed. Sign up under any
+                                  // address you like — the API keeps IAB's as
+                                  // the secondary contact if you change it.
+                                  email: member.email ?? f.email,
+                                  membershipStatus: member.status ?? "",
+                                  membershipCategory: member.category ?? "",
+                                  licenseAuthority: f.licenseAuthority || "IAB",
+                                }))
+                              }
                             />
-                          </div>
+                          ) : (
+                            <div>
+                              <label htmlFor="licenseNumber" className={labelClass}>
+                                License no.
+                              </label>
+                              <input
+                                id="licenseNumber"
+                                type="text"
+                                value={form.licenseNumber}
+                                onChange={set("licenseNumber")}
+                                className={inputClass}
+                              />
+                            </div>
+                          )}
                         </div>
+
+                        {form.role === "ARCHITECT" && form.membershipCategory && (
+                          <p className="-mt-2 text-xs text-stone-500 dark:text-slate-500">
+                            Filled in from the IAB directory:{" "}
+                            <strong>{form.membershipCategory}</strong>, standing{" "}
+                            <strong>{form.membershipStatus}</strong>. Your name and email were set
+                            to the directory&apos;s — edit them above if you&apos;d rather use
+                            different ones. If you change the email, IAB&apos;s is kept on your
+                            account as a secondary contact.
+                          </p>
+                        )}
 
                         <div>
                           <label htmlFor="specialties" className={labelClass}>

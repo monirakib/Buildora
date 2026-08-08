@@ -16,6 +16,7 @@ import {
   submitDeliverable,
 } from "@/lib/apiProjects";
 import { formatBdt, formatDate } from "@/components/app/projectStatus";
+import { ReviewCard } from "./ReviewCard";
 
 const inputClass =
   "block w-full rounded-xl border border-stone-300/80 bg-white/70 px-4 py-2.5 text-sm text-stone-900 placeholder-stone-400 backdrop-blur transition outline-none focus:border-amber-500 focus:bg-white/90 focus:ring-2 focus:ring-amber-400/30 dark:border-white/15 dark:bg-white/5 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:bg-white/10";
@@ -256,6 +257,12 @@ export function ContractSection({
               {Math.round(contract.commissionRate * 100)}%).
             </p>
           </div>
+        )}
+
+        {/* The one place a rating can be left — a completed contract, by its
+            client. Everything in the directory's rating filter starts here. */}
+        {isClient && contract.status === ContractStatus.COMPLETED && (
+          <ReviewCard contractId={contract.id} architectName={contract.architect.name} />
         )}
 
         {contract.status === ContractStatus.CANCELLED && (

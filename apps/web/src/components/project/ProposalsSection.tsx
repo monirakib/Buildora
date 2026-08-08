@@ -2,7 +2,13 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ProposalStatus, UserRole, type Project, type Proposal } from "@buildora/shared";
+import {
+  ProposalStatus,
+  UserRole,
+  VerificationStatus,
+  type Project,
+  type Proposal,
+} from "@buildora/shared";
 import { createProposal, decideProposal, listProjectProposals } from "@/lib/apiProjects";
 import { VerifiedBadge } from "@/components/app/VerifiedBadge";
 import { formatBdt, formatDate } from "@/components/app/projectStatus";
@@ -185,7 +191,18 @@ export function ProposalsSection({
                       <>
                         <button
                           type="button"
-                          disabled={busyId === p.id}
+                          // Accepting creates the contract and escrow schedule,
+                          // so it's limited to supervisor-approved architects.
+                          // The API rejects it too — this just explains why.
+                          disabled={
+                            busyId === p.id ||
+                            p.architect.verificationStatus !== VerificationStatus.APPROVED
+                          }
+                          title={
+                            p.architect.verificationStatus !== VerificationStatus.APPROVED
+                              ? "This architect isn't Platform Verified yet"
+                              : undefined
+                          }
                           onClick={() => decide(p.id, "accept")}
                           className="rounded-full bg-emerald-500 px-4 py-1.5 text-xs font-bold text-white transition hover:bg-emerald-400 disabled:opacity-60"
                         >

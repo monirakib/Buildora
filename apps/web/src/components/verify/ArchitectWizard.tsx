@@ -4,7 +4,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { VerificationStatus, computeCompletion, type SessionUser } from "@buildora/shared";
-import { getMyVerification, submitVerification, updateProfessionalProfile } from "@/lib/api";
+import {
+  ApiError,
+  getMyVerification,
+  submitVerification,
+  updateProfessionalProfile,
+} from "@/lib/api";
 import { useSession } from "@/store/useSession";
 import { formFromUser, toPayload, toProfile, type WizardForm } from "./form";
 import { Navbar } from "@/components/landing/Navbar";
@@ -68,6 +73,8 @@ export function ArchitectWizard({ user }: { user: SessionUser }) {
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [submitting, setSubmitting] = useState(false);
   const [rejectionNote, setRejectionNote] = useState<string | null>(null);
+  /** Set when the API blocked the submission because the IAB name differs. */
+  const [nameMismatch, setNameMismatch] = useState(false);
 
   // The profile is frozen while a supervisor has it, or once verified.
   const locked =
@@ -123,18 +130,28 @@ export function ArchitectWizard({ user }: { user: SessionUser }) {
   const complete = stepCompleteness(form);
   const sections = STEP_LABELS.map((label, i) => ({ label, complete: complete[i] ?? false }));
 
-  async function handleSubmit() {
+  /**
+   * `manualReview` sends the profile to a supervisor without the automated IAB
+   * name check having to pass. It's only ever set by the button that appears
+   * after the API rejects a submission for a name mismatch — never by default.
+   */
+  async function handleSubmit(manualReview = false) {
     if (!token) return;
     setError(null);
+    setNameMismatch(false);
     setSubmitting(true);
     // Cancel any pending autosave, flush the latest form, then submit.
     if (timerRef.current) clearTimeout(timerRef.current);
     try {
       if (dirtyRef.current && !(await save(form))) return;
-      await submitVerification(token, "");
+      await submitVerification(token, "", manualReview);
       setSession({ ...user, verificationStatus: VerificationStatus.DOCUMENTS_SUBMITTED }, token);
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err) {
+      // The name on the account doesn't match the IAB record. Offer the manual
+      // route rather than leaving them stuck — IAB spells plenty of names
+      // differently from the applicant's own documents.
+      if (err instanceof ApiError && err.code === "IAB_NAME_MISMATCH") setNameMismatch(true);
       setError(err instanceof Error ? err.message : "Couldn't submit for verification");
     } finally {
       setSubmitting(false);
@@ -225,6 +242,18 @@ export function ArchitectWizard({ user }: { user: SessionUser }) {
         {error && (
           <div className="mb-6 rounded-2xl border border-rose-400/25 bg-rose-400/15 px-5 py-3.5 text-sm font-medium text-rose-800 dark:text-rose-100 backdrop-blur-xl">
             {error}
+            {/* The way out of a name mismatch: skip the automated check and let
+                a supervisor compare the documents by hand. */}
+            {nameMismatch && (
+              <button
+                type="button"
+                onClick={() => handleSubmit(true)}
+                disabled={submitting}
+                className="mt-3 block rounded-full bg-rose-600 px-5 py-2 text-sm font-bold text-white transition hover:bg-rose-700 disabled:opacity-50"
+              >
+                {submitting ? "Sending…" : "Send for manual review instead"}
+              </button>
+            )}
           </div>
         )}
 
@@ -284,7 +313,7 @@ export function ArchitectWizard({ user }: { user: SessionUser }) {
         percent={completion.percent}
         canSubmit={completion.mandatoryComplete && !locked}
         submitting={submitting}
-        onSubmit={handleSubmit}
+        onSubmit={() => handleSubmit()}
         locked={locked}
       />
     </div>

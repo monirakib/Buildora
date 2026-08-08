@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { UserRole } from "@buildora/shared";
 import {
+  checkIabMembership,
   decideVerificationRequest,
   getMyVerification,
   getVerificationRequest,
@@ -27,6 +28,16 @@ verificationRouter.post(
   submitVerification
 );
 verificationRouter.get("/mine", requireAuth, requireRole(...PROFESSIONAL_ROLES), getMyVerification);
+
+// IAB directory lookup — the architect runs it from the wizard, the supervisor
+// re-runs it while reviewing. Signed-in only: it proxies a public directory and
+// shouldn't be an open lookup service for anyone on the internet.
+verificationRouter.get(
+  "/iab",
+  requireAuth,
+  requireRole(...PROFESSIONAL_ROLES, UserRole.ADMIN),
+  checkIabMembership
+);
 
 // Supervisor side — review queue and decisions.
 verificationRouter.get(

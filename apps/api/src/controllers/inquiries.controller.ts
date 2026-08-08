@@ -5,6 +5,7 @@ import {
   InquiryStatus,
   NotificationType,
   UserRole,
+  VerificationStatus,
   type Inquiry as InquiryDto,
 } from "@buildora/shared";
 import { Inquiry, type InquiryDoc } from "../models/Inquiry";
@@ -83,6 +84,20 @@ export async function createInquiry(req: Request, res: Response) {
   const architect = await User.findById(architectId);
   if (!architect || architect.role !== UserRole.ARCHITECT) {
     return res.status(404).json({ error: { message: "Architect not found" } });
+  }
+
+  // Unverified architects can be browsed but not engaged. Nobody should be able
+  // to commit money and a building to someone whose IAB membership, degree and
+  // NID a supervisor hasn't checked yet.
+  if (architect.verificationStatus !== VerificationStatus.APPROVED) {
+    return res.status(403).json({
+      error: {
+        code: "ARCHITECT_NOT_VERIFIED",
+        message:
+          `${architect.name} isn't Platform Verified yet, so you can't start a project with ` +
+          `them. You can still view their profile and portfolio.`,
+      },
+    });
   }
 
   // Block a second open request to the same architect (friendlier than letting

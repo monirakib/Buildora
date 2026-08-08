@@ -3,10 +3,39 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
 import { Types, type HydratedDocument } from "mongoose";
-import { PaymentMethod, UserRole, type AccountSession, type SessionUser } from "@buildora/shared";
+import {
+  PaymentMethod,
+  UserRole,
+  normalizeMembershipNo,
+  normalizeNid,
+  type AccountSession,
+  type NidCheck,
+  type SessionUser,
+  type UserProfile,
+} from "@buildora/shared";
 import { env } from "../config/env";
 import { User, type UserDoc } from "../models/User";
 import { Session, liveSessionFilter } from "../models/Session";
+import { lookupIabMember } from "../services/iab";
+
+/**
+ * Profile saves replace the whole subdocument, which would throw away the NID
+ * pre-screen every time someone edits their bio. This carries it across — but
+ * only while it still describes the number now on the profile. Change the NID
+ * and the old result is meaningless, so it goes.
+ *
+ * Exported because the professional profile update needs the identical rule.
+ */
+export function keepNidCheck<T extends { nid?: string; nidCheck?: NidCheck }>(
+  previous: UserProfile | undefined,
+  next: T
+): T {
+  const check = (previous as { nidCheck?: NidCheck } | undefined)?.nidCheck;
+  if (check && next.nid && normalizeNid(check.nid) === normalizeNid(next.nid)) {
+    return { ...next, nidCheck: check };
+  }
+  return next;
+}
 
 // Account fields every signup shares (land owner and professional alike).
 const accountFields = {
@@ -49,6 +78,11 @@ const registerProfessionalSchema = z.object({
     .max(120),
   licenseAuthority: z.string().trim().max(60).optional(),
   licenseNumber: z.string().trim().max(60).optional(),
+  // Filled in from the IAB directory by the signup form when the number checks
+  // out. Still just claims until a supervisor confirms them — the authoritative
+  // copy is the `iabCheck` the server records below.
+  membershipStatus: z.string().trim().max(30).optional(),
+  membershipCategory: z.string().trim().max(30).optional(),
   specialties: z.string().trim().max(200).optional(),
   yearsExperience: z.preprocess(
     (v) => (v === "" || v == null ? undefined : v),
@@ -81,6 +115,11 @@ const profileSchema = z.object({
   ),
   phone: optionalText(30),
   nid: optionalText(30),
+  // Land owners now supply the same identity evidence as professionals, so the
+  // NID pre-screen has a card to read and a birth date to compare against.
+  nidFrontUrl: optionalUrl,
+  nidBackUrl: optionalUrl,
+  dateOfBirth: optionalText(10),
   avatarUrl: optionalUrl,
   company: optionalText(120),
   bio: optionalText(500),
@@ -258,15 +297,44 @@ export async function registerProfessional(req: Request, res: Response) {
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
+  // Drop undefined credential fields so we don't store an empty subdocument.
+  const credentials: Record<string, unknown> = Object.fromEntries(
+    Object.entries(profile).filter(([, v]) => v !== undefined)
+  );
+
+  // Architects who gave a membership number get it checked against the IAB
+  // directory at signup, so the record is on the account from day one rather
+  // than only appearing when they submit for verification. Nothing here blocks
+  // registration — a failed or missing check is the supervisor's to weigh.
+  let recoveryEmail: string | undefined;
+  if (role === UserRole.ARCHITECT && typeof credentials.licenseNumber === "string") {
+    const membershipNo = normalizeMembershipNo(credentials.licenseNumber);
+    if (membershipNo) {
+      try {
+        const check = await lookupIabMember(membershipNo, name);
+        credentials.iabCheck = check;
+
+        // The form offers IAB's address as the account email, but they're free
+        // to sign up under a different one. When they do, IAB's is kept as the
+        // secondary contact rather than thrown away — it's the address the
+        // institute will actually write to.
+        const iabEmail = check.member?.email;
+        if (iabEmail && iabEmail !== email.trim().toLowerCase()) recoveryEmail = iabEmail;
+      } catch (err) {
+        console.error("[iab] lookup failed during signup:", err);
+      }
+    }
+  }
+
   const user = await User.create({
     name,
     username,
     email,
     phone: phone || undefined,
+    recoveryEmail,
     passwordHash,
     role,
-    // Drop undefined credential fields so we don't store an empty subdocument.
-    profile: Object.fromEntries(Object.entries(profile).filter(([, v]) => v !== undefined)),
+    profile: credentials,
   });
 
   const token = await startSession(user, req);
@@ -344,7 +412,7 @@ export async function updateProfile(req: Request, res: Response) {
   // undefined) means "clear this value" — phone and the whole profile
   // subdocument are replaced rather than merged.
   user.phone = phone;
-  user.profile = profile;
+  user.profile = keepNidCheck(user.profile, profile);
   await user.save();
 
   return res.json({ data: { user: toSessionUser(user) } });

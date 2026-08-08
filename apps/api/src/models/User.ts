@@ -24,6 +24,14 @@ export interface UserDoc {
   passwordHash: string;
   role: UserRole;
   verificationStatus: VerificationStatus;
+  /**
+   * Denormalised review summary, recomputed by services/ratings.ts whenever a
+   * review is written. Kept on the user so the directory can sort and filter by
+   * rating in one query instead of aggregating the Review collection per page.
+   * `ratingCount: 0` means nobody has reviewed them yet.
+   */
+  ratingAvg?: number;
+  ratingCount?: number;
   profile?: UserProfile;
   /** Last time the user held a live signaling socket — powers "Active 5 mins ago". */
   lastSeenAt?: Date;
@@ -98,6 +106,71 @@ const portfolioProjectSchema = new Schema(
   { _id: false }
 );
 
+// One IAB directory lookup. `member` is null when the directory has no such
+// membership number — a recorded "not found", which is different from never
+// having checked (the whole `iabCheck` being absent).
+const iabCheckSchema = new Schema(
+  {
+    membershipNo: { type: String, required: true, trim: true },
+    member: {
+      type: new Schema(
+        {
+          membershipNo: { type: String, required: true, trim: true },
+          name: { type: String, required: true, trim: true },
+          email: { type: String, lowercase: true, trim: true },
+          // Official labels, plus the directory's raw words in case IAB adds a
+          // tier or standing this build doesn't know how to map.
+          category: { type: String, trim: true },
+          status: { type: String, trim: true },
+          rawCategory: { type: String, trim: true },
+          rawStatus: { type: String, required: true, trim: true },
+          isRegular: { type: Boolean, required: true },
+        },
+        { _id: false }
+      ),
+      default: null,
+    },
+    checkedAt: { type: String, required: true },
+    /** The account name as it read when the check ran. */
+    claimedName: { type: String, trim: true },
+    /** null when there was no record to compare the name against. */
+    nameMatches: { type: Boolean, default: null },
+  },
+  { _id: false }
+);
+
+// The automated NID pre-screen (see controllers/nid.controller.ts). Server-
+// written only — the profile PATCH schemas drop a client-sent `nidCheck`.
+const nidCheckSchema = new Schema(
+  {
+    nid: { type: String, required: true, trim: true },
+    format: { type: String, trim: true },
+    formatOk: { type: Boolean, required: true },
+    formatIssue: { type: String, trim: true },
+    // null means "nothing to compare against", not "didn't match".
+    dobMatches: { type: Boolean, default: null },
+    duplicate: { type: Boolean, required: true },
+    ocr: {
+      type: new Schema(
+        {
+          readable: { type: Boolean, required: true },
+          name: { type: String, trim: true },
+          nid: { type: String, trim: true },
+          dateOfBirth: { type: String, trim: true },
+          nameMatches: { type: Boolean, default: null },
+          nidMatches: { type: Boolean, default: null },
+          dobMatches: { type: Boolean, default: null },
+          note: { type: String, trim: true },
+        },
+        { _id: false }
+      ),
+      default: undefined,
+    },
+    checkedAt: { type: String, required: true },
+  },
+  { _id: false }
+);
+
 // Nested profile subdocument, shared across roles: land-owner build fields and
 // professional credential fields both live here (only the ones relevant to the
 // user's role get populated). `_id: false` — it's part of the user, not its
@@ -114,7 +187,10 @@ const profileSchema = new Schema<UserProfile>(
     // Land owner. Land/build figures deliberately live on Project, not here —
     // an owner can have several plots, so one set of numbers on the account
     // would be meaningless.
-    nid: { type: String, trim: true },
+    // Indexed because every NID check looks for another account holding the
+    // same number. Not unique — land owners may not have supplied one yet.
+    nid: { type: String, trim: true, index: true },
+    nidCheck: { type: nidCheckSchema, default: undefined },
     // Professional
     licenseAuthority: { type: String, trim: true },
     licenseNumber: { type: String, trim: true },
@@ -133,16 +209,25 @@ const profileSchema = new Schema<UserProfile>(
     professionalTitle: { type: String, trim: true },
     isIndependent: { type: Boolean },
     officeAddress: { type: String, trim: true },
+    // Practice location — a BD_DIVISIONS value and a district inside it.
+    practiceDivision: { type: String, trim: true },
+    practiceDistrict: { type: String, trim: true },
     languages: { type: String, trim: true },
     linkedin: { type: String, trim: true },
     // License / membership
     membershipStatus: { type: String, trim: true },
+    membershipCategory: { type: String, trim: true },
     licenseIssueDate: { type: String, trim: true },
     licenseExpiryDate: { type: String, trim: true },
     iabCertificateUrl: { type: String, trim: true },
     membershipCardUrl: { type: String, trim: true },
     rajukEnlistmentNo: { type: String, trim: true },
     rajukCertificateUrl: { type: String, trim: true },
+    // IAB directory lookup, written by the API when the architect submits for
+    // review (see services/iab.ts). Never accepted from the client — the
+    // profile PATCH schema drops it, and the profile is replaced on every save,
+    // so this only ever holds the result for the number actually submitted.
+    iabCheck: { type: iabCheckSchema, default: undefined },
     // Final declaration
     declarationAgreed: { type: Boolean },
     declarationSignature: { type: String, trim: true },
@@ -208,6 +293,10 @@ const userSchema = new Schema<UserDoc>(
     },
     profile: { type: profileSchema, default: undefined },
     // Written by the signaling server on connect/disconnect (see realtime/signaling.ts).
+    // Review summary — see services/ratings.ts. Indexed because the directory
+    // sorts by it and filters on a minimum score.
+    ratingAvg: { type: Number, min: 1, max: 5, index: true },
+    ratingCount: { type: Number, default: 0 },
     lastSeenAt: { type: Date },
     billing: { type: billingSchema, default: undefined },
   },

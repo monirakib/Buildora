@@ -3,15 +3,19 @@ import { isValidObjectId } from "mongoose";
 import type { HydratedDocument } from "mongoose";
 import { z } from "zod";
 import {
+  BD_DIVISIONS,
   DEFAULT_PAGE_SIZE,
+  EXPERTISE_AREAS,
   UserRole,
   VerificationStatus,
+  isDistrictInDivision,
   type Paginated,
   type ProfessionalProfile,
   type PublicProfessional,
   type SessionUser,
 } from "@buildora/shared";
 import { User, type UserDoc } from "../models/User";
+import { keepNidCheck } from "./auth.controller";
 
 /** Public-safe projection of a professional — no email, phone, NID, or license number. */
 function toPublicProfessional(user: HydratedDocument<UserDoc>): PublicProfessional {
@@ -38,6 +42,12 @@ function toPublicProfessional(user: HydratedDocument<UserDoc>): PublicProfession
     education: profile.education,
     achievements: profile.achievements,
     portfolio: profile.portfolio,
+    practiceDivision: profile.practiceDivision,
+    practiceDistrict: profile.practiceDistrict,
+    // Left undefined rather than 0 when nobody has reviewed them, so the UI can
+    // say "No ratings yet" instead of showing an empty five-star row.
+    ratingAvg: user.ratingCount ? user.ratingAvg : undefined,
+    ratingCount: user.ratingCount ?? 0,
   };
 }
 
@@ -66,6 +76,16 @@ export async function listProfessionals(req: Request, res: Response) {
 
   const filter: Record<string, unknown> = { role };
 
+  // Only supervisor-approved professionals are listed by default: an unverified
+  // account has had none of its credentials checked, so putting it in front of a
+  // land owner alongside verified ones would be misleading. `includeUnverified`
+  // opens the directory up — that's the "Show unverified" toggle on the
+  // architects page. Those profiles are browsable but can't be engaged; the
+  // block lives in createInquiry and acceptProposal, not here.
+  if (String(req.query.includeUnverified ?? "") !== "true") {
+    filter.verificationStatus = VerificationStatus.APPROVED;
+  }
+
   const search = String(req.query.search ?? "").trim();
   if (search) {
     // Case-insensitive contains across the public text fields. Escaped so a
@@ -81,10 +101,55 @@ export async function listProfessionals(req: Request, res: Response) {
     filter["profile.specialties"] = new RegExp(safe, "i");
   }
 
+  // ---- Specialisation ----
+  // The wizard's expertise chips come from a fixed list, so this is an exact
+  // match on the stored array rather than a text search. Several may be passed
+  // (?expertise=Residential&expertise=Interior); a professional matches if they
+  // hold any of them, which is what a land owner ticking boxes expects.
+  const expertise = ([] as string[])
+    .concat(req.query.expertise as string | string[])
+    .filter((v) => typeof v === "string" && v.trim() !== "")
+    .filter((v) => (EXPERTISE_AREAS as readonly string[]).includes(v));
+  if (expertise.length > 0) {
+    filter["profile.expertise"] = { $in: expertise };
+  }
+
+  // ---- Location ----
+  // Validated against the real division/district lists so an arbitrary string
+  // can't be pushed into the query, and a district only filters when it really
+  // belongs to the division alongside it.
+  const division = String(req.query.division ?? "").trim();
+  const district = String(req.query.district ?? "").trim();
+  if ((BD_DIVISIONS as readonly string[]).includes(division)) {
+    filter["profile.practiceDivision"] = division;
+    if (district && isDistrictInDivision(division, district)) {
+      filter["profile.practiceDistrict"] = district;
+    }
+  }
+
+  // ---- Rating ----
+  // A minimum score, e.g. 4 for "4 stars and up". Professionals with no reviews
+  // are excluded by this — `ratingAvg` is unset until someone rates them, and
+  // "no ratings yet" is genuinely not the same as meeting the bar.
+  const minRating = Number(req.query.minRating);
+  if (Number.isFinite(minRating) && minRating >= 1 && minRating <= 5) {
+    filter.ratingAvg = { $gte: minRating };
+  }
+
+  // Default order is verified-first then newest, as before. The directory also
+  // offers rating and experience; both put unrated/blank profiles last rather
+  // than treating a missing value as zero.
+  const sortParam = String(req.query.sort ?? "");
+  const sort: Record<string, 1 | -1> =
+    sortParam === "rating"
+      ? { ratingAvg: -1, ratingCount: -1, createdAt: -1 }
+      : sortParam === "experience"
+        ? { "profile.yearsExperience": -1, createdAt: -1 }
+        : { verificationStatus: -1, createdAt: -1 };
+
   const [docs, total] = await Promise.all([
     User.find(filter)
-      // APPROVED sorts before the other statuses (verified-first), then newest.
-      .sort({ verificationStatus: -1, createdAt: -1 })
+      .sort(sort)
       .skip((page - 1) * pageSize)
       .limit(pageSize),
     User.countDocuments(filter),
@@ -191,7 +256,10 @@ const professionalProfileSchema = z.object({
   officeAddress: optionalText(300),
   languages: optionalText(160),
   linkedin: optionalUrl,
+  practiceDivision: optionalText(40),
+  practiceDistrict: optionalText(40),
   membershipStatus: optionalText(30),
+  membershipCategory: optionalText(30),
   licenseIssueDate: optionalText(10),
   licenseExpiryDate: optionalText(10),
   iabCertificateUrl: optionalUrl,
@@ -203,7 +271,10 @@ const professionalProfileSchema = z.object({
   declarationSignedAt: optionalText(30),
   education: z.array(educationEntrySchema).max(10, "At most 10 education entries").default([]),
   experience: z.array(experienceEntrySchema).max(15, "At most 15 experience entries").default([]),
-  expertise: z.array(z.string().trim().min(1).max(60)).max(20, "Too many expertise areas").default([]),
+  expertise: z
+    .array(z.string().trim().min(1).max(60))
+    .max(20, "Too many expertise areas")
+    .default([]),
   skills: z.array(skillEntrySchema).max(20, "At most 20 skills").default([]),
   achievements: z.array(achievementEntrySchema).max(15, "At most 15 achievements").default([]),
   portfolio: z.array(portfolioProjectSchema).max(12, "At most 12 projects").default([]),
@@ -257,7 +328,10 @@ export async function updateMyProfessionalProfile(req: Request, res: Response) {
     });
   }
 
-  const { name, phone, ...profile } = parsed.data;
+  const { name, phone, ...rest } = parsed.data;
+  // Same rule as the land-owner profile: the NID pre-screen survives an edit
+  // only while the NID it was run against is still the one on file.
+  const profile = keepNidCheck(user.profile, rest);
   if (name !== undefined) user.name = name;
   // The editor always submits the full form, so blanks mean "clear this value"
   // — replace rather than merge, like the land-owner profile update.

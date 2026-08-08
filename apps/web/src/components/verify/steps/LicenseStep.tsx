@@ -1,12 +1,16 @@
 "use client";
 
-import { MEMBERSHIP_STATUSES } from "@buildora/shared";
-import { Field, StepHeader, input } from "../ui";
+import { MEMBERSHIP_CATEGORIES, MEMBERSHIP_STATUSES } from "@buildora/shared";
+import { useSession } from "@/store/useSession";
+import { Field, StepHeader, input, label } from "../ui";
+import { IabCheckField } from "../IabCheckField";
 import { UploadZone } from "../UploadZone";
 import type { StepProps } from "../form";
 
 /** Step 3 — IAB membership (mandatory) and RAJUK enlistment (optional). */
 export function LicenseStep({ form, patch, onError }: StepProps) {
+  const token = useSession((s) => s.token);
+
   return (
     <div>
       <StepHeader
@@ -16,14 +20,37 @@ export function LicenseStep({ form, patch, onError }: StepProps) {
 
       <div className="flex flex-col gap-5">
         <div className="grid gap-5 sm:grid-cols-2">
-          <Field id="licenseNumber" title="IAB Membership Number" required>
-            <input
-              id="licenseNumber"
-              type="text"
-              value={form.licenseNumber}
-              onChange={(e) => patch({ licenseNumber: e.target.value })}
+          <IabCheckField
+            value={form.licenseNumber}
+            onChange={(licenseNumber) => patch({ licenseNumber })}
+            accountName={form.name}
+            token={token ?? undefined}
+            inputClass={input}
+            labelClass={label}
+            // Tier and standing come straight from the directory. The name is
+            // deliberately not filled here: it's the account's own name, and
+            // overwriting it would defeat the mismatch check on submit.
+            onResult={(member) =>
+              patch({
+                membershipStatus: member.status ?? "",
+                membershipCategory: member.category ?? "",
+              })
+            }
+          />
+          <Field id="membershipCategory" title="Membership Category">
+            <select
+              id="membershipCategory"
+              value={form.membershipCategory}
+              onChange={(e) => patch({ membershipCategory: e.target.value })}
               className={input}
-            />
+            >
+              <option value="">Select…</option>
+              {MEMBERSHIP_CATEGORIES.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
           </Field>
           <Field id="membershipStatus" title="Membership Status">
             <select
@@ -78,7 +105,9 @@ export function LicenseStep({ form, patch, onError }: StepProps) {
 
         {/* Optional RAJUK enlistment */}
         <div className="mt-2 border-t border-white/40 dark:border-white/8 pt-5">
-          <p className="mb-4 text-sm font-bold text-stone-700 dark:text-slate-300">RAJUK Enlistment (optional)</p>
+          <p className="mb-4 text-sm font-bold text-stone-700 dark:text-slate-300">
+            RAJUK Enlistment (optional)
+          </p>
           <div className="grid items-start gap-5 sm:grid-cols-2">
             <Field id="rajukEnlistmentNo" title="RAJUK Enlistment Number">
               <input

@@ -48,6 +48,7 @@ import {
 } from "@/lib/api";
 import { useSession } from "@/store/useSession";
 import { useTheme } from "@/store/useTheme";
+import { NidCheckPanel } from "@/components/app/NidCheckPanel";
 import { AccountShell, initialsOf, type NavGroup } from "@/components/account/AccountShell";
 import {
   ActionRow,
@@ -100,6 +101,59 @@ const PROFESSIONAL_ROLES: UserRole[] = [
 
 type SectionId = "profile" | "contact" | "security" | "billing" | "appearance";
 
+/** One side of the NID card: a file picker, or a thumbnail once uploaded. */
+function NidPhotoField({
+  label,
+  value,
+  disabled,
+  onPick,
+  onClear,
+}: {
+  label: string;
+  value: string;
+  disabled?: boolean;
+  onPick: (file: File | undefined) => void;
+  onClear: () => void;
+}) {
+  return (
+    <div>
+      <p className="mb-1.5 text-xs font-semibold text-stone-600 dark:text-slate-400">{label}</p>
+      {value ? (
+        <div className="flex items-center gap-3">
+          {/* eslint-disable-next-line @next/next/no-img-element -- Cloudinary-hosted */}
+          <img
+            src={value}
+            alt={`NID ${label.toLowerCase()}`}
+            className="h-16 w-24 rounded-lg border border-white/40 object-cover dark:border-white/10"
+          />
+          <button
+            type="button"
+            onClick={onClear}
+            className="text-xs font-bold text-stone-500 transition hover:text-rose-600 dark:text-slate-400"
+          >
+            Remove
+          </button>
+        </div>
+      ) : (
+        <label className="flex h-16 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-stone-300 text-xs font-semibold text-stone-500 transition hover:border-amber-500 hover:text-amber-600 dark:border-white/20 dark:text-slate-400">
+          <input
+            type="file"
+            accept="image/*"
+            disabled={disabled}
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              e.target.value = ""; // allow re-picking the same file
+              onPick(file);
+            }}
+          />
+          {disabled ? "Uploading…" : "Upload photo"}
+        </label>
+      )}
+    </div>
+  );
+}
+
 /** Everything is kept as strings; the API coerces and drops blanks. */
 function formFromUser(user: SessionUser) {
   // Personal fields live on the shared profile subdocument. Both role shapes
@@ -114,6 +168,11 @@ function formFromUser(user: SessionUser) {
     recoveryEmail: user.recoveryEmail ?? "",
     avatarUrl: p?.avatarUrl ?? "",
     nid: p?.nid ?? "",
+    // Identity evidence — the NID pre-screen reads the front image and compares
+    // the birth date against a 17-digit NID's built-in year.
+    nidFrontUrl: p?.nidFrontUrl ?? "",
+    nidBackUrl: p?.nidBackUrl ?? "",
+    dateOfBirth: p?.dateOfBirth ?? "",
     company: p?.company ?? "",
     bio: p?.bio ?? "",
     billingName: b?.billingName ?? "",
@@ -140,7 +199,7 @@ type FormState = ReturnType<typeof formFromUser>;
  * signup, so counting it would inflate every score by the same amount.
  */
 const COMPLETENESS: Record<"profile" | "contact" | "billing", (keyof FormState)[]> = {
-  profile: ["avatarUrl", "nid", "company", "bio"],
+  profile: ["avatarUrl", "nid", "nidFrontUrl", "dateOfBirth", "company", "bio"],
   contact: ["phone", "altPhone", "recoveryEmail"],
   billing: ["billingName", "addressLine1", "city", "postcode", "country", "preferredMethod"],
 };
@@ -314,6 +373,28 @@ export default function AccountPage() {
     try {
       setValue("avatarUrl", await uploadImage(token, file));
       pushToast("Photo uploaded — save to make it live");
+    } catch (err) {
+      pushToast(err instanceof Error ? err.message : "Upload failed", "error");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  /**
+   * Uploads one side of the NID card. Same route as the profile photo — the
+   * API stores it on Cloudinary and hands back the URL, which the NID check
+   * then reads once the form is saved.
+   */
+  async function handleNidPhoto(side: "nidFrontUrl" | "nidBackUrl", file: File | undefined) {
+    if (!file || !token) return;
+    if (!file.type.startsWith("image/")) {
+      pushToast("Your NID card has to be an image file", "error");
+      return;
+    }
+    setUploading(true);
+    try {
+      setValue(side, await uploadImage(token, file));
+      pushToast("NID photo uploaded — save, then run the check");
     } catch (err) {
       pushToast(err instanceof Error ? err.message : "Upload failed", "error");
     } finally {
@@ -559,9 +640,7 @@ export default function AccountPage() {
           <StatTile
             label="Preferred payout"
             value={
-              form.preferredMethod
-                ? methodLabels[form.preferredMethod as PaymentMethod]
-                : "Not set"
+              form.preferredMethod ? methodLabels[form.preferredMethod as PaymentMethod] : "Not set"
             }
             icon={<Wallet className="h-4 w-4" />}
             foot={`Signed in as @${user.username}`}
@@ -665,10 +744,50 @@ export default function AccountPage() {
                   <input
                     id="nid"
                     type="text"
+                    inputMode="numeric"
                     placeholder="10, 13 or 17 digits"
                     value={form.nid}
                     onChange={set("nid")}
                     className={inputClass}
+                  />
+                </FieldRow>
+                <FieldRow
+                  label="Date of birth"
+                  hint="Cross-checked against a 17-digit NID"
+                  htmlFor="dateOfBirth"
+                >
+                  <input
+                    id="dateOfBirth"
+                    type="date"
+                    value={form.dateOfBirth}
+                    onChange={set("dateOfBirth")}
+                    className={inputClass}
+                  />
+                </FieldRow>
+                <FieldRow label="NID card photos" hint="The front is read automatically">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <NidPhotoField
+                      label="Front"
+                      value={form.nidFrontUrl}
+                      disabled={uploading}
+                      onPick={(file) => handleNidPhoto("nidFrontUrl", file)}
+                      onClear={() => setValue("nidFrontUrl", "")}
+                    />
+                    <NidPhotoField
+                      label="Back"
+                      value={form.nidBackUrl}
+                      disabled={uploading}
+                      onPick={(file) => handleNidPhoto("nidBackUrl", file)}
+                      onClear={() => setValue("nidBackUrl", "")}
+                    />
+                  </div>
+                </FieldRow>
+                <FieldRow label="Identity check" hint="Save your changes before running it">
+                  <NidCheckPanel
+                    nid={form.nid}
+                    dateOfBirth={form.dateOfBirth}
+                    hasCardImage={!!form.nidFrontUrl}
+                    saved={user.profile?.nidCheck}
                   />
                 </FieldRow>
                 <FieldRow label="Company" hint="Optional" htmlFor="company">
