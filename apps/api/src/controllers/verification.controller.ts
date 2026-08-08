@@ -7,11 +7,13 @@ import {
   UserRole,
   VerificationStatus,
   computeCompletion,
+  normalizeMembershipNo,
   type ProfessionalProfile,
   type VerificationRequest as VerificationRequestShape,
 } from "@buildora/shared";
 import { User, type UserDoc } from "../models/User";
 import { VerificationRequest, type VerificationRequestDoc } from "../models/VerificationRequest";
+import { lookupIabMember } from "../services/iab";
 import { notify, notifyMany } from "../services/notifications";
 
 // The professional field is populated on every query in this file, so the
@@ -36,13 +38,62 @@ function toVerificationRequest(doc: PopulatedRequest): VerificationRequestShape 
     status: doc.status,
     message: doc.message,
     note: doc.note,
+    manualReview: doc.manualReview,
     createdAt: doc.createdAt.toISOString(),
     decidedAt: doc.decidedAt?.toISOString(),
   };
 }
 
+const iabSchema = z.object({
+  membershipNo: z.string().trim().min(1, "Enter your IAB membership number").max(20),
+  /** Optional: when given, the reply says whether it matches the IAB record. */
+  name: z.string().trim().max(120).optional(),
+});
+
+/**
+ * GET /api/verification/iab?membershipNo=AA-920&name=… — looks the number up in
+ * the IAB public directory and reports the member's tier and standing.
+ *
+ * Used in three places: the signup form (mounted without auth on the auth
+ * router, so it answers people who don't have an account yet), the wizard's
+ * "Check" button, and the supervisor's panel to re-run a check by hand.
+ */
+export async function checkIabMembership(req: Request, res: Response) {
+  const parsed = iabSchema.safeParse(req.query);
+  if (!parsed.success) {
+    return res.status(400).json({
+      error: { message: parsed.error.issues[0]?.message ?? "Invalid membership number" },
+    });
+  }
+
+  const membershipNo = normalizeMembershipNo(parsed.data.membershipNo);
+  if (!membershipNo) {
+    return res.status(400).json({
+      error: {
+        message: "IAB numbers look like AA-920 or S-098 — one or two letters, then three digits",
+      },
+    });
+  }
+
+  try {
+    const check = await lookupIabMember(membershipNo, parsed.data.name);
+    return res.json({ data: { check } });
+  } catch (err) {
+    // 502: the number may well be fine, we just couldn't ask IAB about it.
+    return res
+      .status(502)
+      .json({ error: { message: err instanceof Error ? err.message : "IAB lookup failed" } });
+  }
+}
+
 const submitSchema = z.object({
   message: z.preprocess((v) => (v === "" ? undefined : v), z.string().trim().max(1000).optional()),
+  /**
+   * Set when the professional chose to bypass the automated IAB check and go
+   * straight to a human. It never skips the lookup — the result is still
+   * recorded — it only stops a name mismatch from blocking the submission.
+   */
+  manualReview: z.boolean().optional(),
 });
 
 /**
@@ -96,12 +147,55 @@ export async function submitVerification(req: Request, res: Response) {
     });
   }
 
+  // Automated pre-screening: record what the IAB directory says about the
+  // membership number being submitted, so the supervisor reviews a result the
+  // server fetched rather than one the browser claimed.
+  //
+  // Only one outcome blocks: the directory has this number, and it belongs to
+  // somebody else. Everything else — a number IAB doesn't list, a suspended
+  // membership, IAB being unreachable — goes through carrying a flag, because
+  // the supervisor is the real gate and nobody gets verified without them.
+  if (user.role === UserRole.ARCHITECT && profile.licenseNumber) {
+    const membershipNo = normalizeMembershipNo(profile.licenseNumber);
+    if (membershipNo) {
+      try {
+        const check = await lookupIabMember(membershipNo, user.name);
+        if (check.nameMatches === false && !parsed.data.manualReview) {
+          return res.status(409).json({
+            error: {
+              code: "IAB_NAME_MISMATCH",
+              message:
+                `IAB lists ${membershipNo} under the name "${check.member!.name}", but this ` +
+                `account is named "${user.name}". Correct whichever is wrong, or send it for ` +
+                `manual review if the directory has your name recorded differently.`,
+            },
+          });
+        }
+        // `profile` is the same object as `user.profile`, just narrowed to the
+        // professional shape — writing through it updates the subdocument.
+        profile.iabCheck = check;
+
+        // Catches architects who signed up without a membership number and
+        // added it here: keep IAB's address as the secondary contact, but never
+        // overwrite one they set themselves.
+        const iabEmail = check.member?.email;
+        if (iabEmail && !user.recoveryEmail && iabEmail !== user.email) {
+          user.recoveryEmail = iabEmail;
+        }
+      } catch (err) {
+        // Couldn't reach IAB. Not the applicant's problem — let it through.
+        console.error("[iab] lookup failed during submit:", err);
+      }
+    }
+  }
+
   // Submission lands as DOCUMENTS_SUBMITTED; it becomes UNDER_REVIEW when a
   // supervisor actually opens the request.
   const request = await VerificationRequest.create({
     professional: user._id,
     status: VerificationStatus.DOCUMENTS_SUBMITTED,
     message: parsed.data.message,
+    manualReview: parsed.data.manualReview === true,
   });
 
   user.verificationStatus = VerificationStatus.DOCUMENTS_SUBMITTED;

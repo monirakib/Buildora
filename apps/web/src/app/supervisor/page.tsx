@@ -54,6 +54,128 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
+/**
+ * The IAB directory result the API recorded when the architect submitted.
+ *
+ * This is the one credential on the page the platform checked itself, so it
+ * gets a banner rather than a Field: everything else here is what the
+ * applicant typed or uploaded.
+ */
+function IabCheckBanner({
+  check,
+  manualReview,
+}: {
+  check: NonNullable<ProfessionalProfile["iabCheck"]>;
+  manualReview?: boolean;
+}) {
+  // Green only when the directory has the number, the standing is Regular, and
+  // the name lines up. Anything else deserves the supervisor's attention.
+  const ok = (check.member?.isRegular ?? false) && check.nameMatches !== false;
+  const checkedOn = new Date(check.checkedAt).toLocaleString();
+
+  return (
+    <div
+      className={`rounded-2xl px-4 py-3 text-sm ${
+        ok
+          ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-400/15 dark:text-emerald-200"
+          : "bg-rose-100 text-rose-900 dark:bg-rose-400/15 dark:text-rose-200"
+      }`}
+    >
+      <p className="text-xs font-bold tracking-wider uppercase opacity-80">
+        IAB directory check · {checkedOn}
+      </p>
+
+      {check.member ? (
+        <>
+          <p className="mt-1">
+            <strong>{check.member.membershipNo}</strong> is listed as{" "}
+            <strong>{check.member.status ?? check.member.rawStatus}</strong>
+            {check.member.category && <> ({check.member.category})</>} under the name{" "}
+            <strong>{check.member.name}</strong>
+            {check.member.email && (
+              <>
+                , email <strong>{check.member.email}</strong>
+              </>
+            )}
+            .{!check.member.isRegular && " Only a “Regular” standing is valid."}
+          </p>
+          {check.nameMatches === false && (
+            <p className="mt-1 font-bold">
+              Name mismatch — the account is named “{check.claimedName}”. This submission bypassed
+              the automated check.
+            </p>
+          )}
+        </>
+      ) : (
+        <p className="mt-1">
+          The IAB directory lists no member <strong>{check.membershipNo}</strong>. It may be a new
+          membership that isn&apos;t published yet, or the wrong number.
+        </p>
+      )}
+
+      {manualReview && (
+        <p className="mt-1 font-bold">Sent for manual review — the automated check was skipped.</p>
+      )}
+      <p className="mt-1 text-xs opacity-80">
+        Confirm the directory name matches the applicant&apos;s NID and the uploaded certificate.
+      </p>
+    </div>
+  );
+}
+
+/**
+ * The automated NID pre-screen result.
+ *
+ * Framed as evidence, never as a verdict — nothing here confirms the NID is
+ * genuine, only that it's well-formed, unused elsewhere, and consistent with
+ * the uploaded card. The supervisor is the one who decides.
+ */
+function NidCheckBanner({ check }: { check: NonNullable<ProfessionalProfile["nidCheck"]> }) {
+  const flags: string[] = [];
+  if (!check.formatOk) flags.push(check.formatIssue ?? "The number isn't a valid NID shape");
+  if (check.duplicate) flags.push("This NID is already registered to another account");
+  if (check.dobMatches === false)
+    flags.push("The NID's birth year disagrees with the date of birth");
+  if (check.ocr?.readable === false)
+    flags.push(check.ocr.note ?? "The card image couldn't be read");
+  if (check.ocr?.nameMatches === false)
+    flags.push(`Card reads "${check.ocr.name}" — a different name`);
+  if (check.ocr?.nidMatches === false)
+    flags.push(`Card shows NID ${check.ocr.nid} — a different number`);
+  if (check.ocr?.dobMatches === false) flags.push("Date of birth on the card is different");
+
+  const clean = flags.length === 0;
+  return (
+    <div
+      className={`rounded-2xl px-4 py-3 text-sm ${
+        clean
+          ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-400/15 dark:text-emerald-200"
+          : "bg-rose-100 text-rose-900 dark:bg-rose-400/15 dark:text-rose-200"
+      }`}
+    >
+      <p className="text-xs font-bold tracking-wider uppercase opacity-80">
+        NID pre-screen · {new Date(check.checkedAt).toLocaleString()}
+      </p>
+      {clean ? (
+        <p className="mt-1">
+          {check.nid} — valid format, not used elsewhere
+          {check.ocr?.readable ? ", and the uploaded card agrees" : ""}.
+        </p>
+      ) : (
+        <ul className="mt-1 list-disc space-y-0.5 pl-5">
+          {flags.map((f) => (
+            <li key={f}>{f}</li>
+          ))}
+        </ul>
+      )}
+      <p className="mt-1 text-xs opacity-80">
+        Automated pre-screen only — Buildora cannot confirm an NID against the Election Commission.
+        Compare the uploaded card yourself before approving.
+      </p>
+    </div>
+  );
+}
+
 export default function SupervisorPage() {
   const router = useRouter();
   const user = useSession((s) => s.user);
@@ -289,6 +411,8 @@ export default function SupervisorPage() {
 
                   {profile.bio && <Field label="About">{profile.bio}</Field>}
 
+                  {profile.nidCheck && <NidCheckBanner check={profile.nidCheck} />}
+
                   {/* Identity documents (architect verification wizard) */}
                   {(profile.nid || profile.nidFrontUrl || profile.dateOfBirth) && (
                     <div className="grid gap-4 sm:grid-cols-2">
@@ -332,11 +456,21 @@ export default function SupervisorPage() {
                     </div>
                   )}
 
+                  {profile.iabCheck && (
+                    <IabCheckBanner
+                      check={profile.iabCheck}
+                      manualReview={detail?.request.manualReview}
+                    />
+                  )}
+
                   {/* License documents */}
                   {(profile.iabCertificateUrl || profile.membershipStatus) && (
                     <div className="grid gap-4 sm:grid-cols-2">
                       {profile.membershipStatus && (
                         <Field label="Membership status">{profile.membershipStatus}</Field>
+                      )}
+                      {profile.membershipCategory && (
+                        <Field label="Membership category">{profile.membershipCategory}</Field>
                       )}
                       {(profile.licenseIssueDate || profile.licenseExpiryDate) && (
                         <Field label="Validity">

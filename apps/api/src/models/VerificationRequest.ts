@@ -15,6 +15,11 @@ export interface VerificationRequestDoc {
   message?: string;
   /** Supervisor's decision note — shown to the professional on rejection. */
   note?: string;
+  /**
+   * True when the professional bypassed the automated IAB check. The
+   * credentials still need checking by hand, so the supervisor is shown this.
+   */
+  manualReview?: boolean;
   decidedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -30,6 +35,7 @@ const verificationRequestSchema = new Schema<VerificationRequestDoc>(
     },
     message: { type: String, trim: true, maxlength: 1000 },
     note: { type: String, trim: true, maxlength: 1000 },
+    manualReview: { type: Boolean, default: false },
     decidedAt: { type: Date },
   },
   { timestamps: true }

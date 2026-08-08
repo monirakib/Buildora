@@ -2,11 +2,14 @@ import type {
   AccountSession,
   AchievementEntry,
   EducationEntry,
+  IabCheck,
   Inquiry,
+  NidCheck,
   Paginated,
   PortfolioProject,
   ProfessionalProfile,
   PublicProfessional,
+  Review,
   SessionUser,
   UserRole,
   VerificationRequest,
@@ -36,7 +39,9 @@ export interface AuthResult {
 export class ApiError extends Error {
   constructor(
     message: string,
-    readonly status: number
+    readonly status: number,
+    /** Machine-readable reason, when the API sends one (e.g. "IAB_NAME_MISMATCH"). */
+    readonly code?: string
   ) {
     super(message);
     this.name = "ApiError";
@@ -53,10 +58,13 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   if (!res.ok) {
     // The API replies with { error: { message } } — surface that message so
     // forms can show "Invalid email or password" instead of a status code.
-    const body = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
+    const body = (await res.json().catch(() => null)) as {
+      error?: { message?: string; code?: string };
+    } | null;
     throw new ApiError(
       body?.error?.message ?? `API request failed: ${res.status} ${res.statusText}`,
-      res.status
+      res.status,
+      body?.error?.code
     );
   }
   return res.json() as Promise<T>;
@@ -212,12 +220,28 @@ export async function listProfessionals(params: {
   search?: string;
   specialty?: string;
   page?: number;
+  /** Include professionals a supervisor hasn't approved. Off by default. */
+  includeUnverified?: boolean;
+  /** Expertise chips — a professional matches if they hold any of them. */
+  expertise?: string[];
+  division?: string;
+  district?: string;
+  /** 1–5; excludes anyone not yet rated. */
+  minRating?: number;
+  sort?: "rating" | "experience";
 }): Promise<Paginated<PublicProfessional>> {
   const q = new URLSearchParams();
   if (params.role) q.set("role", params.role);
   if (params.search) q.set("search", params.search);
   if (params.specialty) q.set("specialty", params.specialty);
   if (params.page) q.set("page", String(params.page));
+  if (params.includeUnverified) q.set("includeUnverified", "true");
+  // Repeated key — the API reads every value, not just the last.
+  for (const area of params.expertise ?? []) q.append("expertise", area);
+  if (params.division) q.set("division", params.division);
+  if (params.district) q.set("district", params.district);
+  if (params.minRating) q.set("minRating", String(params.minRating));
+  if (params.sort) q.set("sort", params.sort);
   const res = await request<{ data: Paginated<PublicProfessional> }>(
     `/api/professionals?${q.toString()}`
   );
@@ -230,6 +254,49 @@ export async function getProfessional(id: string): Promise<PublicProfessional> {
     `/api/professionals/${id}`
   );
   return res.data.professional;
+}
+
+/**
+ * POST /api/nid/check — runs the NID pre-screen against the caller's own saved
+ * profile. Takes no body on purpose: the API reads the number, date of birth
+ * and card image already on the account, so the browser can't have one set of
+ * details checked and a different set stored.
+ */
+export async function runNidCheck(token: string): Promise<NidCheck> {
+  const res = await request<{ data: { check: NidCheck } }>("/api/nid/check", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return res.data.check;
+}
+
+/** GET /api/professionals/:id/reviews — public, newest first. */
+export async function listArchitectReviews(id: string): Promise<Review[]> {
+  const res = await request<{ data: { reviews: Review[] } }>(`/api/professionals/${id}/reviews`);
+  return res.data.reviews;
+}
+
+/** GET /api/contracts/:id/review — the land owner's own review, or null. */
+export async function getMyReview(token: string, contractId: string): Promise<Review | null> {
+  const res = await request<{ data: { review: Review | null } }>(
+    `/api/contracts/${contractId}/review`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  return res.data.review;
+}
+
+/** POST /api/contracts/:id/review — rate the architect on a completed contract. */
+export async function submitReview(
+  token: string,
+  contractId: string,
+  input: { rating: number; comment?: string }
+): Promise<Review> {
+  const res = await request<{ data: { review: Review } }>(`/api/contracts/${contractId}/review`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(input),
+  });
+  return res.data.review;
 }
 
 /** POST /api/inquiries — a land owner contacts an architect. */
@@ -320,17 +387,41 @@ export async function uploadModel(token: string, file: File): Promise<string> {
 /** POST /api/verification/submit — send the profile for supervisor review. */
 export async function submitVerification(
   token: string,
-  message: string
+  message: string,
+  /** Bypass the automated IAB name check and go straight to a supervisor. */
+  manualReview = false
 ): Promise<VerificationRequest> {
   const res = await request<{ data: { request: VerificationRequest } }>(
     "/api/verification/submit",
     {
       method: "POST",
       headers: { Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ message }),
+      body: JSON.stringify({ message, manualReview }),
     }
   );
   return res.data.request;
+}
+
+/**
+ * Look a membership number up in the IAB directory.
+ *
+ * Signed-in callers (the wizard, the supervisor) go through
+ * /api/verification/iab. The signup form has no token yet, so it uses the
+ * rate-limited copy mounted on the auth router. Pass `name` to have the reply
+ * say whether it matches the name on the IAB record.
+ */
+export async function checkIabMembership(
+  membershipNo: string,
+  opts: { token?: string; name?: string } = {}
+): Promise<IabCheck> {
+  const query = new URLSearchParams({ membershipNo });
+  if (opts.name) query.set("name", opts.name);
+
+  const path = opts.token ? "/api/verification/iab" : "/api/auth/iab";
+  const res = await request<{ data: { check: IabCheck } }>(`${path}?${query.toString()}`, {
+    headers: opts.token ? { Authorization: `Bearer ${opts.token}` } : undefined,
+  });
+  return res.data.check;
 }
 
 /** GET /api/verification/mine — the professional's latest request, if any. */

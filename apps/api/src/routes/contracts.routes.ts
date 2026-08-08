@@ -8,6 +8,7 @@ import {
   payConceptFee,
   submitDeliverable,
 } from "../controllers/contracts.controller";
+import { createReview, getMyReview } from "../controllers/reviews.controller";
 import { requireAuth } from "../middleware/auth";
 import { requireRole } from "../middleware/roles";
 
@@ -26,6 +27,11 @@ contractsRouter.post(
   decideDeliverable
 );
 contractsRouter.post("/:id/cancel", requireRole(UserRole.LAND_OWNER), cancelContract);
+
+// Rating the architect — only open once the contract is COMPLETED, which the
+// handler checks along with the caller being this contract's client.
+contractsRouter.get("/:id/review", requireRole(UserRole.LAND_OWNER), getMyReview);
+contractsRouter.post("/:id/review", requireRole(UserRole.LAND_OWNER), createReview);
 
 // Architect action.
 contractsRouter.post("/:id/deliverables", requireRole(UserRole.ARCHITECT), submitDeliverable);

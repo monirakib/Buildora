@@ -5,6 +5,7 @@ import {
   listProfessionals,
   updateMyProfessionalProfile,
 } from "../controllers/professionals.controller";
+import { listArchitectReviews } from "../controllers/reviews.controller";
 import { requireAuth } from "../middleware/auth";
 import { requireRole } from "../middleware/roles";
 
@@ -27,3 +28,5 @@ professionalsRouter.patch(
 );
 
 professionalsRouter.get("/:id", getProfessional);
+// Public too — the reviews are part of how a land owner picks an architect.
+professionalsRouter.get("/:id/reviews", listArchitectReviews);

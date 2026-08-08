@@ -3,6 +3,7 @@
 import { BadgeCheck } from "lucide-react";
 import { Field, StepHeader, input } from "../ui";
 import { UploadZone } from "../UploadZone";
+import { NidCheckPanel } from "@/components/app/NidCheckPanel";
 import type { StepProps } from "../form";
 
 /** Step 1 — who the architect is, plus their NID documents. */
@@ -98,7 +99,7 @@ export function IdentityStep({ form, patch, onError, email }: StepProps & { emai
           id="nid"
           title="NID Number"
           required
-          hint="10, 13, or 17 digits — verified against your uploaded card."
+          hint="10, 13, or 17 digits — checked against your uploaded card."
         >
           <input
             id="nid"
@@ -127,6 +128,14 @@ export function IdentityStep({ form, patch, onError, email }: StepProps & { emai
             onError={onError}
           />
         </div>
+
+        {/* Runs against the saved profile, so the draft must be autosaved
+            first — hence the note inside the panel about saving. */}
+        <NidCheckPanel
+          nid={form.nid}
+          dateOfBirth={form.dateOfBirth}
+          hasCardImage={!!form.nidFrontUrl}
+        />
 
         {/* Phone/email OTP verification is a separate upcoming feature — these
             chips are placeholders until it ships. */}

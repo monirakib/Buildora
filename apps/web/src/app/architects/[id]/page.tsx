@@ -3,11 +3,13 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { UserRole, type PublicProfessional } from "@buildora/shared";
-import { createInquiry, getProfessional } from "@/lib/api";
+import { UserRole, VerificationStatus, type PublicProfessional } from "@buildora/shared";
+import type { Review } from "@buildora/shared";
+import { createInquiry, getProfessional, listArchitectReviews } from "@/lib/api";
 import { useSession } from "@/store/useSession";
 import { Navbar } from "@/components/landing/Navbar";
 import { PendingBadge, VerifiedBadge } from "@/components/app/VerifiedBadge";
+import { Stars } from "@/components/app/Stars";
 
 function initials(name: string) {
   return name
@@ -43,6 +45,7 @@ export default function ArchitectDetailPage() {
   const token = useSession((s) => s.token);
 
   const [architect, setArchitect] = useState<PublicProfessional | null>(null);
+  const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
@@ -61,6 +64,10 @@ export default function ArchitectDetailPage() {
       try {
         const a = await getProfessional(params.id);
         if (active) setArchitect(a);
+        // Reviews are a separate, public call — a failure here shouldn't take
+        // the whole profile down with it.
+        const r = await listArchitectReviews(params.id).catch(() => []);
+        if (active) setReviews(r);
       } catch {
         if (active) setNotFound(true);
       } finally {
@@ -93,6 +100,9 @@ export default function ArchitectDetailPage() {
 
   const isLandOwner = mounted && user?.role === UserRole.LAND_OWNER;
   const isSignedIn = mounted && !!user;
+  // Unverified architects are browsable but can't be engaged. The API enforces
+  // this in createInquiry; hiding the form here just avoids a pointless 403.
+  const isVerified = architect?.verificationStatus === VerificationStatus.APPROVED;
 
   if (loading || notFound || !architect) {
     return (
@@ -134,13 +144,12 @@ export default function ArchitectDetailPage() {
   const education = architect.education ?? [];
   // Expertise chips from the wizard; older profiles only have the free-text
   // specialties field, so fall back to splitting that on commas.
-  const expertise =
-    architect.expertise?.length
-      ? architect.expertise
-      : (architect.specialties ?? "")
-          .split(",")
-          .map((s) => s.trim())
-          .filter(Boolean);
+  const expertise = architect.expertise?.length
+    ? architect.expertise
+    : (architect.specialties ?? "")
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
   const firstName = architect.name.split(" ")[0];
 
   return (
@@ -184,6 +193,18 @@ export default function ArchitectDetailPage() {
               )}
 
               {/* Stats row — each tile only appears when the data exists */}
+              {/* Rating and where they practise — the two things a land owner
+                  filtered on, restated on the profile they landed on. */}
+              <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2">
+                <Stars rating={architect.ratingAvg} count={architect.ratingCount} size="lg" />
+                {architect.practiceDistrict && (
+                  <span className="text-sm text-stone-600 dark:text-slate-400">
+                    Practises in {architect.practiceDistrict}
+                    {architect.practiceDivision && `, ${architect.practiceDivision}`}
+                  </span>
+                )}
+              </div>
+
               {(typeof architect.yearsExperience === "number" ||
                 projects.length > 0 ||
                 awards.length > 0) && (
@@ -251,7 +272,10 @@ export default function ArchitectDetailPage() {
 
           {/* ---- Selected projects ---- */}
           {projects.length > 0 && (
-            <section id="projects" className="mt-16 scroll-mt-28 border-t border-stone-200 pt-10 dark:border-white/10">
+            <section
+              id="projects"
+              className="mt-16 scroll-mt-28 border-t border-stone-200 pt-10 dark:border-white/10"
+            >
               <div className="flex items-end justify-between">
                 <h2 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
                   Selected Projects
@@ -422,6 +446,37 @@ export default function ArchitectDetailPage() {
             </section>
           )}
 
+          {/* ---- Reviews ---- Only real ones: each comes from a land owner
+               whose contract with this architect reached COMPLETED. */}
+          {reviews.length > 0 && (
+            <section className="mt-16 border-t border-stone-200 pt-10 dark:border-white/10">
+              <SectionLabel>Client Reviews</SectionLabel>
+              <div className="mt-3">
+                <Stars rating={architect.ratingAvg} count={architect.ratingCount} size="lg" />
+              </div>
+
+              <ul className="mt-6 grid gap-4 sm:grid-cols-2">
+                {reviews.map((r) => (
+                  <li
+                    key={r.id}
+                    className="rounded-2xl border border-white/50 bg-white/55 p-5 backdrop-blur-xl dark:border-white/10 dark:bg-white/5"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="truncate font-bold">{r.author.name}</p>
+                      <Stars rating={r.rating} />
+                    </div>
+                    <p className="mt-1 text-xs text-stone-500 dark:text-slate-500">
+                      on {r.project.title}
+                    </p>
+                    {r.comment && (
+                      <p className="mt-3 text-sm text-stone-600 dark:text-slate-400">{r.comment}</p>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
           {/* ---- Contact ---- */}
           <section className="mt-16 border-t border-stone-200 pt-10 dark:border-white/10">
             <div className="rounded-2xl border border-white/50 bg-white/55 p-6 shadow-xl shadow-black/5 backdrop-blur-xl sm:p-10 dark:border-white/10 dark:bg-white/5">
@@ -463,6 +518,19 @@ export default function ArchitectDetailPage() {
                 <p className="mt-5 text-sm text-stone-600 dark:text-slate-400">
                   Only land owners can send contact requests.
                 </p>
+              ) : !isVerified ? (
+                <div className="mt-6 rounded-xl bg-amber-100 px-4 py-3.5 text-sm text-amber-900 dark:bg-amber-400/15 dark:text-amber-200">
+                  <p className="font-bold">{firstName} isn&apos;t Platform Verified yet.</p>
+                  <p className="mt-1">
+                    You can look through their work, but projects can only be started with
+                    architects whose IAB membership, degree and identity a Buildora supervisor has
+                    checked. Come back once they&apos;re verified — or{" "}
+                    <Link href="/architects" className="underline underline-offset-2">
+                      browse verified architects
+                    </Link>
+                    .
+                  </p>
+                </div>
               ) : (
                 <form onSubmit={handleContact} className="mt-6 flex flex-col gap-3">
                   <textarea

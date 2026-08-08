@@ -12,12 +12,24 @@ import {
   updateAccount,
   updateProfile,
 } from "../controllers/auth.controller";
+import { checkIabMembership } from "../controllers/verification.controller";
 import { requireAuth } from "../middleware/auth";
+import { rateLimit } from "../middleware/rateLimit";
 
 export const authRouter = Router();
 
 authRouter.post("/register", register);
 authRouter.post("/register-professional", registerProfessional);
+
+// IAB directory lookup for the signup form, which runs before there's an
+// account to authenticate. Same handler as /api/verification/iab; the rate
+// limit is here because this copy is open to anyone, and every call costs IAB
+// a request. Generous enough that a person filling in a form never notices.
+authRouter.get(
+  "/iab",
+  rateLimit({ windowMs: 60_000, max: 20, message: "Too many lookups — wait a minute" }),
+  checkIabMembership
+);
 authRouter.post("/login", login);
 authRouter.post("/logout", requireAuth, logout);
 authRouter.get("/me", requireAuth, me);
