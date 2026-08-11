@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { UserRole, type SessionUser } from "@buildora/shared";
 import { smoothScrollToId } from "@/lib/smoothScroll";
 import { logoutUser } from "@/lib/api";
@@ -517,6 +518,7 @@ function SideMenu({
   onClose: () => void;
   onLogout: () => void;
 }) {
+  const pathname = usePathname();
   const loggedIn = !!user;
   const role = user?.role ?? null;
   const isLandOwner = role === UserRole.LAND_OWNER;
@@ -524,7 +526,112 @@ function SideMenu({
   const isProfessional = loggedIn && !isLandOwner && !isAdmin;
   const isSeller = role === UserRole.SUPPLIER || role === UserRole.CONTRACTOR;
   const itemClass =
-    "flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-stone-700 transition hover:bg-stone-100 hover:text-stone-900 dark:text-white/85 dark:hover:bg-white/10 dark:hover:text-white";
+    "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-stone-700 transition hover:bg-stone-100 hover:text-stone-900 dark:text-white/85 dark:hover:bg-white/10 dark:hover:text-white";
+
+  // The menu is built as data rather than a wall of JSX conditionals. Nine
+  // different role combinations used to be expressed as nine `{cond && <Link>}`
+  // blocks in one flat list, which is how it drifted out of any sensible
+  // order — new links kept landing wherever there was room. Describing the
+  // sections instead means the grouping *is* the source, and adding a link is
+  // one line in the right group.
+  const sections: { title: string; items: { href: string; label: string; anchor?: boolean }[] }[] =
+    [];
+
+  // The landing-page anchors. A visitor is here to look around, so these lead;
+  // for someone signed in they're the least useful thing in the menu, so they
+  // go last (appended after everything else, below).
+  const aboutSection = {
+    title: "About Buildora",
+    items: links.map((link) => ({ ...link, anchor: true })),
+  };
+
+  if (loggedIn) {
+    sections.push({
+      title: "Your work",
+      items: [
+        { href: "/dashboard", label: "Dashboard" },
+        ...(!isAdmin ? [{ href: "/projects", label: "Projects" }] : []),
+        ...(isProfessional ? [{ href: "/briefs", label: "Open briefs" }] : []),
+        ...(isLandOwner ? [{ href: "/architects", label: "Find an architect" }] : []),
+        ...(isSeller ? [{ href: "/marketplace/sell", label: "My listings" }] : []),
+        ...(isLandOwner || isSeller
+          ? [{ href: "/marketplace/orders", label: "Market orders" }]
+          : []),
+      ],
+    });
+
+    sections.push({
+      title: "Conversations",
+      items: [
+        { href: "/messages", label: "Messages" },
+        ...(!isAdmin
+          ? [
+              { href: "/meetings", label: "Meetings" },
+              { href: "/inquiries", label: "Requests" },
+            ]
+          : []),
+      ],
+    });
+  }
+
+  // Public tools — these work signed out, which is why they sit outside the
+  // logged-in block.
+  sections.push({
+    title: "Tools",
+    items: [
+      { href: "/marketplace", label: "Marketplace" },
+      { href: "/permits", label: "Permit tools" },
+    ],
+  });
+
+  if (isAdmin) {
+    sections.push({
+      title: "Administration",
+      items: [
+        { href: "/admin", label: "Admin console" },
+        { href: "/supervisor", label: "Verification queue" },
+        { href: "/admin/permits", label: "Permit data" },
+      ],
+    });
+  }
+
+  if (loggedIn) {
+    sections.push({
+      title: "Account",
+      items: [
+        ...(isProfessionalRole(user.role)
+          ? [{ href: "/profile/professional", label: "Profile" }]
+          : []),
+        { href: "/account", label: "Account information" },
+      ],
+    });
+    sections.push(aboutSection);
+  } else {
+    sections.unshift(aboutSection);
+  }
+
+  // One section open at a time. That's what keeps the whole menu inside the
+  // drawer no matter who's signed in: an admin sees four headers and one
+  // group's links, never all fourteen destinations at once.
+  const [openSection, setOpenSection] = useState<string | null>(null);
+
+  // Which section holds the page you're on. An exact href wins over a prefix
+  // match so /marketplace/orders opens "Your work" (where that link lives)
+  // rather than "Tools" (which has the broader /marketplace).
+  const exactMatch = sections.find((s) =>
+    s.items.some((item) => !item.anchor && item.href === pathname)
+  );
+  const prefixMatch = sections.find((s) =>
+    s.items.some((item) => !item.anchor && pathname.startsWith(`${item.href}/`))
+  );
+  const activeSection = (exactMatch ?? prefixMatch)?.title ?? sections[0]?.title ?? null;
+
+  // Opening the drawer expands wherever you already are, so the links you're
+  // most likely to want next are the ones showing. Re-runs on every open, so
+  // it follows you around the app rather than remembering a stale choice.
+  useEffect(() => {
+    if (open) setOpenSection(activeSection);
+  }, [open, activeSection]);
 
   return (
     <>
@@ -571,90 +678,100 @@ function SideMenu({
           </button>
         </div>
 
-        <nav className="relative z-10 mt-6 flex flex-col gap-1">
+        {/* overflow-y-auto is a safety net, not the plan: with one section open
+            at a time the menu fits, but a very short window (a phone in
+            landscape) could still run out of room. The bar itself stays hidden
+            — `scrollbar-none` is the standard rule, the ::-webkit- one covers
+            Safari older than 18.2. */}
+        <nav className="relative z-10 mt-6 flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto scrollbar-none [&::-webkit-scrollbar]:hidden">
           <Link href="/" onClick={onClose} className={itemClass}>
             Home
           </Link>
-          {links.map((link) => (
-            <a
-              key={link.href}
-              href={link.href}
-              onClick={(e) => {
-                onAnchorClick(e);
-                onClose();
-              }}
-              className={itemClass}
-            >
-              {link.label}
-            </a>
-          ))}
-          {loggedIn && (
-            <>
-              <Link href="/dashboard" onClick={onClose} className={itemClass}>
-                Dashboard
-              </Link>
-              {!isAdmin && (
-                <Link href="/projects" onClick={onClose} className={itemClass}>
-                  Projects
-                </Link>
-              )}
-              {isProfessional && (
-                <Link href="/briefs" onClick={onClose} className={itemClass}>
-                  Open briefs
-                </Link>
-              )}
-              {isLandOwner && (
-                <Link href="/architects" onClick={onClose} className={itemClass}>
-                  Find an architect
-                </Link>
-              )}
-              {isSeller && (
-                <Link href="/marketplace/sell" onClick={onClose} className={itemClass}>
-                  My listings
-                </Link>
-              )}
-              {(isLandOwner || isSeller) && (
-                <Link href="/marketplace/orders" onClick={onClose} className={itemClass}>
-                  Market orders
-                </Link>
-              )}
-              <Link href="/messages" onClick={onClose} className={itemClass}>
-                Messages
-              </Link>
-              {!isAdmin && (
-                <Link href="/inquiries" onClick={onClose} className={itemClass}>
-                  Requests
-                </Link>
-              )}
-              {isAdmin && (
-                <>
-                  <Link href="/admin" onClick={onClose} className={itemClass}>
-                    Admin console
-                  </Link>
-                  <Link href="/supervisor" onClick={onClose} className={itemClass}>
-                    Verification queue
-                  </Link>
-                  <Link href="/admin/permits" onClick={onClose} className={itemClass}>
-                    Permit data
-                  </Link>
-                </>
-              )}
-              {isProfessionalRole(user.role) && (
-                <Link href="/profile/professional" onClick={onClose} className={itemClass}>
-                  Profile
-                </Link>
-              )}
-              <Link href="/account" onClick={onClose} className={itemClass}>
-                Account information
-              </Link>
-            </>
-          )}
-          <Link href="/marketplace" onClick={onClose} className={itemClass}>
-            Marketplace
-          </Link>
-          <Link href="/permits" onClick={onClose} className={itemClass}>
-            Permit tools
-          </Link>
+
+          {sections.map((section) => {
+            const isOpen = openSection === section.title;
+            const panelId = `menu-section-${section.title.replace(/\s+/g, "-").toLowerCase()}`;
+
+            return (
+              <div key={section.title}>
+                <button
+                  type="button"
+                  onClick={() => setOpenSection(isOpen ? null : section.title)}
+                  aria-expanded={isOpen}
+                  aria-controls={panelId}
+                  className={`w-full justify-between ${itemClass} ${
+                    isOpen ? "bg-stone-100 dark:bg-white/10" : ""
+                  }`}
+                >
+                  {section.title}
+                  <svg
+                    viewBox="0 0 24 24"
+                    aria-hidden
+                    className={`h-4 w-4 shrink-0 transition-transform duration-300 ${
+                      isOpen ? "rotate-180" : ""
+                    }`}
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="m6 9 6 6 6-6" />
+                  </svg>
+                </button>
+
+                {/* Animating to a height nobody measured: the outer grid goes
+                    from 0fr to 1fr, which the browser resolves against the
+                    content's own height. A max-height guess would either clip a
+                    long section or coast through empty space on a short one. */}
+                <div
+                  id={panelId}
+                  className={`grid transition-all duration-300 ease-out ${
+                    isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+                  }`}
+                >
+                  <div className="overflow-hidden">
+                    <div className="flex flex-col gap-0.5 border-l border-black/10 pt-1 pb-1 pl-3 ml-3 dark:border-white/15">
+                      {section.items.map((item) =>
+                        item.anchor ? (
+                          // Landing-page anchors keep the swoop-scroll behaviour.
+                          <a
+                            key={item.href}
+                            href={item.href}
+                            onClick={(e) => {
+                              onAnchorClick(e);
+                              onClose();
+                            }}
+                            // tabIndex -1 while collapsed: the links are still in
+                            // the DOM (that's what lets them animate), and without
+                            // this a keyboard user would tab into a hidden panel.
+                            tabIndex={isOpen ? undefined : -1}
+                            className={itemClass}
+                          >
+                            {item.label}
+                          </a>
+                        ) : (
+                          <Link
+                            key={item.href}
+                            href={item.href}
+                            onClick={onClose}
+                            tabIndex={isOpen ? undefined : -1}
+                            className={`${itemClass} ${
+                              pathname === item.href
+                                ? "bg-amber-400/15 text-stone-900 dark:text-white"
+                                : ""
+                            }`}
+                          >
+                            {item.label}
+                          </Link>
+                        )
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </nav>
 
         <div className="relative z-10 mt-auto border-t border-black/10 pt-4 dark:border-white/15">
