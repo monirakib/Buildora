@@ -503,12 +503,15 @@ export interface GeoAddress {
 /**
  * A land owner's construction project. Starts life as a posted brief that
  * architects respond to; `status` then tracks it through concept, design,
- * permits, and construction. `architect` is set once a proposal is accepted.
+ * permits, and construction. `architect` is set once a proposal is accepted,
+ * `engineer` once the owner appoints one for the structural drawings.
  */
 export interface Project {
   id: string;
   owner: UserRef;
   architect?: UserRef;
+  /** The structural engineer, appointed after the design contract completes. */
+  engineer?: UserRef;
   title: string;
   description: string;
   /** Plot address, e.g. "House 12, Road 5". */
@@ -872,6 +875,8 @@ export interface MarketOrder {
   phone: string;
   note?: string;
   status: OrderStatus;
+  /** Set once the buyer's gateway payment clears; unpaid orders show a Pay button. */
+  paidAt?: string;
   createdAt: string;
 }
 

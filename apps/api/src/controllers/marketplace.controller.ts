@@ -75,6 +75,7 @@ export function toOrder(doc: InstanceType<typeof MarketOrder>): MarketOrderShape
     phone: doc.phone,
     note: doc.note,
     status: doc.status,
+    paidAt: doc.paidAt?.toISOString(),
     createdAt: doc.createdAt.toISOString(),
   };
 }

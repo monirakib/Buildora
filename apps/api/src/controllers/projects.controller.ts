@@ -99,7 +99,7 @@ const briefSchema = z
     { message: "Maximum budget must be greater than the minimum", path: ["budgetMaxBdt"] }
   );
 
-// A populated project has owner/architect refs replaced by user docs.
+// A populated project has owner/architect/engineer refs replaced by user docs.
 type PopulatedRef = {
   _id: unknown;
   name: string;
@@ -110,26 +110,32 @@ type PopulatedRef = {
 const withRefs = [
   { path: "owner", select: "name username" },
   { path: "architect", select: "name username profile.company" },
+  { path: "engineer", select: "name username profile.company" },
 ];
 
-/** Shapes a project (owner + architect populated) for the client. */
+/** Turns a populated ref into the UserRef the DTO carries. */
+function toRef(ref: PopulatedRef | undefined) {
+  return ref
+    ? {
+        id: String(ref._id),
+        name: ref.name,
+        username: ref.username,
+        company: ref.profile?.company,
+      }
+    : undefined;
+}
+
+/** Shapes a project (owner + architect + engineer populated) for the client. */
 export function toProjectDto(
   doc: HydratedDocument<ProjectDoc>,
   extra?: { pendingProposals?: number }
 ): ProjectDto {
   const owner = doc.owner as unknown as PopulatedRef;
-  const architect = doc.architect as unknown as PopulatedRef | undefined;
   return {
     id: doc._id.toString(),
     owner: { id: String(owner._id), name: owner.name, username: owner.username },
-    architect: architect
-      ? {
-          id: String(architect._id),
-          name: architect.name,
-          username: architect.username,
-          company: architect.profile?.company,
-        }
-      : undefined,
+    architect: toRef(doc.architect as unknown as PopulatedRef | undefined),
+    engineer: toRef(doc.engineer as unknown as PopulatedRef | undefined),
     title: doc.title,
     description: doc.description,
     address: doc.address,
@@ -180,19 +186,23 @@ export const PROFESSIONAL_ROLES: UserRole[] = [
 ];
 
 /**
- * Who may see a project: its owner, the assigned architect, an admin — and,
- * while the brief is open, any professional (they need to read it to propose).
+ * Who may see a project: its owner, the assigned architect, the appointed
+ * structural engineer, an admin — and, while the brief is open, any
+ * professional (they need to read it to propose).
  */
 export function canViewProject(
   doc: HydratedDocument<ProjectDoc>,
   auth: { sub: string; role: UserRole }
 ): boolean {
-  // owner/architect may be populated docs or raw ObjectIds; String() covers both.
+  // Refs may be populated docs or raw ObjectIds; String() covers both.
   const ownerId = String((doc.owner as { _id?: unknown })._id ?? doc.owner);
   const architectId = doc.architect
     ? String((doc.architect as { _id?: unknown })._id ?? doc.architect)
     : undefined;
-  if (ownerId === auth.sub || architectId === auth.sub) return true;
+  const engineerId = doc.engineer
+    ? String((doc.engineer as { _id?: unknown })._id ?? doc.engineer)
+    : undefined;
+  if (ownerId === auth.sub || architectId === auth.sub || engineerId === auth.sub) return true;
   if (auth.role === UserRole.ADMIN) return true;
   return doc.status === ProjectStatus.BRIEF_POSTED && PROFESSIONAL_ROLES.includes(auth.role);
 }
@@ -243,10 +253,14 @@ export async function createProject(req: Request, res: Response) {
  * pending proposals; a professional gets the projects they're assigned to.
  */
 export async function listMyProjects(req: Request, res: Response) {
+  // A professional's project list is whatever they're attached to: architects
+  // by `architect`, structural engineers by `engineer`.
   const filter =
     req.auth!.role === UserRole.LAND_OWNER
       ? { owner: req.auth!.sub }
-      : { architect: req.auth!.sub };
+      : req.auth!.role === UserRole.STRUCTURAL_ENGINEER
+        ? { engineer: req.auth!.sub }
+        : { architect: req.auth!.sub };
 
   const docs = await Project.find(filter).sort({ createdAt: -1 }).populate(withRefs);
 

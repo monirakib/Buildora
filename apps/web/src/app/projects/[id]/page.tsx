@@ -2,7 +2,13 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ProjectStatus, UserRole, type Contract, type Project } from "@buildora/shared";
+import {
+  ContractStatus,
+  ProjectStatus,
+  UserRole,
+  type Contract,
+  type Project,
+} from "@buildora/shared";
 import {
   deleteProject,
   getProject,
@@ -16,6 +22,8 @@ import { Navbar } from "@/components/landing/Navbar";
 import { ProposalsSection } from "@/components/project/ProposalsSection";
 import { ContractSection } from "@/components/project/ContractSection";
 import { EcpsSection } from "@/components/project/EcpsSection";
+import { StructuralSection } from "@/components/project/StructuralSection";
+import { readPaymentNotice } from "@/lib/apiPayments";
 import { FloorPlanSection } from "@/components/project/FloorPlanSection";
 import { DocumentsSection } from "@/components/project/DocumentsSection";
 import { PlotMapView } from "@/components/project/PlotMapView";
@@ -55,8 +63,13 @@ export default function ProjectDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  // Set once on mount from the ?payment=… flag the gateway callback adds.
+  const [payNotice, setPayNotice] = useState<ReturnType<typeof readPaymentNotice>>(null);
   const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    setMounted(true);
+    setPayNotice(readPaymentNotice());
+  }, []);
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -171,6 +184,21 @@ export default function ProjectDetailPage() {
 
       <main className="flex-1 px-5 pt-28 pb-16 sm:px-8">
         <div className="mx-auto flex w-full max-w-4xl flex-col gap-10">
+          {/* Outcome of a gateway payment the payer was just redirected back
+              from. The section below already shows the new state; this only
+              explains why. */}
+          {payNotice && (
+            <p
+              className={`-mb-6 rounded-xl px-4 py-3 text-sm font-medium ${
+                payNotice.tone === "success"
+                  ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-400/15 dark:text-emerald-300"
+                  : "bg-rose-100 text-rose-800 dark:bg-rose-400/15 dark:text-rose-300"
+              }`}
+            >
+              {payNotice.message}
+            </p>
+          )}
+
           {/* Header ------------------------------------------------------ */}
           <div>
             <div className="flex flex-wrap items-center gap-3">
@@ -324,6 +352,17 @@ export default function ProjectDetailPage() {
                 setContract(updated);
                 load(); // contract actions can move the project status too
               }}
+            />
+          )}
+
+          {/* Structural engineering (once the design is approved) ---------- */}
+          {(contract?.status === ContractStatus.COMPLETED || project.engineer) && (
+            <StructuralSection
+              project={project}
+              token={token}
+              userId={user.id}
+              role={user.role}
+              onChanged={load}
             />
           )}
 

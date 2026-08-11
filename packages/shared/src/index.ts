@@ -4,5 +4,7 @@ export * from "./enums";
 export * from "./floorplan";
 export * from "./meetings";
 export * from "./nid";
+export * from "./payments";
+export * from "./structural";
 export * from "./types";
 export * from "./verification";
