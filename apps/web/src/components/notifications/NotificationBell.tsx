@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Bell,
+  CalendarClock,
   Check,
   CheckCheck,
   FileText,
@@ -50,6 +51,10 @@ const TYPE_STYLES: Record<
   [NotificationType.CONTRACT]: {
     icon: FileText,
     tone: "bg-teal-100 text-teal-700 dark:bg-teal-500/15 dark:text-teal-300",
+  },
+  [NotificationType.MEETING]: {
+    icon: CalendarClock,
+    tone: "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300",
   },
   [NotificationType.PAYMENT]: {
     icon: Wallet,

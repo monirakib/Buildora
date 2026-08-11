@@ -10,6 +10,7 @@ import { useSession } from "@/store/useSession";
 import { Navbar } from "@/components/landing/Navbar";
 import { PendingBadge, VerifiedBadge } from "@/components/app/VerifiedBadge";
 import { Stars } from "@/components/app/Stars";
+import { BookMeeting } from "@/components/meetings/BookMeeting";
 
 function initials(name: string) {
   return name
@@ -474,6 +475,20 @@ export default function ArchitectDetailPage() {
                   </li>
                 ))}
               </ul>
+            </section>
+          )}
+
+          {/* ---- Book a meeting ---- */}
+          {isVerified && (
+            <section className="mt-16 border-t border-stone-200 pt-10 dark:border-white/10">
+              <SectionLabel>Book a meeting</SectionLabel>
+              <h2 className="mt-2 text-2xl font-extrabold tracking-tight sm:text-3xl">
+                Talk it through with {firstName}
+              </h2>
+              <p className="mt-2 mb-6 text-sm text-stone-600 dark:text-slate-400">
+                Pick a time that suits you — online over Buildora&apos;s video call, or in person.
+              </p>
+              <BookMeeting architectId={params.id} architectName={architect.name} />
             </section>
           )}
 
