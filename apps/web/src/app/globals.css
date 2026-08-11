@@ -25,6 +25,15 @@
  * — no duplicated markup, and nothing to keep in sync between the two modes.
  */
 :root {
+  /* Tells the browser which way to paint the parts of a form control it draws
+     itself — the dropdown list of a <select>, the date and time pickers, the
+     spinner arrows, scrollbars. Without this the browser assumes a light page
+     whatever our CSS says, so a <select> styled with a translucent white
+     background and near-white text opened a *white* list with white text on
+     it. Set once here rather than as a utility on every input: two forms had
+     already patched themselves that way, thirteen others hadn't. */
+  color-scheme: light;
+
   /* Day: warm amber, a cool blue, and a soft rose over the warm canvas. */
   --ambient-a: rgba(245, 180, 0, 0.3);
   --ambient-b: rgba(56, 132, 255, 0.22);
@@ -37,6 +46,8 @@
 }
 
 .dark {
+  color-scheme: dark;
+
   /* Night: the same three lights, cooler and deeper, over #060a15. */
   --ambient-a: rgba(245, 180, 0, 0.2);
   --ambient-b: rgba(70, 110, 255, 0.28);
@@ -44,6 +55,25 @@
   --ambient-grid: rgba(255, 255, 255, 0.045);
   --ambient-vignette: rgba(2, 4, 10, 0.7);
   --ambient-grain: 0.05;
+}
+
+/**
+ * The options inside a <select>, in night mode.
+ *
+ * `color-scheme: dark` above fixes the widget chrome, but the open list is
+ * still painted from the <select>'s own computed colours — and ours are a
+ * translucent white (`dark:bg-white/5`) with near-white text, which is a
+ * readable control and an unreadable list. Translucency has no meaning in an
+ * OS-drawn popup, so the browser flattens it and you get white on white.
+ *
+ * A solid colour is the only thing that behaves the same in every browser.
+ * Slightly lifted off the #060a15 night canvas so the list reads as a raised
+ * surface rather than a hole in the page.
+ */
+.dark select option,
+.dark select optgroup {
+  background-color: #0f1626;
+  color: #e2e8f0;
 }
 
 @keyframes fade-up {
