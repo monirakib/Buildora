@@ -5,11 +5,13 @@ import { BuildingType, ProjectStatus, type PlotLocation } from "@buildora/shared
  * A land owner's construction project. It starts as a brief (what they want to
  * build, where, and with what budget); architects respond with proposals, and
  * once one is accepted the project carries the whole journey — concept, design,
- * permits, construction — through `status`. `architect` is set on acceptance.
+ * permits, construction — through `status`. `architect` is set on acceptance,
+ * `engineer` when the owner appoints one for the structural drawings.
  */
 export interface ProjectDoc {
   owner: Types.ObjectId;
   architect?: Types.ObjectId;
+  engineer?: Types.ObjectId;
   title: string;
   description: string;
   address: string;
@@ -69,6 +71,9 @@ const projectSchema = new Schema<ProjectDoc>(
   {
     owner: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
     architect: { type: Schema.Types.ObjectId, ref: "User", index: true },
+    // Set when a structural engineer is appointed; indexed because an engineer's
+    // project list queries on it, the same way an architect's does.
+    engineer: { type: Schema.Types.ObjectId, ref: "User", index: true },
     title: { type: String, required: true, trim: true, maxlength: 120 },
     description: { type: String, required: true, trim: true, maxlength: 3000 },
     address: { type: String, required: true, trim: true, maxlength: 200 },

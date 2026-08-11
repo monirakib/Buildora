@@ -20,6 +20,20 @@ services:
         value: 7d
       - key: CORS_ORIGIN
         value: https://buildora-web.onrender.com
+      # SSLCommerz sends the payer back to the API, which redirects into the web
+      # app — both URLs have to be known.
+      - key: WEB_BASE_URL
+        value: https://buildora-web.onrender.com
+      - key: API_BASE_URL
+        value: https://buildora-api.onrender.com
+      # Store credentials stay out of git; set them in the Render dashboard.
+      # Leave SSLCZ_SANDBOX true until you hold live merchant credentials.
+      - key: SSLCZ_SANDBOX
+        value: "true"
+      - key: SSLCZ_STORE_ID
+        sync: false
+      - key: SSLCZ_STORE_PASSWORD
+        sync: false
       - key: CLOUDINARY_CLOUD_NAME
         sync: false
       - key: CLOUDINARY_API_KEY

@@ -3,12 +3,14 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { OrderStatus, UserRole, type MarketOrder } from "@buildora/shared";
+import { OrderStatus, PaymentPurpose, UserRole, type MarketOrder } from "@buildora/shared";
 import { listOrders, updateOrderStatus } from "@/lib/apiMarket";
 import { useSession } from "@/store/useSession";
 import { Navbar } from "@/components/landing/Navbar";
 import { formatDate } from "@/components/app/projectStatus";
 import { formatBdt, statusLabels, statusStyles } from "@/components/market/market";
+import { GatewayPayButton } from "@/components/app/GatewayPayButton";
+import { readPaymentNotice } from "@/lib/apiPayments";
 
 const cardClass =
   "rounded-2xl border border-white/50 bg-white/55 p-5 shadow-xl shadow-black/5 backdrop-blur-xl sm:p-6 dark:border-white/10 dark:bg-white/5";
@@ -24,8 +26,13 @@ export default function MarketOrdersPage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  // Set once on mount from the ?payment=… flag the gateway callback adds.
+  const [notice, setNotice] = useState<ReturnType<typeof readPaymentNotice>>(null);
   const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    setMounted(true);
+    setNotice(readPaymentNotice());
+  }, []);
 
   const isBuyer = user?.role === UserRole.LAND_OWNER;
   const isSeller = user?.role === UserRole.SUPPLIER || user?.role === UserRole.CONTRACTOR;
@@ -112,6 +119,18 @@ export default function MarketOrdersPage() {
               : "Everything you've ordered from the marketplace, newest first."}
           </p>
 
+          {notice && (
+            <p
+              className={`mt-6 rounded-xl px-4 py-2.5 text-sm font-medium ${
+                notice.tone === "success"
+                  ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-400/15 dark:text-emerald-300"
+                  : "bg-rose-100 text-rose-800 dark:bg-rose-400/15 dark:text-rose-300"
+              }`}
+            >
+              {notice.message}
+            </p>
+          )}
+
           {error && (
             <p className="mt-6 rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-medium text-rose-800 dark:bg-rose-400/15 dark:text-rose-300">
               {error}
@@ -185,9 +204,33 @@ export default function MarketOrdersPage() {
                       )}
                     </p>
                     <p>Ordered {formatDate(o.createdAt)}</p>
+                    <p>
+                      {o.paidAt ? (
+                        <span className="font-semibold text-emerald-700 dark:text-emerald-300">
+                          Paid {formatDate(o.paidAt)}
+                        </span>
+                      ) : (
+                        <span className="font-semibold text-amber-700 dark:text-amber-300">
+                          Payment pending
+                        </span>
+                      )}
+                    </p>
                     <p className="sm:col-span-2">Deliver to: {o.deliveryAddress}</p>
                     {o.note && <p className="sm:col-span-2">Note: {o.note}</p>}
                   </div>
+
+                  {/* Buyers pay for an order that hasn't been settled yet. */}
+                  {isBuyer && !o.paidAt && o.status !== OrderStatus.CANCELLED && token && (
+                    <div className="mt-4">
+                      <GatewayPayButton
+                        token={token}
+                        purpose={PaymentPurpose.MARKET_ORDER}
+                        refId={o.id}
+                        amountBdt={o.totalBdt}
+                        label={`Pay ${formatBdt(o.totalBdt)}`}
+                      />
+                    </div>
+                  )}
 
                   {actionsFor(o).length > 0 && (
                     <div className="mt-4 flex flex-wrap gap-2">

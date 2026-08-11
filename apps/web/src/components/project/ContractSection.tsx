@@ -6,6 +6,7 @@ import {
   DeliverableStatus,
   PaymentKind,
   PaymentMethod,
+  PaymentPurpose,
   type Contract,
 } from "@buildora/shared";
 import {
@@ -16,6 +17,7 @@ import {
   submitDeliverable,
 } from "@/lib/apiProjects";
 import { formatBdt, formatDate } from "@/components/app/projectStatus";
+import { GatewayPayButton } from "@/components/app/GatewayPayButton";
 import { ReviewCard } from "./ReviewCard";
 
 const inputClass =
@@ -211,14 +213,27 @@ export function ContractSection({
         {/* Phase actions ------------------------------------------------- */}
 
         {isClient && contract.status === ContractStatus.AWAITING_CONCEPT_FEE && (
-          <PaymentForm
-            label="Pay the concept fee to start"
-            amountBdt={contract.conceptFeeBdt}
-            busy={busy}
-            onPay={(method, reference) =>
-              run(() => payConceptFee(token, contract.id, { method, reference }))
-            }
-          />
+          <>
+            {/* Real checkout when the gateway is configured; the manual form
+                below stays as the fallback for a server without keys. */}
+            <div className="mt-4">
+              <GatewayPayButton
+                token={token}
+                purpose={PaymentPurpose.CONTRACT_CONCEPT_FEE}
+                refId={contract.id}
+                amountBdt={contract.conceptFeeBdt}
+                label={`Pay the concept fee — ${formatBdt(contract.conceptFeeBdt)}`}
+              />
+            </div>
+            <PaymentForm
+              label="Or record a payment made another way"
+              amountBdt={contract.conceptFeeBdt}
+              busy={busy}
+              onPay={(method, reference) =>
+                run(() => payConceptFee(token, contract.id, { method, reference }))
+              }
+            />
+          </>
         )}
 
         {isArchitect && contract.status === ContractStatus.AWAITING_CONCEPT_FEE && (
@@ -229,14 +244,25 @@ export function ContractSection({
         )}
 
         {isClient && contract.status === ContractStatus.AWAITING_ESCROW && (
-          <PaymentForm
-            label="Deposit the design fee into escrow"
-            amountBdt={contract.designFeeBdt}
-            busy={busy}
-            onPay={(method, reference) =>
-              run(() => fundEscrow(token, contract.id, { method, reference }))
-            }
-          />
+          <>
+            <div className="mt-4">
+              <GatewayPayButton
+                token={token}
+                purpose={PaymentPurpose.CONTRACT_ESCROW}
+                refId={contract.id}
+                amountBdt={contract.designFeeBdt}
+                label={`Deposit ${formatBdt(contract.designFeeBdt)} into escrow`}
+              />
+            </div>
+            <PaymentForm
+              label="Or record a deposit made another way"
+              amountBdt={contract.designFeeBdt}
+              busy={busy}
+              onPay={(method, reference) =>
+                run(() => fundEscrow(token, contract.id, { method, reference }))
+              }
+            />
+          </>
         )}
 
         {isArchitect && contract.status === ContractStatus.AWAITING_ESCROW && (

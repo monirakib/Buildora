@@ -82,6 +82,9 @@ const methodLabels: Record<PaymentMethod, string> = {
   [PaymentMethod.BKASH]: "bKash",
   [PaymentMethod.NAGAD]: "Nagad",
   [PaymentMethod.BANK]: "Bank transfer",
+  // Only ever a *record* of how something was paid, never a payout preference —
+  // the picker below offers the three real channels and not this one.
+  [PaymentMethod.SSLCOMMERZ]: "Online payment",
 };
 
 const verificationLabels: Record<VerificationStatus, string> = {

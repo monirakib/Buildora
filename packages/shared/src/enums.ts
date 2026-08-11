@@ -91,6 +91,39 @@ export enum PaymentMethod {
   BKASH = "BKASH",
   NAGAD = "NAGAD",
   BANK = "BANK",
+  /**
+   * Paid through the SSLCommerz gateway, which fronts bKash, Nagad, Rocket,
+   * cards and internet banking behind one checkout page. The specific channel
+   * the payer chose comes back from the gateway and is stored on the payment
+   * session, not here — from the ledger's point of view it's one method.
+   */
+  SSLCOMMERZ = "SSLCOMMERZ",
+}
+
+/**
+ * What a gateway payment is *for*. Every checkout in the app funnels through
+ * one payment endpoint, and this is what tells it which domain object to
+ * settle once the money confirms.
+ */
+export enum PaymentPurpose {
+  /** The architect's concept-brief fee (plan §4.1 step 04). */
+  CONTRACT_CONCEPT_FEE = "CONTRACT_CONCEPT_FEE",
+  /** The design fee, into escrow. */
+  CONTRACT_ESCROW = "CONTRACT_ESCROW",
+  /** The structural engineer's fee, into escrow. */
+  STRUCTURAL_ESCROW = "STRUCTURAL_ESCROW",
+  /** A marketplace materials order. */
+  MARKET_ORDER = "MARKET_ORDER",
+}
+
+/** Where one attempt at paying got to. */
+export enum PaymentSessionStatus {
+  /** Session created at the gateway; the payer is on the checkout page. */
+  INITIATED = "INITIATED",
+  /** Validated against the gateway and applied to the domain object. */
+  PAID = "PAID",
+  FAILED = "FAILED",
+  CANCELLED = "CANCELLED",
 }
 
 /** Which phase of the contract a deliverable belongs to. */
@@ -226,6 +259,23 @@ export enum NotificationType {
  */
 export const BROADCAST_ALL = "ALL";
 export type BroadcastAudience = UserRole | typeof BROADCAST_ALL;
+
+/**
+ * Lifecycle of a structural engineering engagement (plan §4.1 step 08).
+ *
+ * Shorter than the architect's ContractStatus on purpose: an engineer works
+ * from an already-approved design, so there is no concept-brief stage to pay
+ * for or review. Escrow in, drawings, approval, done.
+ */
+export enum StructuralStatus {
+  /** Appointed, waiting for the owner to fund the escrow. */
+  AWAITING_ESCROW = "AWAITING_ESCROW",
+  /** Funded — the engineer submits drawings, the owner reviews them. */
+  DRAWINGS_IN_PROGRESS = "DRAWINGS_IN_PROGRESS",
+  /** Owner approved the set; escrow released and the project moves to permits. */
+  COMPLETED = "COMPLETED",
+  CANCELLED = "CANCELLED",
+}
 
 /** How a booked meeting is held. */
 export enum MeetingMode {

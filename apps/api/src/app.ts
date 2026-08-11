@@ -11,6 +11,10 @@ export function createApp() {
   app.use(helmet());
   app.use(cors({ origin: env.CORS_ORIGIN, credentials: true }));
   app.use(express.json());
+  // SSLCommerz returns the payer to us with an ordinary HTML form POST, not
+  // JSON — without this parser those callbacks arrive with an empty body and
+  // every payment looks like it failed.
+  app.use(express.urlencoded({ extended: false }));
 
   app.use("/api", apiRouter);
 

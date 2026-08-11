@@ -17,6 +17,22 @@ const envSchema = z.object({
   SESSION_IDLE_HOURS: z.coerce.number().positive().default(24),
   SESSION_MAX_HOURS: z.coerce.number().positive().default(168), // 7 days
   CORS_ORIGIN: z.string().default("http://localhost:3000"),
+  // Where the browser lives, and where this API is reachable. SSLCommerz sends
+  // the payer's browser back to the API (a POST it signs), and the API then
+  // redirects them into the web app — so both URLs have to be known.
+  WEB_BASE_URL: z.string().default("http://localhost:3000"),
+  API_BASE_URL: z.string().default("http://localhost:4000"),
+  // SSLCommerz payment gateway — one checkout page fronting bKash, Nagad,
+  // Rocket, cards and internet banking. Register a free sandbox store at
+  // https://developer.sslcommerz.com to get these; payments fall back to
+  // manual sandbox entry until they're set. Keep SSLCZ_SANDBOX=true until you
+  // hold live merchant credentials, or real money will move.
+  SSLCZ_STORE_ID: z.string().optional(),
+  SSLCZ_STORE_PASSWORD: z.string().optional(),
+  SSLCZ_SANDBOX: z
+    .string()
+    .default("true")
+    .transform((v) => v !== "false"),
   // Cloudinary image hosting (profile photos, certificates, portfolio). All
   // three come from the Cloudinary dashboard; uploads 503 until they're set.
   CLOUDINARY_CLOUD_NAME: z.string().optional(),

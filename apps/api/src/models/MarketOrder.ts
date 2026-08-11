@@ -18,6 +18,10 @@ export interface MarketOrderDoc {
   phone: string;
   note?: string;
   status: OrderStatus;
+  /** Set when the buyer's gateway payment clears. Unpaid orders show a Pay button. */
+  paidAt?: Date;
+  /** SSLCommerz reference for the payment that settled this order. */
+  paymentRef?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -38,6 +42,8 @@ const marketOrderSchema = new Schema<MarketOrderDoc>(
     deliveryAddress: { type: String, required: true, trim: true, maxlength: 300 },
     phone: { type: String, required: true, trim: true, maxlength: 30 },
     note: { type: String, trim: true, maxlength: 500 },
+    paidAt: { type: Date },
+    paymentRef: { type: String, trim: true },
     status: {
       type: String,
       enum: Object.values(OrderStatus),
