@@ -212,6 +212,8 @@ export enum NotificationType {
   VERIFICATION = "VERIFICATION",
   /** You missed a call. */
   CALL = "CALL",
+  /** A meeting was booked, rescheduled, cancelled, or its venue moved on. */
+  MEETING = "MEETING",
   /** A marketing announcement sent by an admin. */
   PROMOTION = "PROMOTION",
   /** A platform-wide notice sent by an admin (maintenance, policy, …). */
@@ -224,3 +226,30 @@ export enum NotificationType {
  */
 export const BROADCAST_ALL = "ALL";
 export type BroadcastAudience = UserRole | typeof BROADCAST_ALL;
+
+/** How a booked meeting is held. */
+export enum MeetingMode {
+  /** Over Buildora's built-in video call. */
+  ONLINE = "ONLINE",
+  /** Face to face — at the architect's office, or somewhere both sides agree. */
+  IN_PERSON = "IN_PERSON",
+}
+
+/**
+ * Lifecycle of a booked meeting.
+ *
+ * There is deliberately no "COMPLETED": a meeting is over when its end time has
+ * passed, which the clock already tells us. Storing it would mean a background
+ * job to flip the flag, and a status that lies whenever that job is down.
+ */
+export enum MeetingStatus {
+  /**
+   * The time is locked in but the *place* isn't: someone proposed a venue other
+   * than the office and the other side hasn't answered yet. The slot is held,
+   * so nobody else can take it while the two sides agree.
+   */
+  PENDING_VENUE = "PENDING_VENUE",
+  /** Time and place both settled — the only state offered as a calendar export. */
+  CONFIRMED = "CONFIRMED",
+  CANCELLED = "CANCELLED",
+}
