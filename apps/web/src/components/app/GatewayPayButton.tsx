@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ArrowRight, ShieldCheck } from "lucide-react";
 import { SSLCOMMERZ_MAX_BDT, type PaymentPurpose } from "@buildora/shared";
 import { getPaymentConfig, startCheckout } from "@/lib/apiPayments";
 import { formatBdt } from "@/components/app/projectStatus";
@@ -47,7 +48,11 @@ export function GatewayPayButton({
         if (!active) return;
         setConfigured(c.configured);
         setSandbox(c.sandbox);
-        onUnavailable?.(!c.configured);
+        // "Unavailable" covers both having no store keys and this particular
+        // amount being over the gateway's per-transaction ceiling. Callers hide
+        // their manual form when the gateway can pay, so an over-limit payment
+        // has to count as unavailable or there would be no way to settle it.
+        onUnavailable?.(!c.configured || amountBdt > SSLCOMMERZ_MAX_BDT);
       })
       .catch(() => {
         if (!active) return;
@@ -91,14 +96,35 @@ export function GatewayPayButton({
         type="button"
         onClick={handlePay}
         disabled={busy}
-        className="rounded-full bg-emerald-500 px-6 py-2.5 text-sm font-bold text-white shadow-lg transition hover:bg-emerald-400 disabled:opacity-60"
+        className="group inline-flex w-full items-center justify-center gap-2.5 rounded-full bg-linear-to-r from-emerald-500 to-teal-500 px-7 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-500/25 transition hover:from-emerald-400 hover:to-teal-400 hover:shadow-emerald-500/40 focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-60 sm:w-auto dark:focus-visible:ring-offset-stone-950"
       >
-        {busy ? "Opening checkout…" : (label ?? `Pay ${formatBdt(amountBdt)} online`)}
+        <ShieldCheck className="h-4 w-4 shrink-0" aria-hidden />
+        <span>{busy ? "Opening checkout…" : (label ?? `Pay ${formatBdt(amountBdt)} online`)}</span>
+        {/* Nudges on hover to signal this leaves the page for SSLCommerz. */}
+        <ArrowRight
+          className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5"
+          aria-hidden
+        />
       </button>
-      <p className="mt-1.5 text-xs text-stone-600 dark:text-slate-400">
-        bKash, Nagad, Rocket, card or internet banking via SSLCommerz
-        {sandbox ? " · test mode, no real money moves" : ""}.
-      </p>
+
+      {/* The channels, as chips rather than a sentence — a payer scanning for
+          "is bKash here?" finds it faster than in prose. */}
+      <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+        {["bKash", "Nagad", "Rocket", "Card", "Net banking"].map((channel) => (
+          <span
+            key={channel}
+            className="rounded-full border border-stone-300/70 px-2.5 py-0.5 text-[11px] font-semibold text-stone-600 dark:border-white/15 dark:text-slate-400"
+          >
+            {channel}
+          </span>
+        ))}
+        {sandbox && (
+          <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-bold text-amber-800 dark:bg-amber-400/15 dark:text-amber-300">
+            Test mode — no real money
+          </span>
+        )}
+      </div>
+
       {error && (
         <p className="mt-2 rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-medium text-rose-800 dark:bg-rose-400/15 dark:text-rose-300">
           {error}

@@ -50,6 +50,14 @@ const envSchema = z.object({
   // User-Agent carrying a placeholder domain like example.com outright (403).
   NOMINATIM_BASE_URL: z.string().default("https://nominatim.openstreetmap.org"),
   NOMINATIM_CONTACT: z.string().default("buildora-cse471"),
+  // Open-Meteo — the weather stamped onto every site diary entry, and the
+  // forecast strip above it. Free with no API key and no signup at all, so
+  // there is nothing to configure; these exist only so the host can be pointed
+  // elsewhere. Two hosts because they are genuinely separate services: the
+  // forecast API covers roughly the last 92 days plus 16 ahead from a live
+  // model, and the archive API serves older dates from reanalysis data.
+  OPEN_METEO_FORECAST_URL: z.string().default("https://api.open-meteo.com/v1/forecast"),
+  OPEN_METEO_ARCHIVE_URL: z.string().default("https://archive-api.open-meteo.com/v1/archive"),
   // WebRTC ICE servers for voice calls. STUN handles NAT discovery and works
   // for the demo on most networks (defaults to Google's public STUN). Set the
   // TURN_* vars later to relay calls that can't connect peer-to-peer across

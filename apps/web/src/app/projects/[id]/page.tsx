@@ -26,6 +26,7 @@ import { StructuralSection } from "@/components/project/StructuralSection";
 import { readPaymentNotice } from "@/lib/apiPayments";
 import { FloorPlanSection } from "@/components/project/FloorPlanSection";
 import { DocumentsSection } from "@/components/project/DocumentsSection";
+import { SiteDiarySection } from "@/components/project/SiteDiarySection";
 import { PlotMapView } from "@/components/project/PlotMapView";
 import {
   buildingTypeLabels,
@@ -97,6 +98,7 @@ export default function ProjectDetailPage() {
 
   const isOwner = !!user && !!project && user.id === project.owner.id;
   const isAssignedArchitect = !!user && !!project && user.id === project.architect?.id;
+  const isAssignedEngineer = !!user && !!project && user.id === project.engineer?.id;
 
   async function handlePostDraft() {
     if (!token || !project) return;
@@ -369,6 +371,16 @@ export default function ProjectDetailPage() {
           {/* 2D floor plan — the architect's design, once one is engaged ---- */}
           {(isOwner || isAssignedArchitect) && project.architect && (
             <FloorPlanSection project={project} token={token} />
+          )}
+
+          {/* Site diary — everyone working on the project writes and reads it */}
+          {(isOwner || isAssignedArchitect || isAssignedEngineer) && (
+            <SiteDiarySection
+              project={project}
+              token={token}
+              userId={user.id}
+              canWrite={isOwner || isAssignedArchitect || isAssignedEngineer}
+            />
           )}
 
           {/* Permit tracker + archive (participants only) ------------------ */}

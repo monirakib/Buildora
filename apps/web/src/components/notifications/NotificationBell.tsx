@@ -7,6 +7,7 @@ import {
   CalendarClock,
   Check,
   CheckCheck,
+  ClipboardList,
   FileText,
   Info,
   Inbox,
@@ -56,6 +57,10 @@ const TYPE_STYLES: Record<
     icon: CalendarClock,
     tone: "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300",
   },
+  [NotificationType.SITE_DIARY]: {
+    icon: ClipboardList,
+    tone: "bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300",
+  },
   [NotificationType.PAYMENT]: {
     icon: Wallet,
     tone: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300",
@@ -99,6 +104,7 @@ const FILTERS: { label: string; types: NotificationType[] | null }[] = [
       NotificationType.PAYMENT,
       NotificationType.ORDER,
       NotificationType.VERIFICATION,
+      NotificationType.SITE_DIARY,
     ],
   },
   { label: "Offers", types: [NotificationType.PROMOTION, NotificationType.SYSTEM] },

@@ -137,6 +137,9 @@ export function ContractSection({
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // True when the gateway can't take this payment, which is the only case that
+  // still offers the manual form. Set by GatewayPayButton once it knows.
+  const [gatewayDown, setGatewayDown] = useState(false);
 
   // Architect's submission form.
   const [sub, setSub] = useState({ title: "", note: "", fileUrl: "" });
@@ -214,8 +217,9 @@ export function ContractSection({
 
         {isClient && contract.status === ContractStatus.AWAITING_CONCEPT_FEE && (
           <>
-            {/* Real checkout when the gateway is configured; the manual form
-                below stays as the fallback for a server without keys. */}
+            {/* The gateway is the way to pay. The manual form only appears if
+                the gateway can't take this payment — no store keys, or an
+                amount over its per-transaction ceiling. */}
             <div className="mt-4">
               <GatewayPayButton
                 token={token}
@@ -223,16 +227,19 @@ export function ContractSection({
                 refId={contract.id}
                 amountBdt={contract.conceptFeeBdt}
                 label={`Pay the concept fee — ${formatBdt(contract.conceptFeeBdt)}`}
+                onUnavailable={setGatewayDown}
               />
             </div>
-            <PaymentForm
-              label="Or record a payment made another way"
-              amountBdt={contract.conceptFeeBdt}
-              busy={busy}
-              onPay={(method, reference) =>
-                run(() => payConceptFee(token, contract.id, { method, reference }))
-              }
-            />
+            {gatewayDown && (
+              <PaymentForm
+                label="Record the concept fee payment"
+                amountBdt={contract.conceptFeeBdt}
+                busy={busy}
+                onPay={(method, reference) =>
+                  run(() => payConceptFee(token, contract.id, { method, reference }))
+                }
+              />
+            )}
           </>
         )}
 
@@ -252,16 +259,19 @@ export function ContractSection({
                 refId={contract.id}
                 amountBdt={contract.designFeeBdt}
                 label={`Deposit ${formatBdt(contract.designFeeBdt)} into escrow`}
+                onUnavailable={setGatewayDown}
               />
             </div>
-            <PaymentForm
-              label="Or record a deposit made another way"
-              amountBdt={contract.designFeeBdt}
-              busy={busy}
-              onPay={(method, reference) =>
-                run(() => fundEscrow(token, contract.id, { method, reference }))
-              }
-            />
+            {gatewayDown && (
+              <PaymentForm
+                label="Record the escrow deposit"
+                amountBdt={contract.designFeeBdt}
+                busy={busy}
+                onPay={(method, reference) =>
+                  run(() => fundEscrow(token, contract.id, { method, reference }))
+                }
+              />
+            )}
           </>
         )}
 
