@@ -28,6 +28,13 @@ import {
   listFloorPlans,
   saveFloorPlan,
 } from "../controllers/floorplans.controller";
+import {
+  createSiteDiaryEntry,
+  deleteSiteDiaryEntry,
+  getSiteForecast,
+  listSiteDiary,
+  updateSiteDiaryEntry,
+} from "../controllers/sitediary.controller";
 import { requireAuth } from "../middleware/auth";
 import { requireRole } from "../middleware/roles";
 
@@ -62,6 +69,14 @@ projectsRouter.post("/:id/ecps/advance", advanceEcpsApplication);
 projectsRouter.get("/:id/floor-plans", listFloorPlans);
 projectsRouter.put("/:id/floor-plans/:level", saveFloorPlan);
 projectsRouter.delete("/:id/floor-plans/:level", deleteFloorPlan);
+
+// Site diary — one entry per day, weather-stamped. `/forecast` before
+// `/:entryId` so the literal path isn't swallowed by the parameter.
+projectsRouter.get("/:id/diary/forecast", getSiteForecast);
+projectsRouter.get("/:id/diary", listSiteDiary);
+projectsRouter.post("/:id/diary", createSiteDiaryEntry);
+projectsRouter.patch("/:id/diary/:entryId", updateSiteDiaryEntry);
+projectsRouter.delete("/:id/diary/:entryId", deleteSiteDiaryEntry);
 
 // Document archive.
 projectsRouter.get("/:id/documents", listProjectDocuments);
