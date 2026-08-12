@@ -8,6 +8,7 @@ export * from "./inspection";
 export * from "./meetings";
 export * from "./nid";
 export * from "./payments";
+export * from "./resolution";
 export * from "./sitediary";
 export * from "./structural";
 export * from "./types";

@@ -413,3 +413,63 @@ export enum MeetingStatus {
   CONFIRMED = "CONFIRMED",
   CANCELLED = "CANCELLED",
 }
+
+/**
+ * What a dispute is about.
+ *
+ * Escrow exists to protect both sides, but until now it only had happy paths:
+ * the client approves and money is released, or the work is cancelled before
+ * anything moved. A dispute is the third case — money is held, the work is
+ * done or claimed done, and the two sides disagree about whether it counts.
+ */
+export enum DisputeScope {
+  /** The architect's design contract (concept or full design). */
+  DESIGN_CONTRACT = "DESIGN_CONTRACT",
+  /** The structural engineer's engagement. */
+  STRUCTURAL = "STRUCTURAL",
+  /** One construction milestone on a build contract. */
+  BUILD_MILESTONE = "BUILD_MILESTONE",
+}
+
+/** Where a dispute has got to. Only a supervisor can end one. */
+export enum DisputeStatus {
+  /** Raised, waiting for a supervisor to pick it up. */
+  OPEN = "OPEN",
+  /** A supervisor has it and is reading the evidence. */
+  UNDER_REVIEW = "UNDER_REVIEW",
+  RESOLVED = "RESOLVED",
+  /** Pulled by whoever raised it, before a decision. */
+  WITHDRAWN = "WITHDRAWN",
+}
+
+/**
+ * How a supervisor settled it. The money follows this decision, which is why
+ * a split carries its own figure rather than being inferred.
+ */
+export enum DisputeResolution {
+  /** The professional was right — the held money is released to them. */
+  RELEASE_TO_PROFESSIONAL = "RELEASE_TO_PROFESSIONAL",
+  /** The client was right — the held money goes back to them. */
+  REFUND_TO_CLIENT = "REFUND_TO_CLIENT",
+  /** Partly each way; `refundBdt` says how much returns to the client. */
+  SPLIT = "SPLIT",
+  /** No money moves — the disagreement was resolved another way. */
+  NO_ACTION = "NO_ACTION",
+}
+
+/**
+ * A mid-construction variation: work nobody priced at tender time.
+ *
+ * Real builds change — a soil report forces a deeper foundation, an owner
+ * upgrades the finishes. Without this the only options are an off-platform
+ * side deal (which escrow can't protect) or cancelling the contract.
+ */
+export enum ChangeOrderStatus {
+  /** Proposed by the contractor, waiting on the owner. */
+  PROPOSED = "PROPOSED",
+  /** Owner accepted; the contract sum and schedule have moved. */
+  APPROVED = "APPROVED",
+  REJECTED = "REJECTED",
+  /** Pulled by the contractor before a decision. */
+  WITHDRAWN = "WITHDRAWN",
+}
