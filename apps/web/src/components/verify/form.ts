@@ -1,4 +1,9 @@
-import type { ProfessionalProfile, SessionUser, SkillEntry } from "@buildora/shared";
+import {
+  UserRole,
+  type ProfessionalProfile,
+  type SessionUser,
+  type SkillEntry,
+} from "@buildora/shared";
 import type { ProfessionalProfileInput } from "@/lib/api";
 
 // Every field is edited as a string (same convention as the rest of the app);
@@ -39,6 +44,25 @@ export const emptyProject = {
 
 export const emptyAchievement = { title: "", year: "", description: "" };
 
+export const emptyBrandAuthorization = { brand: "", documentUrl: "", validTill: "" };
+
+/**
+ * The default registering body for a role, pre-filled on a blank profile.
+ * Contractors and suppliers aren't licensed by a professional institute — their
+ * licence comes from the local authority — so they get that as the authority.
+ */
+function defaultAuthority(role: UserRole): string {
+  switch (role) {
+    case UserRole.STRUCTURAL_ENGINEER:
+      return "IEB";
+    case UserRole.CONTRACTOR:
+    case UserRole.SUPPLIER:
+      return "City Corporation";
+    default:
+      return "IAB";
+  }
+}
+
 /** The whole wizard form — one flat object so autosave can send it in one PATCH. */
 export function formFromUser(user: SessionUser) {
   const p = (user.profile ?? {}) as ProfessionalProfile;
@@ -70,17 +94,51 @@ export function formFromUser(user: SessionUser) {
     linkedin: p.linkedin ?? "",
     // Carried through unchanged — edited elsewhere / by other roles.
     specialties: p.specialties ?? "",
-    // Step 3 — License ("IAB" is the default authority for architects)
-    licenseAuthority: p.licenseAuthority || "IAB",
+    // License — the registering body differs per profession, so the default
+    // authority follows the role rather than always being IAB.
+    licenseAuthority: p.licenseAuthority || defaultAuthority(user.role),
     licenseNumber: p.licenseNumber ?? "",
     membershipStatus: p.membershipStatus ?? "",
     membershipCategory: p.membershipCategory ?? "",
     licenseIssueDate: p.licenseIssueDate ?? "",
     licenseExpiryDate: p.licenseExpiryDate ?? "",
     iabCertificateUrl: p.iabCertificateUrl ?? "",
+    licenseCertificateUrl: p.licenseCertificateUrl ?? "",
     membershipCardUrl: p.membershipCardUrl ?? "",
     rajukEnlistmentNo: p.rajukEnlistmentNo ?? "",
     rajukCertificateUrl: p.rajukCertificateUrl ?? "",
+    // Structural engineer — the seal their inspection signature carries
+    professionalSealUrl: p.professionalSealUrl ?? "",
+    // Business registration (contractor & supplier)
+    tradeLicenseNo: p.tradeLicenseNo ?? "",
+    tradeLicenseIssuer: p.tradeLicenseIssuer ?? "",
+    tradeLicenseExpiry: p.tradeLicenseExpiry ?? "",
+    tradeLicenseUrl: p.tradeLicenseUrl ?? "",
+    binNumber: p.binNumber ?? "",
+    binCertificateUrl: p.binCertificateUrl ?? "",
+    tinNumber: p.tinNumber ?? "",
+    tinCertificateUrl: p.tinCertificateUrl ?? "",
+    rjscRegistrationNo: p.rjscRegistrationNo ?? "",
+    rjscCertificateUrl: p.rjscCertificateUrl ?? "",
+    // Contractor capacity
+    enlistmentBody: p.enlistmentBody ?? "",
+    contractorClass: p.contractorClass ?? "",
+    enlistmentCertificateUrl: p.enlistmentCertificateUrl ?? "",
+    crewSize: p.crewSize?.toString() ?? "",
+    equipment: p.equipment ?? [],
+    largestProjectBdt: p.largestProjectBdt?.toString() ?? "",
+    bankSolvencyUrl: p.bankSolvencyUrl ?? "",
+    // Supplier catalogue & coverage
+    supplyCategories: p.supplyCategories ?? [],
+    brandAuthorizations: (p.brandAuthorizations ?? []).map((b) => ({
+      brand: b.brand,
+      documentUrl: b.documentUrl ?? "",
+      validTill: b.validTill ?? "",
+    })),
+    warehouseAddress: p.warehouseAddress ?? "",
+    deliveryDistricts: p.deliveryDistricts ?? [],
+    bstiLicenseNo: p.bstiLicenseNo ?? "",
+    bstiCertificateUrl: p.bstiCertificateUrl ?? "",
     // Steps 4–9 — lists
     education: (p.education ?? []).map((e) => ({
       degree: e.degree,
@@ -119,9 +177,10 @@ export function formFromUser(user: SessionUser) {
       year: a.year?.toString() ?? "",
       description: a.description ?? "",
     })),
-    // Step 10 — Declaration (three checkboxes; all must be ticked)
+    // Declaration (three checkboxes; all must be ticked). The middle one is
+    // consent to check with whichever body registers this profession.
     agreeTruth: p.declarationAgreed ?? false,
-    agreeIabCheck: p.declarationAgreed ?? false,
+    agreeBodyCheck: p.declarationAgreed ?? false,
     agreeSuspension: p.declarationAgreed ?? false,
     declarationSignature: p.declarationSignature ?? "",
     declarationSignedAt: p.declarationSignedAt ?? "",
@@ -165,9 +224,42 @@ export function toProfile(form: WizardForm): ProfessionalProfile {
     licenseIssueDate: form.licenseIssueDate || undefined,
     licenseExpiryDate: form.licenseExpiryDate || undefined,
     iabCertificateUrl: form.iabCertificateUrl || undefined,
+    licenseCertificateUrl: form.licenseCertificateUrl || undefined,
     membershipCardUrl: form.membershipCardUrl || undefined,
     rajukEnlistmentNo: form.rajukEnlistmentNo || undefined,
     rajukCertificateUrl: form.rajukCertificateUrl || undefined,
+    professionalSealUrl: form.professionalSealUrl || undefined,
+    tradeLicenseNo: form.tradeLicenseNo || undefined,
+    tradeLicenseIssuer: form.tradeLicenseIssuer || undefined,
+    tradeLicenseExpiry: form.tradeLicenseExpiry || undefined,
+    tradeLicenseUrl: form.tradeLicenseUrl || undefined,
+    binNumber: form.binNumber || undefined,
+    binCertificateUrl: form.binCertificateUrl || undefined,
+    tinNumber: form.tinNumber || undefined,
+    tinCertificateUrl: form.tinCertificateUrl || undefined,
+    rjscRegistrationNo: form.rjscRegistrationNo || undefined,
+    rjscCertificateUrl: form.rjscCertificateUrl || undefined,
+    enlistmentBody: form.enlistmentBody || undefined,
+    contractorClass: form.contractorClass || undefined,
+    enlistmentCertificateUrl: form.enlistmentCertificateUrl || undefined,
+    crewSize: num(form.crewSize),
+    equipment: form.equipment,
+    largestProjectBdt: num(form.largestProjectBdt),
+    bankSolvencyUrl: form.bankSolvencyUrl || undefined,
+    supplyCategories: form.supplyCategories,
+    // Rows with no brand typed yet are drafts, not data — drop them so a
+    // half-filled card can't fail the save with "Enter the brand name".
+    brandAuthorizations: form.brandAuthorizations
+      .filter((b) => b.brand.trim() !== "")
+      .map((b) => ({
+        brand: b.brand,
+        documentUrl: b.documentUrl || undefined,
+        validTill: b.validTill || undefined,
+      })),
+    warehouseAddress: form.warehouseAddress || undefined,
+    deliveryDistricts: form.deliveryDistricts,
+    bstiLicenseNo: form.bstiLicenseNo || undefined,
+    bstiCertificateUrl: form.bstiCertificateUrl || undefined,
     education: form.education.map((e) => ({
       degree: e.degree,
       institution: e.institution,
@@ -205,7 +297,7 @@ export function toProfile(form: WizardForm): ProfessionalProfile {
       role: pr.role || undefined,
       imageUrls: pr.imageUrls,
     })),
-    declarationAgreed: form.agreeTruth && form.agreeIabCheck && form.agreeSuspension,
+    declarationAgreed: form.agreeTruth && form.agreeBodyCheck && form.agreeSuspension,
     declarationSignature: form.declarationSignature || undefined,
     declarationSignedAt: form.declarationSignedAt || undefined,
   };
@@ -217,6 +309,12 @@ export interface StepProps {
   /** Merge a partial update into the form (triggers autosave). */
   patch: (partial: Partial<WizardForm>) => void;
   onError: (message: string) => void;
+  /**
+   * Which profession is filling this in. Several steps are shared across roles
+   * and read this to pick their wording and their option lists — an engineer's
+   * expertise chips are not an architect's.
+   */
+  role: UserRole;
 }
 
 /** The PATCH body: the profile plus the two account-level fields. */

@@ -1,7 +1,8 @@
 "use client";
 
-import { BD_DISTRICTS, BD_DIVISIONS, type BdDivision } from "@buildora/shared";
+import { BD_DISTRICTS, BD_DIVISIONS, UserRole, type BdDivision } from "@buildora/shared";
 import { Field, StepHeader, input } from "../ui";
+import { stepCopy } from "../roles";
 import type { StepProps } from "../form";
 
 /** Districts of the chosen division, or none until one is picked. */
@@ -9,22 +10,30 @@ function districtsFor(division: string): readonly string[] {
   return BD_DISTRICTS[division as BdDivision] ?? [];
 }
 
-/** Step 2 — practice details: title, firm, experience, summary, links. */
-export function ProfessionalStep({ form, patch }: StepProps) {
+/** Practice details: title, firm, experience, summary, links. */
+export function ProfessionalStep({ form, patch, role }: StepProps) {
+  const copy = stepCopy("professional", role);
+  // Contractors and suppliers trade as a business, so the firm name is always
+  // asked for and there's no "I practise independently" escape hatch.
+  const isBusiness = role === UserRole.CONTRACTOR || role === UserRole.SUPPLIER;
+
   return (
     <div>
-      <StepHeader
-        title="Professional Information"
-        subtitle="How you practise — your title, firm, and professional presence."
-      />
+      <StepHeader title={copy.title} subtitle={copy.subtitle} />
 
       <div className="flex flex-col gap-5">
         <div className="grid gap-5 sm:grid-cols-2">
-          <Field id="professionalTitle" title="Professional Title">
+          <Field id="professionalTitle" title={isBusiness ? "Your role" : "Professional Title"}>
             <input
               id="professionalTitle"
               type="text"
-              placeholder="e.g. Principal Architect"
+              placeholder={
+                role === UserRole.STRUCTURAL_ENGINEER
+                  ? "e.g. Senior Structural Engineer"
+                  : isBusiness
+                    ? "e.g. Managing Director"
+                    : "e.g. Principal Architect"
+              }
               value={form.professionalTitle}
               onChange={(e) => patch({ professionalTitle: e.target.value })}
               className={input}
@@ -43,18 +52,33 @@ export function ProfessionalStep({ form, patch }: StepProps) {
           </Field>
         </div>
 
-        <label className="flex items-center gap-2.5 text-sm font-semibold text-stone-800 dark:text-slate-200">
-          <input
-            type="checkbox"
-            checked={form.isIndependent}
-            onChange={(e) => patch({ isIndependent: e.target.checked })}
-            className="h-4 w-4 accent-[#F5B400]"
-          />
-          I practise as an independent architect
-        </label>
+        {!isBusiness && (
+          <label className="flex items-center gap-2.5 text-sm font-semibold text-stone-800 dark:text-slate-200">
+            <input
+              type="checkbox"
+              checked={form.isIndependent}
+              onChange={(e) => patch({ isIndependent: e.target.checked })}
+              className="h-4 w-4 accent-[#F5B400]"
+            />
+            {role === UserRole.STRUCTURAL_ENGINEER
+              ? "I practise as an independent consultant"
+              : "I practise as an independent architect"}
+          </label>
+        )}
 
-        {!form.isIndependent && (
-          <Field id="company" title="Company / Firm">
+        {(isBusiness || !form.isIndependent) && (
+          <Field
+            id="company"
+            title={
+              role === UserRole.CONTRACTOR
+                ? "Firm name"
+                : role === UserRole.SUPPLIER
+                  ? "Business name"
+                  : "Company / Firm"
+            }
+            required={isBusiness}
+            hint={isBusiness ? "Exactly as it reads on your trade licence." : undefined}
+          >
             <input
               id="company"
               type="text"
@@ -65,7 +89,7 @@ export function ProfessionalStep({ form, patch }: StepProps) {
           </Field>
         )}
 
-        <Field id="officeAddress" title="Office Address">
+        <Field id="officeAddress" title={isBusiness ? "Office address" : "Office Address"}>
           <textarea
             id="officeAddress"
             rows={2}
@@ -83,7 +107,7 @@ export function ProfessionalStep({ form, patch }: StepProps) {
         <div className="grid gap-5 sm:grid-cols-2">
           <Field
             id="practiceDivision"
-            title="Practice Division"
+            title={isBusiness ? "Operating Division" : "Practice Division"}
             hint="Where you take on work — land owners filter by this."
           >
             <select
@@ -100,7 +124,10 @@ export function ProfessionalStep({ form, patch }: StepProps) {
               ))}
             </select>
           </Field>
-          <Field id="practiceDistrict" title="Practice District">
+          <Field
+            id="practiceDistrict"
+            title={isBusiness ? "Operating District" : "Practice District"}
+          >
             <select
               id="practiceDistrict"
               value={form.practiceDistrict}
@@ -122,14 +149,22 @@ export function ProfessionalStep({ form, patch }: StepProps) {
 
         <Field
           id="bio"
-          title="About Yourself"
+          title={isBusiness ? "About the business" : "About Yourself"}
           hint="Shown as the About section on your public profile."
         >
           <textarea
             id="bio"
             rows={4}
             maxLength={1000}
-            placeholder="Your practice, design philosophy, notable work…"
+            placeholder={
+              role === UserRole.STRUCTURAL_ENGINEER
+                ? "Your practice, the structures you specialise in, notable work…"
+                : role === UserRole.CONTRACTOR
+                  ? "What your firm builds, how you're organised, notable builds…"
+                  : role === UserRole.SUPPLIER
+                    ? "What you stock, which brands you carry, how fast you deliver…"
+                    : "Your practice, design philosophy, notable work…"
+            }
             value={form.bio}
             onChange={(e) => patch({ bio: e.target.value })}
             className={input}
@@ -138,14 +173,22 @@ export function ProfessionalStep({ form, patch }: StepProps) {
 
         <Field
           id="portfolioTitle"
-          title="Portfolio Headline"
-          hint="The big statement land owners see first on your public portfolio."
+          title="Public Headline"
+          hint="The big statement land owners see first on your public page."
         >
           <input
             id="portfolioTitle"
             type="text"
             maxLength={90}
-            placeholder='e.g. "Architecture for a Better Tomorrow"'
+            placeholder={
+              role === UserRole.STRUCTURAL_ENGINEER
+                ? 'e.g. "Structures That Stand Up to Dhaka"'
+                : role === UserRole.CONTRACTOR
+                  ? 'e.g. "Built On Time, Built To Last"'
+                  : role === UserRole.SUPPLIER
+                    ? 'e.g. "Genuine Materials, Delivered On Site"'
+                    : 'e.g. "Architecture for a Better Tomorrow"'
+            }
             value={form.portfolioTitle}
             onChange={(e) => patch({ portfolioTitle: e.target.value })}
             className={input}
@@ -154,14 +197,18 @@ export function ProfessionalStep({ form, patch }: StepProps) {
 
         <Field
           id="portfolioIntro"
-          title="Portfolio Introduction"
-          hint="One or two sentences under your headline — what you design and why."
+          title="Introduction"
+          hint="One or two sentences under your headline — what you do and why."
         >
           <textarea
             id="portfolioIntro"
             rows={3}
             maxLength={280}
-            placeholder="I design thoughtful spaces that respond to people, place, and purpose…"
+            placeholder={
+              isBusiness
+                ? "What we take on, and what clients can expect working with us…"
+                : "I design thoughtful spaces that respond to people, place, and purpose…"
+            }
             value={form.portfolioIntro}
             onChange={(e) => patch({ portfolioIntro: e.target.value })}
             className={input}

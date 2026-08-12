@@ -3,6 +3,7 @@
 import { X } from "lucide-react";
 import { Field, StepHeader, addButton, entryBox, input, removeButton } from "../ui";
 import { UploadZone } from "../UploadZone";
+import { stepCopy } from "../roles";
 import { emptyProject, type StepProps } from "../form";
 
 const BUILDING_TYPES = [
@@ -18,24 +19,24 @@ const BUILDING_TYPES = [
   "Other",
 ];
 
-/** Step 8 — showcase projects; at least one with a photo is required. */
-export function PortfolioStep({ form, patch, onError }: StepProps) {
+/** Showcase projects. Mandatory for architects and contractors. */
+export function PortfolioStep({ form, patch, onError, role }: StepProps) {
+  const copy = stepCopy("portfolio", role);
   const setEntry = (i: number, changes: Partial<(typeof form.portfolio)[number]>) =>
     patch({ portfolio: form.portfolio.map((p, j) => (j === i ? { ...p, ...changes } : p)) });
   const remove = (i: number) => patch({ portfolio: form.portfolio.filter((_, j) => j !== i) });
 
   return (
     <div>
-      <StepHeader
-        title="Portfolio"
-        subtitle="Your best built work — the first photo of each project becomes its cover."
-      />
+      <StepHeader title={copy.title} subtitle={copy.subtitle} />
 
       <div className="flex flex-col gap-4">
         {form.portfolio.map((project, i) => (
           <div key={i} className={entryBox}>
             <div className="flex items-start justify-between gap-3">
-              <p className="text-sm font-bold text-stone-800 dark:text-slate-200">Project {i + 1}</p>
+              <p className="text-sm font-bold text-stone-800 dark:text-slate-200">
+                Project {i + 1}
+              </p>
               <button type="button" onClick={() => remove(i)} className={removeButton}>
                 Remove
               </button>
@@ -176,9 +177,7 @@ export function PortfolioStep({ form, patch, onError }: StepProps) {
                       title="Add Photo"
                       compact
                       value=""
-                      onChange={(url) =>
-                        setEntry(i, { imageUrls: [...project.imageUrls, url] })
-                      }
+                      onChange={(url) => setEntry(i, { imageUrls: [...project.imageUrls, url] })}
                       onError={onError}
                     />
                   </div>

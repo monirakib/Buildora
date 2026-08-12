@@ -2,10 +2,12 @@
 
 import { Field, StepHeader, addButton, entryBox, input, removeButton } from "../ui";
 import { UploadZone } from "../UploadZone";
+import { stepCopy } from "../roles";
 import { emptyEducation, type StepProps } from "../form";
 
-/** Step 4 — degrees with certificate/transcript uploads. */
-export function EducationStep({ form, patch, onError }: StepProps) {
+/** Degrees with certificate/transcript uploads. */
+export function EducationStep({ form, patch, onError, role }: StepProps) {
+  const copy = stepCopy("education", role);
   // Immutable helpers: rebuild the array, then patch the whole list.
   const setEntry = (i: number, changes: Partial<(typeof form.education)[number]>) =>
     patch({ education: form.education.map((e, j) => (j === i ? { ...e, ...changes } : e)) });
@@ -13,16 +15,15 @@ export function EducationStep({ form, patch, onError }: StepProps) {
 
   return (
     <div>
-      <StepHeader
-        title="Education"
-        subtitle="Your architecture degrees — at least one with its certificate is required."
-      />
+      <StepHeader title={copy.title} subtitle={copy.subtitle} />
 
       <div className="flex flex-col gap-4">
         {form.education.map((entry, i) => (
           <div key={i} className={entryBox}>
             <div className="flex items-start justify-between gap-3">
-              <p className="text-sm font-bold text-stone-800 dark:text-slate-200">Qualification {i + 1}</p>
+              <p className="text-sm font-bold text-stone-800 dark:text-slate-200">
+                Qualification {i + 1}
+              </p>
               <button type="button" onClick={() => remove(i)} className={removeButton}>
                 Remove
               </button>

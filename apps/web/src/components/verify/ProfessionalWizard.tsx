@@ -3,7 +3,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight } from "lucide-react";
-import { VerificationStatus, computeCompletion, type SessionUser } from "@buildora/shared";
+import {
+  UserRole,
+  VerificationStatus,
+  computeCompletion,
+  type SessionUser,
+} from "@buildora/shared";
 import {
   ApiError,
   getMyVerification,
@@ -12,6 +17,7 @@ import {
 } from "@/lib/api";
 import { useSession } from "@/store/useSession";
 import { formFromUser, toPayload, toProfile, type WizardForm } from "./form";
+import { isStepComplete, wizardFor, type StepKey } from "./roles";
 import { Navbar } from "@/components/landing/Navbar";
 import { gsap, prefersReducedMotion, useGSAP } from "@/lib/gsap";
 import { useHoverScale } from "@/lib/useHoverScale";
@@ -23,6 +29,11 @@ import { StatusBadge } from "./StatusBadge";
 import { IdentityStep } from "./steps/IdentityStep";
 import { ProfessionalStep } from "./steps/ProfessionalStep";
 import { LicenseStep } from "./steps/LicenseStep";
+import { EngineerLicenseStep } from "./steps/EngineerLicenseStep";
+import { BusinessStep } from "./steps/BusinessStep";
+import { CapacityStep } from "./steps/CapacityStep";
+import { CatalogueStep } from "./steps/CatalogueStep";
+import { CoverageStep } from "./steps/CoverageStep";
 import { EducationStep } from "./steps/EducationStep";
 import { ExperienceStep } from "./steps/ExperienceStep";
 import { ExpertiseStep } from "./steps/ExpertiseStep";
@@ -31,41 +42,17 @@ import { PortfolioStep } from "./steps/PortfolioStep";
 import { AchievementsStep } from "./steps/AchievementsStep";
 import { DeclarationStep } from "./steps/DeclarationStep";
 
-const STEP_LABELS = [
-  "Identity",
-  "Professional",
-  "License",
-  "Education",
-  "Experience",
-  "Expertise",
-  "Skills",
-  "Portfolio",
-  "Achievements",
-  "Declaration",
-];
-
-/** Which steps light up as complete in the sidebar. */
-function stepCompleteness(form: WizardForm): boolean[] {
-  return [
-    !!(form.avatarUrl && form.name && form.nid && form.nidFrontUrl && form.nidBackUrl),
-    !!(form.bio && (form.isIndependent || form.company)),
-    !!(form.licenseNumber && form.iabCertificateUrl),
-    form.education.some((e) => e.degree && e.institution && e.certificateUrl),
-    form.experience.length > 0,
-    form.expertise.length > 0,
-    form.skills.length > 0,
-    form.portfolio.some((p) => p.title && p.imageUrls.length > 0),
-    form.achievements.length > 0,
-    !!(form.agreeTruth && form.agreeIabCheck && form.agreeSuspension && form.declarationSignature),
-  ];
-}
-
 /**
- * The architect verification wizard: 10 steps, debounced autosave through the
- * profile PATCH, and a submit that opens a supervisor verification request.
+ * The verification wizard, shared by all four professional roles.
+ *
+ * The machinery is identical for everyone — sidebar, debounced autosave through
+ * the profile PATCH, a live completion percentage, and a submit that opens a
+ * supervisor request. What differs is which steps appear and what they're
+ * called, and that comes entirely from wizardFor(role) in roles.ts.
  */
-export function ArchitectWizard({ user }: { user: SessionUser }) {
+export function ProfessionalWizard({ user }: { user: SessionUser }) {
   const { token, setSession } = useSession();
+  const config = wizardFor(user.role);
 
   const [form, setForm] = useState<WizardForm>(() => formFromUser(user));
   const [step, setStep] = useState(0);
@@ -126,14 +113,21 @@ export function ArchitectWizard({ user }: { user: SessionUser }) {
       .catch(() => {}); // non-critical
   }, [token, user.verificationStatus]);
 
-  const completion = useMemo(() => computeCompletion(toProfile(form)), [form]);
-  const complete = stepCompleteness(form);
-  const sections = STEP_LABELS.map((label, i) => ({ label, complete: complete[i] ?? false }));
+  const completion = useMemo(
+    () => computeCompletion(toProfile(form), user.role),
+    [form, user.role]
+  );
+  const sections = config.steps.map((s) => ({
+    label: s.label,
+    complete: isStepComplete(s.key, form, user.role),
+  }));
 
   /**
    * `manualReview` sends the profile to a supervisor without the automated IAB
    * name check having to pass. It's only ever set by the button that appears
-   * after the API rejects a submission for a name mismatch — never by default.
+   * after the API rejects a submission for a name mismatch — never by default,
+   * and only architects can hit that path, since they're the only role with a
+   * public directory to disagree with.
    */
   async function handleSubmit(manualReview = false) {
     if (!token) return;
@@ -158,19 +152,48 @@ export function ArchitectWizard({ user }: { user: SessionUser }) {
     }
   }
 
-  const stepProps = { form, patch, onError: setError };
-  const steps = [
-    <IdentityStep key="identity" {...stepProps} email={user.email} />,
-    <ProfessionalStep key="professional" {...stepProps} />,
-    <LicenseStep key="license" {...stepProps} />,
-    <EducationStep key="education" {...stepProps} />,
-    <ExperienceStep key="experience" {...stepProps} />,
-    <ExpertiseStep key="expertise" {...stepProps} />,
-    <SkillsStep key="skills" {...stepProps} />,
-    <PortfolioStep key="portfolio" {...stepProps} />,
-    <AchievementsStep key="achievements" {...stepProps} />,
-    <DeclarationStep key="declaration" {...stepProps} />,
-  ];
+  const stepProps = { form, patch, onError: setError, role: user.role };
+
+  /** Renders whichever step this role has at this position. */
+  function renderStep(key: StepKey) {
+    switch (key) {
+      case "identity":
+        return <IdentityStep {...stepProps} email={user.email} />;
+      case "professional":
+        return <ProfessionalStep {...stepProps} />;
+      case "license":
+        return <LicenseStep {...stepProps} />;
+      case "engineerLicense":
+        return <EngineerLicenseStep {...stepProps} />;
+      case "business":
+        return <BusinessStep {...stepProps} />;
+      case "capacity":
+        return <CapacityStep {...stepProps} />;
+      case "catalogue":
+        return <CatalogueStep {...stepProps} />;
+      case "coverage":
+        return <CoverageStep {...stepProps} />;
+      case "education":
+        return <EducationStep {...stepProps} />;
+      case "experience":
+        return <ExperienceStep {...stepProps} />;
+      case "expertise":
+        return <ExpertiseStep {...stepProps} />;
+      case "skills":
+        return <SkillsStep {...stepProps} />;
+      case "portfolio":
+        return <PortfolioStep {...stepProps} />;
+      case "achievements":
+        return <AchievementsStep {...stepProps} />;
+      case "declaration":
+        return <DeclarationStep {...stepProps} />;
+    }
+  }
+
+  // Every role's step list is non-empty, but `step` is state — falling back to
+  // the first step keeps the render safe if it ever points past the end.
+  const currentKey: StepKey = config.steps[step]?.key ?? "identity";
+  const stepCount = config.steps.length;
 
   // The step panel slides in each time the step changes. AnimatePresence used
   // to fade the old step out first; here the content swaps and the new panel
@@ -190,7 +213,7 @@ export function ArchitectWizard({ user }: { user: SessionUser }) {
   );
 
   const backRef = useHoverScale<HTMLButtonElement>({ enabled: step > 0 });
-  const nextRef = useHoverScale<HTMLButtonElement>({ enabled: step < steps.length - 1 });
+  const nextRef = useHoverScale<HTMLButtonElement>({ enabled: step < stepCount - 1 });
 
   return (
     <div className="relative min-h-screen bg-stone-100 text-stone-900 dark:bg-[#05070C] dark:text-slate-100">
@@ -205,19 +228,18 @@ export function ArchitectWizard({ user }: { user: SessionUser }) {
         <div className="mb-8">
           <Link
             href="/dashboard"
-            className="mb-4 inline-flex items-center gap-1.5 text-xs font-bold text-stone-600 dark:text-slate-400 transition hover:text-stone-800 dark:hover:text-slate-200"
+            className="mb-4 inline-flex items-center gap-1.5 text-xs font-bold text-stone-600 transition hover:text-stone-800 dark:text-slate-400 dark:hover:text-slate-200"
           >
             <ArrowLeft className="h-3.5 w-3.5" /> Back to dashboard
           </Link>
-          <p className="text-xs font-bold tracking-[0.2em] text-amber-600 dark:text-[#F5B400] uppercase">
-            Buildora · Architect Verification
+          <p className="text-xs font-bold tracking-[0.2em] text-amber-600 uppercase dark:text-[#F5B400]">
+            Buildora · {config.eyebrow}
           </p>
-          <h1 className="mt-2 bg-gradient-to-b from-stone-900 via-stone-900 to-stone-500 dark:from-white dark:via-white dark:to-slate-400 bg-clip-text text-3xl font-extrabold tracking-tight text-transparent sm:text-4xl">
+          <h1 className="mt-2 bg-gradient-to-b from-stone-900 via-stone-900 to-stone-500 bg-clip-text text-3xl font-extrabold tracking-tight text-transparent sm:text-4xl dark:from-white dark:via-white dark:to-slate-400">
             Complete your profile
           </h1>
           <p className="mt-2 max-w-2xl text-sm text-stone-600 dark:text-slate-400">
-            Submit your credentials for manual verification by a Buildora Supervisor and earn the
-            Verified Architect badge.
+            {config.intro}
           </p>
           <div className="mt-5">
             <StatusBadge status={user.verificationStatus} />
@@ -226,21 +248,21 @@ export function ArchitectWizard({ user }: { user: SessionUser }) {
 
         {/* Status banners */}
         {locked && (
-          <div className="mb-6 rounded-2xl border border-amber-400/25 bg-amber-400/15 px-5 py-4 text-sm font-medium text-amber-800 dark:text-amber-100 backdrop-blur-xl">
+          <div className="mb-6 rounded-2xl border border-amber-400/25 bg-amber-400/15 px-5 py-4 text-sm font-medium text-amber-800 backdrop-blur-xl dark:text-amber-100">
             {user.verificationStatus === VerificationStatus.APPROVED
-              ? "You're a Verified Architect — your credentials are locked. Contact support to change them."
+              ? `You're a ${config.verifiedLabel} — your credentials are locked. Contact support to change them.`
               : "Your profile is locked while a supervisor reviews it. You'll see the outcome here."}
           </div>
         )}
         {user.verificationStatus === VerificationStatus.REJECTED && (
-          <div className="mb-6 rounded-2xl border border-rose-400/25 bg-rose-400/15 px-5 py-4 text-sm text-rose-800 dark:text-rose-100 backdrop-blur-xl">
+          <div className="mb-6 rounded-2xl border border-rose-400/25 bg-rose-400/15 px-5 py-4 text-sm text-rose-800 backdrop-blur-xl dark:text-rose-100">
             <p className="font-bold">Your last submission was rejected.</p>
             {rejectionNote && <p className="mt-1">Supervisor&apos;s note: {rejectionNote}</p>}
             <p className="mt-1">Update the sections below and submit again.</p>
           </div>
         )}
         {error && (
-          <div className="mb-6 rounded-2xl border border-rose-400/25 bg-rose-400/15 px-5 py-3.5 text-sm font-medium text-rose-800 dark:text-rose-100 backdrop-blur-xl">
+          <div className="mb-6 rounded-2xl border border-rose-400/25 bg-rose-400/15 px-5 py-3.5 text-sm font-medium text-rose-800 backdrop-blur-xl dark:text-rose-100">
             {error}
             {/* The way out of a name mismatch: skip the automated check and let
                 a supervisor compare the documents by hand. */}
@@ -274,29 +296,29 @@ export function ArchitectWizard({ user }: { user: SessionUser }) {
                 {/* fieldset[disabled] turns every control read-only at once
                       while the profile is locked. */}
                 <fieldset disabled={locked} className="min-w-0">
-                  {steps[step]}
+                  {renderStep(currentKey)}
                 </fieldset>
 
                 {/* Prev / Next */}
-                <div className="mt-8 flex items-center justify-between border-t border-white/40 dark:border-white/8 pt-5">
+                <div className="mt-8 flex items-center justify-between border-t border-white/40 pt-5 dark:border-white/8">
                   <button
                     ref={backRef}
                     type="button"
                     onClick={() => setStep((s) => Math.max(0, s - 1))}
                     disabled={step === 0}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-white/50 dark:border-white/12 px-5 py-2 text-sm font-bold text-stone-700 dark:text-slate-300 transition-colors hover:border-stone-400 dark:hover:border-white/25 disabled:opacity-40"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-white/50 px-5 py-2 text-sm font-bold text-stone-700 transition-colors hover:border-stone-400 disabled:opacity-40 dark:border-white/12 dark:text-slate-300 dark:hover:border-white/25"
                   >
                     <ArrowLeft className="h-4 w-4" /> Back
                   </button>
                   <span className="text-xs font-bold text-stone-500 dark:text-slate-500">
-                    Step {step + 1} of {steps.length}
+                    Step {step + 1} of {stepCount}
                   </span>
                   <button
                     ref={nextRef}
                     type="button"
-                    onClick={() => setStep((s) => Math.min(steps.length - 1, s + 1))}
-                    disabled={step === steps.length - 1}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-white/50 dark:border-white/12 px-5 py-2 text-sm font-bold text-stone-700 dark:text-slate-300 transition-colors hover:border-[#F5B400]/50 hover:text-amber-600 dark:hover:text-[#F5B400] hover:shadow-[0_0_24px_rgba(245,180,0,0.12)] disabled:opacity-40"
+                    onClick={() => setStep((s) => Math.min(stepCount - 1, s + 1))}
+                    disabled={step === stepCount - 1}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-white/50 px-5 py-2 text-sm font-bold text-stone-700 transition-colors hover:border-[#F5B400]/50 hover:text-amber-600 hover:shadow-[0_0_24px_rgba(245,180,0,0.12)] disabled:opacity-40 dark:border-white/12 dark:text-slate-300 dark:hover:text-[#F5B400]"
                   >
                     Next <ArrowRight className="h-4 w-4" />
                   </button>
@@ -319,3 +341,11 @@ export function ArchitectWizard({ user }: { user: SessionUser }) {
     </div>
   );
 }
+
+/** Roles that have a verification wizard — everyone except land owners and admins. */
+export const PROFESSIONAL_ROLES: UserRole[] = [
+  UserRole.ARCHITECT,
+  UserRole.STRUCTURAL_ENGINEER,
+  UserRole.CONTRACTOR,
+  UserRole.SUPPLIER,
+];

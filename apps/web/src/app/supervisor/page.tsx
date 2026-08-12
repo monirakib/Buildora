@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   UserRole,
   VerificationStatus,
+  credentialFor,
   type ProfessionalProfile,
   type SessionUser,
   type VerificationRequest,
@@ -118,6 +119,73 @@ function IabCheckBanner({
       )}
       <p className="mt-1 text-xs opacity-80">
         Confirm the directory name matches the applicant&apos;s NID and the uploaded certificate.
+      </p>
+    </div>
+  );
+}
+
+/** A labelled external link, or plain text when there's no document. */
+function DocLink({ url, label }: { url?: string; label: string }) {
+  if (!url) return null;
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="font-bold text-amber-600 underline underline-offset-2 dark:text-amber-400"
+    >
+      {label}
+    </a>
+  );
+}
+
+/**
+ * The automated pre-screen of a business or membership number.
+ *
+ * Same framing as the NID banner: evidence, not a verdict. There is no register
+ * to look a trade licence, BIN, TIN or IEB number up in, so all this reports is
+ * shape, expiry, and whether another account already claims the same number.
+ */
+function CredentialCheckBanner({
+  check,
+}: {
+  check: NonNullable<ProfessionalProfile["credentialCheck"]>;
+}) {
+  const flags = check.items.flatMap((item) => {
+    const issues: string[] = [];
+    if (!item.formatOk) issues.push(`${item.label}: ${item.issue ?? "not a valid shape"}`);
+    if (item.duplicate) issues.push(`${item.label} is already registered to another account`);
+    if (item.expired) issues.push(`${item.label} has expired`);
+    return issues;
+  });
+
+  const clean = flags.length === 0;
+  return (
+    <div
+      className={`rounded-2xl px-4 py-3 text-sm ${
+        clean
+          ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-400/15 dark:text-emerald-200"
+          : "bg-rose-100 text-rose-900 dark:bg-rose-400/15 dark:text-rose-200"
+      }`}
+    >
+      <p className="text-xs font-bold tracking-wider uppercase opacity-80">
+        Credential pre-screen · {new Date(check.checkedAt).toLocaleString()}
+      </p>
+      {clean ? (
+        <p className="mt-1">
+          {check.items.map((i) => `${i.label} ${i.value}`).join(", ")} — valid shapes, in date, and
+          not used elsewhere.
+        </p>
+      ) : (
+        <ul className="mt-1 list-disc space-y-0.5 pl-5">
+          {flags.map((f) => (
+            <li key={f}>{f}</li>
+          ))}
+        </ul>
+      )}
+      <p className="mt-1 text-xs opacity-80">
+        Automated pre-screen only — no public register exists for these numbers. Read the uploaded
+        documents yourself before approving.
       </p>
     </div>
   );
@@ -391,7 +459,11 @@ export default function SupervisorPage() {
                       {profile.yearsExperience != null ? `${profile.yearsExperience} years` : "—"}
                     </Field>
                     <Field label="License body">{profile.licenseAuthority || "—"}</Field>
-                    <Field label="License number">{profile.licenseNumber || "—"}</Field>
+                    {/* Labelled by profession — "IAB membership number" for an
+                        architect, "Trade licence number" for a supplier. */}
+                    <Field label={credentialFor(detail.professional.role).numberLabel}>
+                      {profile.licenseNumber || profile.tradeLicenseNo || "—"}
+                    </Field>
                     {profile.website && (
                       <Field label="Website">
                         <a
@@ -463,8 +535,14 @@ export default function SupervisorPage() {
                     />
                   )}
 
-                  {/* License documents */}
-                  {(profile.iabCertificateUrl || profile.membershipStatus) && (
+                  {profile.credentialCheck && (
+                    <CredentialCheckBanner check={profile.credentialCheck} />
+                  )}
+
+                  {/* Membership documents — architects (IAB) and engineers (IEB). */}
+                  {(profile.iabCertificateUrl ||
+                    profile.licenseCertificateUrl ||
+                    profile.membershipStatus) && (
                     <div className="grid gap-4 sm:grid-cols-2">
                       {profile.membershipStatus && (
                         <Field label="Membership status">{profile.membershipStatus}</Field>
@@ -479,27 +557,172 @@ export default function SupervisorPage() {
                       )}
                       <Field label="License documents">
                         <span className="flex flex-wrap gap-3">
-                          {[
-                            { url: profile.iabCertificateUrl, label: "IAB certificate" },
-                            { url: profile.membershipCardUrl, label: "Membership card" },
-                            { url: profile.rajukCertificateUrl, label: "RAJUK certificate" },
-                          ]
-                            .filter((d) => d.url)
-                            .map((d) => (
-                              <a
-                                key={d.label}
-                                href={d.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="font-bold text-amber-600 underline underline-offset-2 dark:text-amber-400"
-                              >
-                                {d.label}
-                              </a>
-                            ))}
+                          <DocLink url={profile.iabCertificateUrl} label="IAB certificate" />
+                          <DocLink url={profile.licenseCertificateUrl} label="IEB certificate" />
+                          <DocLink url={profile.membershipCardUrl} label="Membership card" />
+                          <DocLink url={profile.rajukCertificateUrl} label="RAJUK certificate" />
                         </span>
                       </Field>
                       {profile.rajukEnlistmentNo && (
                         <Field label="RAJUK enlistment no.">{profile.rajukEnlistmentNo}</Field>
+                      )}
+                    </div>
+                  )}
+
+                  {/* The engineer's seal. Given its own block because this is
+                      the signature that passes milestone inspections and
+                      releases escrow — it deserves more than a link in a row. */}
+                  {profile.professionalSealUrl && (
+                    <div>
+                      <p className="text-xs font-bold tracking-wider text-stone-500 uppercase dark:text-slate-400">
+                        Professional seal
+                      </p>
+                      <p className="mt-1 text-sm text-stone-600 dark:text-slate-400">
+                        This seal signs the milestone inspections that release escrow to
+                        contractors. Check it against the IEB certificate before approving.
+                      </p>
+                      <a
+                        href={profile.professionalSealUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-2 inline-block"
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element -- Cloudinary-hosted */}
+                        <img
+                          src={profile.professionalSealUrl}
+                          alt="Professional seal"
+                          className="h-28 w-28 rounded-xl border border-stone-300/60 object-contain p-1 transition hover:opacity-80 dark:border-white/10"
+                        />
+                      </a>
+                    </div>
+                  )}
+
+                  {/* Business registration — contractors and suppliers. */}
+                  {(profile.tradeLicenseNo || profile.tinNumber || profile.binNumber) && (
+                    <div>
+                      <p className="text-xs font-bold tracking-wider text-stone-500 uppercase dark:text-slate-400">
+                        Business registration
+                      </p>
+                      <div className="mt-2 grid gap-4 sm:grid-cols-2">
+                        <Field label="Trade licence">
+                          {profile.tradeLicenseNo || "—"}
+                          {profile.tradeLicenseIssuer ? ` · ${profile.tradeLicenseIssuer}` : ""}
+                        </Field>
+                        <Field label="Licence valid until">
+                          {profile.tradeLicenseExpiry || "—"}
+                        </Field>
+                        <Field label="TIN">{profile.tinNumber || "—"}</Field>
+                        <Field label="BIN (VAT)">{profile.binNumber || "—"}</Field>
+                        {profile.rjscRegistrationNo && (
+                          <Field label="RJSC registration">{profile.rjscRegistrationNo}</Field>
+                        )}
+                        <Field label="Documents">
+                          <span className="flex flex-wrap gap-3">
+                            <DocLink url={profile.tradeLicenseUrl} label="Trade licence" />
+                            <DocLink url={profile.tinCertificateUrl} label="TIN certificate" />
+                            <DocLink url={profile.binCertificateUrl} label="VAT certificate" />
+                            <DocLink url={profile.rjscCertificateUrl} label="Incorporation" />
+                            <DocLink url={profile.bankSolvencyUrl} label="Bank solvency" />
+                          </span>
+                        </Field>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Contractor capacity */}
+                  {(profile.contractorClass ||
+                    profile.crewSize != null ||
+                    (profile.equipment?.length ?? 0) > 0) && (
+                    <div>
+                      <p className="text-xs font-bold tracking-wider text-stone-500 uppercase dark:text-slate-400">
+                        Capacity
+                      </p>
+                      <div className="mt-2 grid gap-4 sm:grid-cols-2">
+                        <Field label="Enlistment">
+                          {profile.enlistmentBody || "Not enlisted"}
+                          {profile.contractorClass ? ` · ${profile.contractorClass}` : ""}
+                        </Field>
+                        <Field label="Permanent crew">
+                          {profile.crewSize != null ? `${profile.crewSize} people` : "—"}
+                        </Field>
+                        {profile.largestProjectBdt != null && (
+                          <Field label="Largest contract">
+                            ৳{profile.largestProjectBdt.toLocaleString("en-BD")}
+                          </Field>
+                        )}
+                        {profile.enlistmentCertificateUrl && (
+                          <Field label="Enlistment certificate">
+                            <DocLink
+                              url={profile.enlistmentCertificateUrl}
+                              label="View certificate"
+                            />
+                          </Field>
+                        )}
+                      </div>
+                      {(profile.equipment?.length ?? 0) > 0 && (
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {profile.equipment!.map((item) => (
+                            <span
+                              key={item}
+                              className="rounded-full border border-stone-300/60 px-3 py-1 text-xs font-semibold dark:border-white/15"
+                            >
+                              {item}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Supplier catalogue & coverage */}
+                  {((profile.supplyCategories?.length ?? 0) > 0 || profile.warehouseAddress) && (
+                    <div>
+                      <p className="text-xs font-bold tracking-wider text-stone-500 uppercase dark:text-slate-400">
+                        Catalogue &amp; coverage
+                      </p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {(profile.supplyCategories ?? []).map((c) => (
+                          <span
+                            key={c}
+                            className="rounded-full bg-amber-400/15 px-3 py-1 text-xs font-bold text-amber-700 dark:text-amber-300"
+                          >
+                            {c.replace(/_/g, " ").toLowerCase()}
+                          </span>
+                        ))}
+                      </div>
+                      <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                        <Field label="Warehouse / outlet">{profile.warehouseAddress || "—"}</Field>
+                        <Field label="Delivers to">
+                          {(profile.deliveryDistricts?.length ?? 0) > 0
+                            ? `${profile.deliveryDistricts!.length} districts — ${profile.deliveryDistricts!.slice(0, 6).join(", ")}${profile.deliveryDistricts!.length > 6 ? "…" : ""}`
+                            : "—"}
+                        </Field>
+                        {profile.bstiLicenseNo && (
+                          <Field label="BSTI licence">
+                            {profile.bstiLicenseNo}{" "}
+                            <DocLink url={profile.bstiCertificateUrl} label="· certificate" />
+                          </Field>
+                        )}
+                      </div>
+                      {(profile.brandAuthorizations?.length ?? 0) > 0 && (
+                        <ul className="mt-3 flex flex-col gap-2">
+                          {profile.brandAuthorizations!.map((b, i) => (
+                            <li
+                              key={i}
+                              className="flex flex-wrap items-center gap-x-2 rounded-xl border border-stone-300/60 px-4 py-2.5 text-sm dark:border-white/10"
+                            >
+                              <span className="font-semibold">{b.brand}</span>
+                              {b.validTill && (
+                                <span className="text-stone-600 dark:text-slate-400">
+                                  — authorised until {b.validTill}
+                                </span>
+                              )}
+                              <span className="ml-auto text-xs">
+                                <DocLink url={b.documentUrl} label="Dealership letter" />
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
                       )}
                     </div>
                   )}
@@ -704,7 +927,7 @@ export default function SupervisorPage() {
                         maxLength={1000}
                         value={note}
                         onChange={(e) => setNote(e.target.value)}
-                        placeholder="e.g. License checked against the IAB registry."
+                        placeholder="e.g. Trade licence and TIN certificate checked and match."
                         className="block w-full rounded-xl border border-stone-300/80 bg-white/70 px-4 py-2.5 text-sm text-stone-900 placeholder-stone-400 backdrop-blur transition outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-400/30 dark:border-white/15 dark:bg-white/5 dark:text-slate-100 dark:placeholder-slate-500"
                       />
                       {error && (
