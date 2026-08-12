@@ -114,6 +114,8 @@ export enum PaymentPurpose {
   STRUCTURAL_ESCROW = "STRUCTURAL_ESCROW",
   /** A marketplace materials order. */
   MARKET_ORDER = "MARKET_ORDER",
+  /** One construction milestone's tranche, into escrow. */
+  MILESTONE_ESCROW = "MILESTONE_ESCROW",
 }
 
 /** Where one attempt at paying got to. */
@@ -146,6 +148,76 @@ export enum LandUse {
   MIXED_USE = "MIXED_USE",
   INDUSTRIAL = "INDUSTRIAL",
   INSTITUTIONAL = "INSTITUTIONAL",
+}
+
+/**
+ * Lifecycle of a contractor tender (plan §4.1 step 10).
+ *
+ * Bids stay sealed while the tender is OPEN — nobody, contractor or owner, can
+ * read a submitted bid until bidding closes. That is what makes the comparison
+ * fair, and it is enforced on the server, not by hiding things in the UI.
+ */
+export enum TenderStatus {
+  /** Being written by the owner; no contractor can see it. */
+  DRAFT = "DRAFT",
+  /** Published and accepting sealed bids until the deadline. */
+  OPEN = "OPEN",
+  /** Deadline passed or closed early — bids are readable, none chosen yet. */
+  CLOSED = "CLOSED",
+  AWARDED = "AWARDED",
+  CANCELLED = "CANCELLED",
+}
+
+/** Where one contractor's bid stands. */
+export enum BidStatus {
+  SUBMITTED = "SUBMITTED",
+  /** Owner flagged it as a serious candidate while comparing. */
+  SHORTLISTED = "SHORTLISTED",
+  AWARDED = "AWARDED",
+  REJECTED = "REJECTED",
+  /** Pulled by the contractor before the deadline. */
+  WITHDRAWN = "WITHDRAWN",
+}
+
+/**
+ * The construction contract created when a bid is awarded.
+ *
+ * Unlike the design contract, the money is not escrowed in one lump: each
+ * milestone is funded, inspected and released on its own, so an owner is never
+ * holding the whole build cost against work that hasn't started.
+ */
+export enum BuildContractStatus {
+  ACTIVE = "ACTIVE",
+  COMPLETED = "COMPLETED",
+  CANCELLED = "CANCELLED",
+}
+
+/**
+ * One construction milestone's journey. The order matters — money only moves
+ * forward through it, and only an engineer's passing inspection opens the gate
+ * between work being claimed done and the tranche being released.
+ */
+export enum MilestoneStatus {
+  /** Defined, not yet paid for. */
+  PENDING = "PENDING",
+  /** Owner has escrowed this tranche; the contractor can start. */
+  FUNDED = "FUNDED",
+  /** Contractor says the work is finished and wants it inspected. */
+  AWAITING_INSPECTION = "AWAITING_INSPECTION",
+  /** An engineer inspected and passed it; the owner can release. */
+  INSPECTION_PASSED = "INSPECTION_PASSED",
+  /** An engineer failed it; the contractor fixes and resubmits. */
+  INSPECTION_FAILED = "INSPECTION_FAILED",
+  /** Tranche paid out to the contractor, minus commission. */
+  RELEASED = "RELEASED",
+}
+
+/** An engineer's verdict on a milestone inspection. */
+export enum InspectionVerdict {
+  PASS = "PASS",
+  /** Passed, but with defects the contractor must still put right. */
+  PASS_WITH_NOTES = "PASS_WITH_NOTES",
+  FAIL = "FAIL",
 }
 
 /** What a marketplace product is, for browsing filters. */
@@ -249,6 +321,12 @@ export enum NotificationType {
   MEETING = "MEETING",
   /** A site diary entry was logged on a project you're on. */
   SITE_DIARY = "SITE_DIARY",
+  /** A tender opened, closed, or was awarded. */
+  TENDER = "TENDER",
+  /** A bid landed on your tender, or yours was shortlisted/awarded/rejected. */
+  BID = "BID",
+  /** A milestone was funded, claimed done, inspected, or released. */
+  MILESTONE = "MILESTONE",
   /** A marketing announcement sent by an admin. */
   PROMOTION = "PROMOTION",
   /** A platform-wide notice sent by an admin (maintenance, policy, …). */
