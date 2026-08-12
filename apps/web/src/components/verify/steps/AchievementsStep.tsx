@@ -1,26 +1,28 @@
 "use client";
 
 import { Field, StepHeader, addButton, entryBox, input, removeButton } from "../ui";
+import { stepCopy } from "../roles";
 import { emptyAchievement, type StepProps } from "../form";
 
-/** Step 9 — awards, competitions, research, publications, memberships. */
-export function AchievementsStep({ form, patch }: StepProps) {
+/** Awards, competitions, research, publications, memberships. */
+export function AchievementsStep({ form, patch, role }: StepProps) {
+  const copy = stepCopy("achievements", role);
   const setEntry = (i: number, changes: Partial<(typeof form.achievements)[number]>) =>
     patch({ achievements: form.achievements.map((a, j) => (j === i ? { ...a, ...changes } : a)) });
-  const remove = (i: number) => patch({ achievements: form.achievements.filter((_, j) => j !== i) });
+  const remove = (i: number) =>
+    patch({ achievements: form.achievements.filter((_, j) => j !== i) });
 
   return (
     <div>
-      <StepHeader
-        title="Achievements"
-        subtitle="Awards, competitions, research, publications, seminars, and professional memberships."
-      />
+      <StepHeader title={copy.title} subtitle={copy.subtitle} />
 
       <div className="flex flex-col gap-4">
         {form.achievements.map((entry, i) => (
           <div key={i} className={entryBox}>
             <div className="flex items-start justify-between gap-3">
-              <p className="text-sm font-bold text-stone-800 dark:text-slate-200">Achievement {i + 1}</p>
+              <p className="text-sm font-bold text-stone-800 dark:text-slate-200">
+                Achievement {i + 1}
+              </p>
               <button type="button" onClick={() => remove(i)} className={removeButton}>
                 Remove
               </button>

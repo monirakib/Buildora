@@ -13,6 +13,7 @@ import {
 } from "@buildora/shared";
 import { User, type UserDoc } from "../models/User";
 import { VerificationRequest, type VerificationRequestDoc } from "../models/VerificationRequest";
+import { normalizeCredentials, screenCredentials } from "../services/credentials";
 import { lookupIabMember } from "../services/iab";
 import { notify, notifyMany } from "../services/notifications";
 
@@ -127,22 +128,17 @@ export async function submitVerification(req: Request, res: Response) {
   }
 
   const profile = (user.profile ?? {}) as ProfessionalProfile;
-  if (user.role === UserRole.ARCHITECT) {
-    // Architects go through the full verification wizard — the same mandatory
-    // checklist the wizard shows is enforced here so it can't be bypassed.
-    const completion = computeCompletion(profile);
-    if (!completion.mandatoryComplete) {
-      return res.status(400).json({
-        error: {
-          message: `Complete the mandatory items first: ${completion.missingMandatory.join(", ")}`,
-        },
-      });
-    }
-  } else if (!profile.licenseAuthority || !profile.licenseNumber) {
+
+  // Every professional role now goes through its own verification wizard, and
+  // each one has its own mandatory checklist — an architect's IAB membership, an
+  // engineer's IEB membership and seal, a contractor's or supplier's trade
+  // licence and TIN. The same function the wizard uses to light up its progress
+  // bar is re-run here, so the rules hold even if the browser is bypassed.
+  const completion = computeCompletion(profile, user.role);
+  if (!completion.mandatoryComplete) {
     return res.status(400).json({
       error: {
-        message:
-          "Add your license body and license number to your profile before requesting verification",
+        message: `Complete the mandatory items first: ${completion.missingMandatory.join(", ")}`,
       },
     });
   }
@@ -188,6 +184,24 @@ export async function submitVerification(req: Request, res: Response) {
       }
     }
   }
+
+  // The other three roles have no public register to look their credentials up
+  // in, so they get the structural pre-screen instead: right shape, not expired,
+  // not already claimed by another account. Nothing here blocks a submission —
+  // the supervisor is the gate, and they see every flag it raises.
+  if (user.role !== UserRole.ARCHITECT) {
+    normalizeCredentials(user.role, profile);
+    try {
+      profile.credentialCheck = await screenCredentials(user._id.toString(), user.role, profile);
+    } catch (err) {
+      // A failed screen must never cost someone their submission.
+      console.error("[credentials] pre-screen failed during submit:", err);
+    }
+  }
+
+  // `profile` is the same object as `user.profile`; Mongoose doesn't notice
+  // writes made through it, so the change has to be declared before saving.
+  user.markModified("profile");
 
   // Submission lands as DOCUMENTS_SUBMITTED; it becomes UNDER_REVIEW when a
   // supervisor actually opens the request.

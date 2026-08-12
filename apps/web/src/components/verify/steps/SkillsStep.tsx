@@ -1,7 +1,8 @@
 "use client";
 
-import { SKILL_LEVELS, SKILL_OPTIONS, type SkillLevel } from "@buildora/shared";
+import { SKILL_LEVELS, skillOptionsFor, type SkillLevel } from "@buildora/shared";
 import { StepHeader } from "../ui";
+import { stepCopy } from "../roles";
 import type { StepProps } from "../form";
 
 const LEVEL_LABELS: Record<SkillLevel, string> = {
@@ -11,8 +12,15 @@ const LEVEL_LABELS: Record<SkillLevel, string> = {
   EXPERT: "Expert",
 };
 
-/** Step 7 — one card per tool; pick a proficiency, click again to unselect. */
-export function SkillsStep({ form, patch }: StepProps) {
+/**
+ * One card per tool; pick a proficiency, click again to unselect. The tools
+ * offered are the role's own — an engineer models in ETABS, a contractor plans
+ * in Primavera.
+ */
+export function SkillsStep({ form, patch, role }: StepProps) {
+  const copy = stepCopy("skills", role);
+  const tools = skillOptionsFor(role);
+
   function setLevel(name: string, level: SkillLevel) {
     const existing = form.skills.find((s) => s.name === name);
     if (existing?.level === level) {
@@ -27,13 +35,10 @@ export function SkillsStep({ form, patch }: StepProps) {
 
   return (
     <div>
-      <StepHeader
-        title="Technical Skills"
-        subtitle="The design and engineering tools you work with, and how well."
-      />
+      <StepHeader title={copy.title} subtitle={copy.subtitle} />
 
       <div className="grid gap-3 sm:grid-cols-2">
-        {SKILL_OPTIONS.map((tool) => {
+        {tools.map((tool) => {
           const selected = form.skills.find((s) => s.name === tool);
           return (
             <div

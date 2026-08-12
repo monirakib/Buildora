@@ -1,11 +1,29 @@
 "use client";
 
 import { ScrollText } from "lucide-react";
+import { UserRole } from "@buildora/shared";
 import { Field, StepHeader, input } from "../ui";
 import type { StepProps } from "../form";
 
-/** Step 10 — legal declaration with a typed signature. */
-export function DeclarationStep({ form, patch }: StepProps) {
+/**
+ * Who Buildora may check this professional's credentials with. Each role
+ * consents to the bodies that actually hold their records — there's no point
+ * asking a supplier to consent to an IAB check.
+ */
+function verifierFor(role: UserRole): string {
+  switch (role) {
+    case UserRole.STRUCTURAL_ENGINEER:
+      return "the Institution of Engineers, Bangladesh (IEB) and RAJUK";
+    case UserRole.CONTRACTOR:
+    case UserRole.SUPPLIER:
+      return "the issuing city corporation, the NBR, and the RJSC";
+    default:
+      return "the Institute of Architects Bangladesh (IAB)";
+  }
+}
+
+/** Legal declaration with a typed signature. */
+export function DeclarationStep({ form, patch, role }: StepProps) {
   // Signing = typing your name; the signed-at date is stamped on first type
   // and cleared when the signature is emptied again.
   function setSignature(value: string) {
@@ -16,7 +34,8 @@ export function DeclarationStep({ form, patch }: StepProps) {
   }
 
   const checkbox = "mt-0.5 h-4 w-4 shrink-0 accent-[#F5B400]";
-  const checkLabel = "flex items-start gap-3 text-sm font-medium text-stone-800 dark:text-slate-200";
+  const checkLabel =
+    "flex items-start gap-3 text-sm font-medium text-stone-800 dark:text-slate-200";
 
   return (
     <div>
@@ -38,11 +57,11 @@ export function DeclarationStep({ form, patch }: StepProps) {
         <label className={checkLabel}>
           <input
             type="checkbox"
-            checked={form.agreeIabCheck}
-            onChange={(e) => patch({ agreeIabCheck: e.target.checked })}
+            checked={form.agreeBodyCheck}
+            onChange={(e) => patch({ agreeBodyCheck: e.target.checked })}
             className={checkbox}
           />
-          Buildora may verify my information with the Institute of Architects Bangladesh (IAB).
+          Buildora may verify my information with {verifierFor(role)}.
         </label>
         <label className={checkLabel}>
           <input

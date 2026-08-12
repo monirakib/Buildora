@@ -1,6 +1,8 @@
 "use client";
 
 import { useRef } from "react";
+import { AlertTriangle, Check } from "lucide-react";
+import type { CredentialFormatResult } from "@buildora/shared";
 
 // Shared look for the verification wizard — a scoped dark liquid-glass
 // surface (charcoal glass + architectural gold), independent of the site
@@ -110,6 +112,114 @@ export function Field({
       {children}
       {hint && <p className="mt-1 text-xs text-stone-500 dark:text-slate-500">{hint}</p>}
     </div>
+  );
+}
+
+/**
+ * A row of toggleable chips — expertise areas, equipment, material categories,
+ * delivery districts. Four steps needed the same control, so it lives here
+ * rather than being copy-pasted with slightly different gold in each one.
+ */
+export function ChipGroup({
+  options,
+  selected,
+  onToggle,
+  disabled,
+}: {
+  options: readonly string[];
+  selected: readonly string[];
+  onToggle: (value: string) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2.5">
+      {options.map((option) => {
+        const isOn = selected.includes(option);
+        return (
+          <button
+            key={option}
+            type="button"
+            disabled={disabled}
+            onClick={() => onToggle(option)}
+            aria-pressed={isOn}
+            className={`inline-flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-bold transition disabled:opacity-50 ${
+              isOn
+                ? "border-[#F5B400]/70 bg-[#F5B400]/20 text-amber-600 dark:text-[#F5B400] shadow-[0_0_16px_rgba(245,180,0,0.2)] backdrop-blur-xl"
+                : "border-white/60 dark:border-white/[0.18] bg-white/50 dark:bg-white/[0.08] text-stone-800 dark:text-slate-200 backdrop-blur-xl hover:border-stone-400 dark:hover:border-white/35"
+            }`}
+          >
+            {isOn && <Check className="h-3.5 w-3.5" />}
+            {option}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/**
+ * A credential number with live format feedback.
+ *
+ * The verdict comes from the same function the API runs at submit time, so what
+ * someone is told while typing and what the supervisor eventually sees can't
+ * disagree. It's only a shape check — there's no register to look a BIN, TIN or
+ * trade licence up in — so the wording stays at "looks right", never "verified".
+ */
+export function CredentialField({
+  id,
+  title,
+  required,
+  hint,
+  placeholder,
+  value,
+  onChange,
+  check,
+}: {
+  id: string;
+  title: string;
+  required?: boolean;
+  hint?: string;
+  placeholder?: string;
+  value: string;
+  onChange: (value: string) => void;
+  /** The shared validator for this kind of number. */
+  check: (raw: string) => CredentialFormatResult;
+}) {
+  // Nothing typed yet is not a failure — say nothing until there's something
+  // to judge.
+  const verdict = value.trim() === "" ? null : check(value);
+
+  return (
+    <Field id={id} title={title} required={required} hint={hint}>
+      <input
+        id={id}
+        type="text"
+        value={value}
+        placeholder={placeholder}
+        onChange={(e) => onChange(e.target.value)}
+        className={input}
+      />
+      {verdict && (
+        <p
+          className={`mt-1.5 inline-flex items-center gap-1.5 text-xs font-semibold ${
+            verdict.ok
+              ? "text-emerald-700 dark:text-emerald-400"
+              : "text-amber-700 dark:text-amber-400"
+          }`}
+        >
+          {verdict.ok ? (
+            <>
+              <Check className="h-3.5 w-3.5" /> Looks like a valid number — a supervisor still
+              checks the document.
+            </>
+          ) : (
+            <>
+              <AlertTriangle className="h-3.5 w-3.5" /> {verdict.issue}
+            </>
+          )}
+        </p>
+      )}
+    </Field>
   );
 }
 

@@ -1,45 +1,58 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { Lock } from "lucide-react";
 import {
-  ContractStatus,
   ProjectStatus,
-  UserRole,
+  type BuildContract,
   type Contract,
+  type EcpsApplication,
+  type Milestone,
   type Project,
+  type StructuralEngagement,
+  type Tender,
 } from "@buildora/shared";
 import {
   deleteProject,
+  getEcpsApplication,
   getProject,
   getProjectContract,
+  listProjectProposals,
   postBrief,
   updateProjectStatus,
 } from "@/lib/apiProjects";
+import { getProjectEngagement } from "@/lib/apiStructural";
+import { getProjectTender } from "@/lib/apiTenders";
+import { getProjectBuild } from "@/lib/apiBuild";
 import { openConversation } from "@/lib/apiMessages";
+import { readPaymentNotice } from "@/lib/apiPayments";
 import { useSession } from "@/store/useSession";
 import { Navbar } from "@/components/landing/Navbar";
 import { ProposalsSection } from "@/components/project/ProposalsSection";
 import { ContractSection } from "@/components/project/ContractSection";
 import { EcpsSection } from "@/components/project/EcpsSection";
 import { StructuralSection } from "@/components/project/StructuralSection";
-import { readPaymentNotice } from "@/lib/apiPayments";
 import { FloorPlanSection } from "@/components/project/FloorPlanSection";
 import { DocumentsSection } from "@/components/project/DocumentsSection";
 import { SiteDiarySection } from "@/components/project/SiteDiarySection";
 import { TenderSection } from "@/components/project/TenderSection";
 import { BuildSection } from "@/components/project/BuildSection";
-import { PlotMapView } from "@/components/project/PlotMapView";
+import { ProjectProgress } from "@/components/project/hub/ProjectProgress";
+import { ProjectTabs, type TabDescriptor } from "@/components/project/hub/ProjectTabs";
+import { OverviewTab } from "@/components/project/hub/OverviewTab";
+import {
+  computeProjectProgress,
+  tabsForRole,
+  type PhaseKey,
+  type ProjectSnapshot,
+} from "@/components/project/hub/phases";
+import { TAB_LABELS, TAB_ORDER, parseTab, type TabKey } from "@/components/project/hub/tabs";
 import {
   buildingTypeLabels,
-  formatBdt,
   projectStatusLabels,
-  projectStatusOrder,
   projectStatusStyles,
 } from "@/components/app/projectStatus";
-
-const cardClass =
-  "rounded-2xl border border-white/50 bg-white/55 p-5 shadow-xl shadow-black/5 backdrop-blur-xl sm:p-6 dark:border-white/10 dark:bg-white/5";
 
 /** The owner's one-click stage moves, mirroring the API's allowed transitions. */
 const nextStatusActions: Partial<Record<ProjectStatus, { to: ProjectStatus; label: string }>> = {
@@ -54,17 +67,39 @@ const nextStatusActions: Partial<Record<ProjectStatus, { to: ProjectStatus; labe
   [ProjectStatus.COMPLETED]: { to: ProjectStatus.ARCHIVED, label: "Archive project" },
 };
 
+/**
+ * The project hub.
+ *
+ * This used to be ten sections stacked in one column, several of which rendered
+ * nothing at all depending on the stage — so the page had no predictable shape
+ * and every visit meant scrolling to find out what was there. It's now one tab
+ * per phase of the build, in the order the phases actually happen, with a
+ * progress bar computed from real records rather than the hand-advanced status.
+ *
+ * Only the active tab's section is mounted, so a page that used to fire ten
+ * section loads at once now fires one, plus the small parallel snapshot below.
+ */
 export default function ProjectDetailPage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
+  const searchParams = useSearchParams();
   const user = useSession((s) => s.user);
   const token = useSession((s) => s.token);
 
   const [project, setProject] = useState<Project | null>(null);
   const [contract, setContract] = useState<Contract | null>(null);
+  const [structural, setStructural] = useState<StructuralEngagement | null>(null);
+  const [ecps, setEcps] = useState<EcpsApplication | null>(null);
+  const [tender, setTender] = useState<Tender | null>(null);
+  const [build, setBuild] = useState<BuildContract | null>(null);
+  const [milestones, setMilestones] = useState<Milestone[]>([]);
+  const [pendingProposals, setPendingProposals] = useState(0);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  const [tab, setTab] = useState<TabKey>("overview");
 
   // Set once on mount from the ?payment=… flag the gateway callback adds.
   const [payNotice, setPayNotice] = useState<ReturnType<typeof readPaymentNotice>>(null);
@@ -74,20 +109,47 @@ export default function ProjectDetailPage() {
     setPayNotice(readPaymentNotice());
   }, []);
 
+  /**
+   * One snapshot of every phase, fetched in parallel.
+   *
+   * Each of these endpoints already existed for the individual sections; the hub
+   * needs them together to draw an honest progress bar and to know which tabs
+   * are reachable. Every one is allowed to fail on its own — a project with no
+   * tender yet 404s, and that's simply "not started", not an error.
+   */
   const load = useCallback(async () => {
     if (!token) return;
     try {
       const p = await getProject(token, params.id);
       setProject(p);
-      // The contract only exists once a proposal was accepted; 404s are fine.
-      setContract(await getProjectContract(token, params.id).catch(() => null));
+
+      const isClient = !!user && user.id === p.owner.id;
+      const [c, s, e, t, b, proposals] = await Promise.all([
+        getProjectContract(token, params.id).catch(() => null),
+        getProjectEngagement(token, params.id).catch(() => null),
+        getEcpsApplication(token, params.id).catch(() => null),
+        getProjectTender(token, params.id).catch(() => null),
+        getProjectBuild(token, params.id).catch(() => null),
+        // Only the owner can list proposals, and only while the brief is open.
+        isClient && p.status === ProjectStatus.BRIEF_POSTED
+          ? listProjectProposals(token, params.id).catch(() => [])
+          : Promise.resolve([]),
+      ]);
+
+      setContract(c);
+      setStructural(s);
+      setEcps(e);
+      setTender(t);
+      setBuild(b?.contract ?? null);
+      setMilestones(b?.milestones ?? []);
+      setPendingProposals(proposals.length);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't load the project");
     } finally {
       setLoading(false);
     }
-  }, [token, params.id]);
+  }, [token, params.id, user]);
 
   useEffect(() => {
     if (!mounted) return;
@@ -101,6 +163,49 @@ export default function ProjectDetailPage() {
   const isOwner = !!user && !!project && user.id === project.owner.id;
   const isAssignedArchitect = !!user && !!project && user.id === project.architect?.id;
   const isAssignedEngineer = !!user && !!project && user.id === project.engineer?.id;
+
+  const progress = useMemo(() => {
+    if (!project) return null;
+    const snapshot: ProjectSnapshot = {
+      project,
+      contract,
+      structural,
+      ecps,
+      tender,
+      build,
+      milestones,
+      pendingProposals,
+    };
+    return computeProjectProgress(snapshot, isOwner);
+  }, [project, contract, structural, ecps, tender, build, milestones, pendingProposals, isOwner]);
+
+  /** Which tabs this viewer gets, in journey order. */
+  const visibleTabs = useMemo(() => {
+    if (!user) return [];
+    const allowed = tabsForRole(user.role, isOwner);
+    return TAB_ORDER.filter((t) => allowed.includes(t));
+  }, [user, isOwner]);
+
+  // Open the tab named in ?tab=, so a notification can link straight to the bid
+  // that needs comparing rather than the top of the page. Falls back to
+  // Overview when the value is unknown or not one this viewer can see.
+  useEffect(() => {
+    if (visibleTabs.length === 0) return;
+    const requested = parseTab(searchParams.get("tab"));
+    const fallback = visibleTabs[0] ?? "overview";
+    setTab(requested && visibleTabs.includes(requested) ? requested : fallback);
+  }, [searchParams, visibleTabs]);
+
+  /** Switching tabs writes the URL, so refresh and back both behave. */
+  const selectTab = useCallback(
+    (key: TabKey) => {
+      setTab(key);
+      const next = new URLSearchParams(searchParams.toString());
+      next.set("tab", key);
+      router.replace(`/projects/${params.id}?${next.toString()}`, { scroll: false });
+    },
+    [router, params.id, searchParams]
+  );
 
   async function handlePostDraft() {
     if (!token || !project) return;
@@ -176,24 +281,40 @@ export default function ProjectDetailPage() {
     );
   }
 
-  if (!project || !user || !token) return null;
+  if (!project || !user || !token || !progress) return null;
 
-  const statusIndex = projectStatusOrder.indexOf(project.status);
   const nextAction = isOwner ? nextStatusActions[project.status] : undefined;
   const messagingTarget = isOwner ? project.architect : isAssignedArchitect ? project.owner : null;
+
+  /** Tab descriptors: phase tabs carry their own progress, lock and alert state. */
+  const tabDescriptors: TabDescriptor[] = visibleTabs.map((key) => {
+    const phase = (progress.phases as Record<string, (typeof progress.phases)["architect"]>)[key];
+    return {
+      key,
+      label: TAB_LABELS[key],
+      fraction: phase?.fraction,
+      locked: phase ? !phase.unlocked : false,
+      needsYou: phase?.needsYou ?? false,
+    };
+  });
+
+  const activePhase = (progress.phases as Record<string, (typeof progress.phases)["architect"]>)[
+    tab
+  ];
+  const activeLocked = activePhase ? !activePhase.unlocked : false;
 
   return (
     <div className="flex min-h-screen flex-col">
       <Navbar />
 
       <main className="flex-1 px-5 pt-28 pb-16 sm:px-8">
-        <div className="mx-auto flex w-full max-w-4xl flex-col gap-10">
+        <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
           {/* Outcome of a gateway payment the payer was just redirected back
-              from. The section below already shows the new state; this only
+              from. The tab below already shows the new state; this only
               explains why. */}
           {payNotice && (
             <p
-              className={`-mb-6 rounded-xl px-4 py-3 text-sm font-medium ${
+              className={`rounded-xl px-4 py-3 text-sm font-medium ${
                 payNotice.tone === "success"
                   ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-400/15 dark:text-emerald-300"
                   : "bg-rose-100 text-rose-800 dark:bg-rose-400/15 dark:text-rose-300"
@@ -203,212 +324,218 @@ export default function ProjectDetailPage() {
             </p>
           )}
 
-          {/* Header ------------------------------------------------------ */}
-          <div>
-            <div className="flex flex-wrap items-center gap-3">
-              <span
-                className={`rounded-full px-3 py-1 text-xs font-bold ${projectStatusStyles[project.status]}`}
-              >
-                {projectStatusLabels[project.status]}
-              </span>
-              <p className="text-sm text-stone-500 dark:text-slate-500">
-                {project.areaName} ·{" "}
-                {buildingTypeLabels[project.buildingType] ?? project.buildingType}
-              </p>
-            </div>
-            <h1 className="mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">
-              {project.title}
-            </h1>
-
-            {/* Journey timeline (archived projects skip it) */}
-            {statusIndex >= 0 && (
-              <div className="mt-5 flex items-center gap-1.5 overflow-x-auto pb-1">
-                {projectStatusOrder.map((s, i) => (
-                  <div key={s} className="flex shrink-0 items-center gap-1.5">
-                    <span
-                      title={projectStatusLabels[s]}
-                      className={`h-2.5 rounded-full transition-all ${
-                        i < statusIndex
-                          ? "w-8 bg-emerald-500"
-                          : i === statusIndex
-                            ? "w-12 bg-amber-400"
-                            : "w-8 bg-black/10 dark:bg-white/10"
-                      }`}
-                    />
-                  </div>
-                ))}
-                <span className="ml-2 shrink-0 text-xs font-semibold text-stone-500 dark:text-slate-500">
-                  {statusIndex + 1}/{projectStatusOrder.length}
+          {/* Header — identity, progress, actions. Stays put on every tab so
+              the project's overall state is never more than a glance away. */}
+          <header className="flex flex-col gap-5">
+            <div>
+              <div className="flex flex-wrap items-center gap-3">
+                <span
+                  className={`rounded-full px-3 py-1 text-xs font-bold ${projectStatusStyles[project.status]}`}
+                >
+                  {projectStatusLabels[project.status]}
                 </span>
+                <p className="text-sm text-stone-500 dark:text-slate-500">
+                  {project.areaName} ·{" "}
+                  {buildingTypeLabels[project.buildingType] ?? project.buildingType}
+                </p>
               </div>
-            )}
+              <h1 className="mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">
+                {project.title}
+              </h1>
+            </div>
 
-            {/* Owner / participant actions */}
-            <div className="mt-5 flex flex-wrap gap-2">
-              {isOwner && project.status === ProjectStatus.DRAFT && (
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={handlePostDraft}
-                  className="rounded-full bg-amber-400 px-6 py-2.5 text-sm font-bold text-stone-950 transition hover:bg-amber-300 disabled:opacity-60"
-                >
-                  Post brief to architects
-                </button>
-              )}
-              {nextAction && (
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => handleAdvanceStatus(nextAction.to)}
-                  className="rounded-full bg-amber-400 px-6 py-2.5 text-sm font-bold text-stone-950 transition hover:bg-amber-300 disabled:opacity-60"
-                >
-                  {nextAction.label}
-                </button>
-              )}
-              {messagingTarget && (
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => handleMessage(messagingTarget.id)}
-                  className="rounded-full border border-stone-300 px-6 py-2.5 text-sm font-bold text-stone-700 transition hover:bg-stone-100 disabled:opacity-60 dark:border-white/20 dark:text-slate-200 dark:hover:bg-white/10"
-                >
-                  Message {messagingTarget.name.split(" ")[0]}
-                </button>
-              )}
-              {isOwner &&
-                (project.status === ProjectStatus.DRAFT ||
-                  project.status === ProjectStatus.BRIEF_POSTED) && (
+            <ProjectProgress progress={progress} onJump={(p: PhaseKey) => selectTab(p)} />
+
+            {(nextAction || messagingTarget || isOwner) && (
+              <div className="flex flex-wrap gap-2">
+                {isOwner && project.status === ProjectStatus.DRAFT && (
                   <button
                     type="button"
                     disabled={busy}
-                    onClick={handleDelete}
-                    className="rounded-full border border-rose-300 px-6 py-2.5 text-sm font-bold text-rose-600 transition hover:bg-rose-50 disabled:opacity-60 dark:border-rose-400/40 dark:text-rose-400 dark:hover:bg-rose-400/10"
+                    onClick={handlePostDraft}
+                    className="rounded-full bg-amber-400 px-6 py-2.5 text-sm font-bold text-stone-950 transition hover:bg-amber-300 disabled:opacity-60"
                   >
-                    Delete
+                    Post brief to architects
                   </button>
                 )}
-            </div>
+                {nextAction && (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => handleAdvanceStatus(nextAction.to)}
+                    className="rounded-full bg-amber-400 px-6 py-2.5 text-sm font-bold text-stone-950 transition hover:bg-amber-300 disabled:opacity-60"
+                  >
+                    {nextAction.label}
+                  </button>
+                )}
+                {messagingTarget && (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => handleMessage(messagingTarget.id)}
+                    className="rounded-full border border-stone-300 px-6 py-2.5 text-sm font-bold text-stone-700 transition hover:bg-stone-100 disabled:opacity-60 dark:border-white/20 dark:text-slate-200 dark:hover:bg-white/10"
+                  >
+                    Message {messagingTarget.name.split(" ")[0]}
+                  </button>
+                )}
+                {isOwner &&
+                  (project.status === ProjectStatus.DRAFT ||
+                    project.status === ProjectStatus.BRIEF_POSTED) && (
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={handleDelete}
+                      className="rounded-full border border-rose-300 px-6 py-2.5 text-sm font-bold text-rose-600 transition hover:bg-rose-50 disabled:opacity-60 dark:border-rose-400/40 dark:text-rose-400 dark:hover:bg-rose-400/10"
+                    >
+                      Delete
+                    </button>
+                  )}
+              </div>
+            )}
 
             {error && (
-              <p className="mt-4 rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-medium text-rose-800 dark:bg-rose-400/15 dark:text-rose-300">
+              <p className="rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-medium text-rose-800 dark:bg-rose-400/15 dark:text-rose-300">
                 {error}
               </p>
             )}
+          </header>
+
+          <ProjectTabs tabs={tabDescriptors} current={tab} onSelect={selectTab} />
+
+          {/* Tab content ------------------------------------------------- */}
+          <div className="flex flex-col gap-10 pt-2">
+            {activeLocked ? (
+              <LockedTab reason={activePhase?.blockedReason} label={TAB_LABELS[tab]} />
+            ) : (
+              <>
+                {tab === "overview" && (
+                  <OverviewTab project={project} progress={progress} onJump={selectTab} />
+                )}
+
+                {/* Architect — proposals, the design contract, the floor plan */}
+                {tab === "architect" && (
+                  <>
+                    {project.status === ProjectStatus.BRIEF_POSTED && (
+                      <ProposalsSection
+                        project={project}
+                        token={token}
+                        role={user.role}
+                        onChanged={load}
+                      />
+                    )}
+                    {contract && (
+                      <ContractSection
+                        contract={contract}
+                        token={token}
+                        isClient={user.id === contract.client.id}
+                        isArchitect={user.id === contract.architect.id}
+                        onChanged={(updated) => {
+                          setContract(updated);
+                          load(); // contract actions can move the project status too
+                        }}
+                      />
+                    )}
+                    {(isOwner || isAssignedArchitect) && project.architect && (
+                      <FloorPlanSection project={project} token={token} />
+                    )}
+                    {!contract && project.status !== ProjectStatus.BRIEF_POSTED && (
+                      <EmptyTab
+                        title="No architect engaged yet"
+                        body="Post your brief to start receiving proposals from verified architects."
+                      />
+                    )}
+                  </>
+                )}
+
+                {tab === "engineer" && (
+                  <StructuralSection
+                    project={project}
+                    token={token}
+                    userId={user.id}
+                    role={user.role}
+                    onChanged={load}
+                  />
+                )}
+
+                {tab === "rajuk" && (
+                  <EcpsSection
+                    project={project}
+                    token={token}
+                    canEdit={isOwner || isAssignedArchitect}
+                  />
+                )}
+
+                {/* Contractor — bidding, then the construction schedule */}
+                {tab === "contractor" && (
+                  <>
+                    <TenderSection
+                      project={project}
+                      token={token}
+                      isOwner={isOwner}
+                      onChanged={load}
+                    />
+                    <BuildSection
+                      project={project}
+                      token={token}
+                      userId={user.id}
+                      onChanged={load}
+                    />
+                    {!tender && !build && !isOwner && (
+                      <EmptyTab
+                        title="Nothing to show yet"
+                        body="Bidding hasn't opened on this project."
+                      />
+                    )}
+                  </>
+                )}
+
+                {tab === "diary" && (
+                  <SiteDiarySection
+                    project={project}
+                    token={token}
+                    userId={user.id}
+                    canWrite={isOwner || isAssignedArchitect || isAssignedEngineer}
+                  />
+                )}
+
+                {tab === "documents" && (
+                  <DocumentsSection
+                    projectId={project.id}
+                    token={token}
+                    userId={user.id}
+                    isOwner={isOwner}
+                  />
+                )}
+              </>
+            )}
           </div>
-
-          {/* Brief -------------------------------------------------------- */}
-          <section>
-            <h2 className="text-xl font-extrabold tracking-tight">The brief</h2>
-            <div className={`mt-4 ${cardClass}`}>
-              <p className="text-sm whitespace-pre-line text-stone-700 dark:text-slate-300">
-                {project.description}
-              </p>
-              <dl className="mt-5 grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
-                <div>
-                  <dt className="text-xs text-stone-500 dark:text-slate-500">Address</dt>
-                  <dd className="mt-0.5 font-semibold">{project.address}</dd>
-                </div>
-                <div>
-                  <dt className="text-xs text-stone-500 dark:text-slate-500">Land</dt>
-                  <dd className="mt-0.5 font-semibold">{project.landAreaKatha} katha</dd>
-                </div>
-                <div>
-                  <dt className="text-xs text-stone-500 dark:text-slate-500">Floors</dt>
-                  <dd className="mt-0.5 font-semibold">{project.floors}</dd>
-                </div>
-                <div>
-                  <dt className="text-xs text-stone-500 dark:text-slate-500">Budget</dt>
-                  <dd className="mt-0.5 font-semibold">
-                    {project.budgetMinBdt || project.budgetMaxBdt
-                      ? `${project.budgetMinBdt ? formatBdt(project.budgetMinBdt) : "—"} – ${
-                          project.budgetMaxBdt ? formatBdt(project.budgetMaxBdt) : "—"
-                        }`
-                      : "Not set"}
-                  </dd>
-                </div>
-              </dl>
-              {project.location && (
-                <div className="mt-5">
-                  <p className="mb-2 text-xs text-stone-500 dark:text-slate-500">On the map</p>
-                  <PlotMapView location={project.location} />
-                </div>
-              )}
-              <p className="mt-4 text-xs text-stone-500 dark:text-slate-500">
-                Owner: {project.owner.name}
-                {project.architect && <> · Architect: {project.architect.name}</>}
-              </p>
-            </div>
-          </section>
-
-          {/* Proposals (while the brief is open) --------------------------- */}
-          {project.status === ProjectStatus.BRIEF_POSTED && (
-            <ProposalsSection project={project} token={token} role={user.role} onChanged={load} />
-          )}
-
-          {/* Contract (once an architect was engaged) ---------------------- */}
-          {contract && (
-            <ContractSection
-              contract={contract}
-              token={token}
-              isClient={user.id === contract.client.id}
-              isArchitect={user.id === contract.architect.id}
-              onChanged={(updated) => {
-                setContract(updated);
-                load(); // contract actions can move the project status too
-              }}
-            />
-          )}
-
-          {/* Structural engineering (once the design is approved) ---------- */}
-          {(contract?.status === ContractStatus.COMPLETED || project.engineer) && (
-            <StructuralSection
-              project={project}
-              token={token}
-              userId={user.id}
-              role={user.role}
-              onChanged={load}
-            />
-          )}
-
-          {/* 2D floor plan — the architect's design, once one is engaged ---- */}
-          {(isOwner || isAssignedArchitect) && project.architect && (
-            <FloorPlanSection project={project} token={token} />
-          )}
-
-          {/* Contractor bidding (owner drafts, publishes, compares, awards) - */}
-          <TenderSection project={project} token={token} isOwner={isOwner} onChanged={load} />
-
-          {/* Construction, once a bid is awarded -------------------------- */}
-          <BuildSection project={project} token={token} userId={user.id} onChanged={load} />
-
-          {/* Site diary — everyone working on the project writes and reads it */}
-          {(isOwner || isAssignedArchitect || isAssignedEngineer) && (
-            <SiteDiarySection
-              project={project}
-              token={token}
-              userId={user.id}
-              canWrite={isOwner || isAssignedArchitect || isAssignedEngineer}
-            />
-          )}
-
-          {/* Permit tracker + archive (participants only) ------------------ */}
-          {(isOwner || isAssignedArchitect) && (
-            <>
-              <EcpsSection
-                project={project}
-                token={token}
-                canEdit={isOwner || isAssignedArchitect}
-              />
-              <DocumentsSection
-                projectId={project.id}
-                token={token}
-                userId={user.id}
-                isOwner={isOwner}
-              />
-            </>
-          )}
         </div>
       </main>
+    </div>
+  );
+}
+
+/** Shown when a phase hasn't been reached yet — says what opens it. */
+function LockedTab({ label, reason }: { label: string; reason?: string }) {
+  return (
+    <div className="rounded-2xl border border-white/50 bg-white/55 px-6 py-12 text-center backdrop-blur-xl dark:border-white/10 dark:bg-white/5">
+      <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-stone-500/10 dark:bg-white/10">
+        <Lock className="h-5 w-5 text-stone-500 dark:text-slate-400" />
+      </span>
+      <p className="mt-4 font-bold">{label} isn&apos;t open yet</p>
+      <p className="mx-auto mt-1 max-w-sm text-sm text-stone-600 dark:text-slate-400">
+        {reason ?? "This stage becomes available once the earlier ones are finished."}
+      </p>
+    </div>
+  );
+}
+
+/** Neutral empty state for a tab that's open but has nothing in it yet. */
+function EmptyTab({ title, body }: { title: string; body: string }) {
+  return (
+    <div className="rounded-2xl border border-white/50 bg-white/55 px-6 py-12 text-center backdrop-blur-xl dark:border-white/10 dark:bg-white/5">
+      <p className="font-bold">{title}</p>
+      <p className="mx-auto mt-1 max-w-sm text-sm text-stone-600 dark:text-slate-400">{body}</p>
     </div>
   );
 }

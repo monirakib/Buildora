@@ -2,26 +2,27 @@
 
 import { EMPLOYMENT_TYPES } from "@buildora/shared";
 import { Field, StepHeader, addButton, entryBox, input, removeButton } from "../ui";
+import { stepCopy } from "../roles";
 import { emptyExperience, type StepProps } from "../form";
 
-/** Step 5 — work history, newest first. */
-export function ExperienceStep({ form, patch }: StepProps) {
+/** Work history, newest first. */
+export function ExperienceStep({ form, patch, role }: StepProps) {
+  const copy = stepCopy("experience", role);
   const setEntry = (i: number, changes: Partial<(typeof form.experience)[number]>) =>
     patch({ experience: form.experience.map((x, j) => (j === i ? { ...x, ...changes } : x)) });
   const remove = (i: number) => patch({ experience: form.experience.filter((_, j) => j !== i) });
 
   return (
     <div>
-      <StepHeader
-        title="Professional Experience"
-        subtitle="Firms and roles you've worked in, with your responsibilities and major projects."
-      />
+      <StepHeader title={copy.title} subtitle={copy.subtitle} />
 
       <div className="flex flex-col gap-4">
         {form.experience.map((entry, i) => (
           <div key={i} className={entryBox}>
             <div className="flex items-start justify-between gap-3">
-              <p className="text-sm font-bold text-stone-800 dark:text-slate-200">Position {i + 1}</p>
+              <p className="text-sm font-bold text-stone-800 dark:text-slate-200">
+                Position {i + 1}
+              </p>
               <button type="button" onClick={() => remove(i)} className={removeButton}>
                 Remove
               </button>

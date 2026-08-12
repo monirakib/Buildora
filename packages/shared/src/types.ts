@@ -236,6 +236,50 @@ export interface NidCheck {
   checkedAt: string;
 }
 
+/**
+ * One brand a supplier is authorised to sell, with the dealership letter that
+ * says so. Buyers on the marketplace care about this: "Shah Cement dealer" and
+ * "sells Shah Cement" are not the same claim.
+ */
+export interface BrandAuthorization {
+  /** Manufacturer, e.g. "Shah Cement", "BSRM". */
+  brand: string;
+  /** Uploaded dealership/authorisation letter. */
+  documentUrl?: string;
+  /** ISO "YYYY-MM-DD" — when the authorisation runs out, if it does. */
+  validTill?: string;
+}
+
+/**
+ * One credential number the API checked automatically at submit time.
+ *
+ * As with NidCheck, this is pre-screening and nothing more: NBR publishes no
+ * free BIN/TIN lookup, and trade licences are issued by hundreds of separate
+ * local authorities with no shared register. All this can say is that a number
+ * is the right shape, hasn't expired, and isn't already claimed by a different
+ * account. Never present it as registry verification.
+ */
+export interface CredentialCheckItem {
+  /** What was checked, e.g. "Trade licence number". */
+  label: string;
+  /** The value as checked, normalised. */
+  value: string;
+  /** Whether it's a plausible shape for that kind of number. */
+  formatOk: boolean;
+  /** Why the format failed, if it did. */
+  issue?: string;
+  /** True when another account already claims this exact number. */
+  duplicate: boolean;
+  /** Whether an attached expiry date has passed; null when there is none. */
+  expired?: boolean | null;
+}
+
+/** The full set of automated credential checks run for one submission. */
+export interface CredentialCheck {
+  items: CredentialCheckItem[];
+  checkedAt: string;
+}
+
 /** What Gemini read off the uploaded NID card, and how it compared. */
 export interface NidOcrResult {
   /** False when the image couldn't be read at all. */
@@ -321,6 +365,70 @@ export interface ProfessionalProfile {
   rajukCertificateUrl?: string;
   /** Result of the last IAB directory lookup, recorded by the API at submit time. */
   iabCheck?: IabCheck;
+  /**
+   * The primary certificate for roles whose body isn't IAB — today the
+   * engineer's IEB certificate. Architects keep using `iabCertificateUrl`;
+   * splitting them keeps each field's name honest about what it holds.
+   */
+  licenseCertificateUrl?: string;
+
+  // ---- Structural engineer ----
+  /**
+   * The engineer's professional seal, scanned. This is the credential that
+   * matters most on this platform: an engineer's signature is what passes a
+   * milestone inspection and releases an escrow tranche, so a supervisor needs
+   * to have seen the seal that signature will carry.
+   */
+  professionalSealUrl?: string;
+
+  // ---- Business registration (contractor & supplier) ----
+  /** City corporation / pourashava trade licence number. */
+  tradeLicenseNo?: string;
+  /** The authority that issued it, e.g. "Dhaka North City Corporation". */
+  tradeLicenseIssuer?: string;
+  /** ISO "YYYY-MM-DD" — trade licences are renewed yearly. */
+  tradeLicenseExpiry?: string;
+  tradeLicenseUrl?: string;
+  /** NBR Business Identification Number (VAT registration), 13 digits. */
+  binNumber?: string;
+  binCertificateUrl?: string;
+  /** NBR e-TIN, 12 digits. Required before any escrow payout. */
+  tinNumber?: string;
+  tinCertificateUrl?: string;
+  /** RJSC company incorporation number, for firms that are incorporated. */
+  rjscRegistrationNo?: string;
+  rjscCertificateUrl?: string;
+
+  // ---- Contractor capacity ----
+  /** Who enlisted them — one of ENLISTMENT_BODIES. */
+  enlistmentBody?: string;
+  /** Enlistment class, e.g. "Class A" — it caps the contract value they may bid. */
+  contractorClass?: string;
+  enlistmentCertificateUrl?: string;
+  /** Permanent crew they can field, used as a capacity signal on bids. */
+  crewSize?: number;
+  /** Selected chips from EQUIPMENT_OPTIONS. */
+  equipment?: string[];
+  /** Largest single contract completed, in BDT. */
+  largestProjectBdt?: number;
+  /** Bank solvency certificate — evidence they can carry a build's cash flow. */
+  bankSolvencyUrl?: string;
+
+  // ---- Supplier catalogue ----
+  /** ProductCategory values — the material lines they stock. */
+  supplyCategories?: string[];
+  /** Dealership letters for the brands they claim to carry. */
+  brandAuthorizations?: BrandAuthorization[];
+  /** Where the stock actually is. */
+  warehouseAddress?: string;
+  /** BD_DISTRICTS values they deliver to. */
+  deliveryDistricts?: string[];
+  /** BSTI licence — mandatory for some materials (cement, rod, tiles). */
+  bstiLicenseNo?: string;
+  bstiCertificateUrl?: string;
+
+  /** Automated pre-screen of the numbers above, recorded by the API at submit. */
+  credentialCheck?: CredentialCheck;
 
   // ---- Structured sections ----
   education?: EducationEntry[];

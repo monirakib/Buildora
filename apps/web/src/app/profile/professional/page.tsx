@@ -2,21 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { UserRole } from "@buildora/shared";
 import { useSession } from "@/store/useSession";
-import { ArchitectWizard } from "@/components/verify/ArchitectWizard";
-import { ClassicProfessionalForm } from "./ClassicForm";
-
-const PROFESSIONAL_ROLES: UserRole[] = [
-  UserRole.ARCHITECT,
-  UserRole.STRUCTURAL_ENGINEER,
-  UserRole.CONTRACTOR,
-  UserRole.SUPPLIER,
-];
+import { PROFESSIONAL_ROLES, ProfessionalWizard } from "@/components/verify/ProfessionalWizard";
 
 /**
- * "Complete your profile" — architects get the 10-step verification wizard;
- * the other professional roles keep the classic single-page editor.
+ * "Complete your profile" — every professional role runs the verification
+ * wizard. Which steps they see comes from their role; see components/verify/roles.ts.
  */
 export default function ProfessionalProfilePage() {
   const router = useRouter();
@@ -43,8 +34,5 @@ export default function ProfessionalProfilePage() {
     );
   }
 
-  if (user.role === UserRole.ARCHITECT) {
-    return <ArchitectWizard user={user} />;
-  }
-  return <ClassicProfessionalForm />;
+  return <ProfessionalWizard user={user} />;
 }
