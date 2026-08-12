@@ -1,8 +1,17 @@
 import type { HydratedDocument } from "mongoose";
-import { NOTIFICATION_EVENTS, NotificationType, type AppNotification } from "@buildora/shared";
+import {
+  NOTIFICATION_EVENTS,
+  NotificationType,
+  isEmailWorthy,
+  isPushWorthy,
+  type AppNotification,
+} from "@buildora/shared";
 import { Notification, type NotificationDoc } from "../models/Notification";
 import { User } from "../models/User";
 import { emitToUser } from "../realtime/push";
+import { sendEmail } from "./email";
+import { readPreferences } from "./preferences";
+import { pushToUser } from "./webpush";
 
 /**
  * Creating notifications.
@@ -13,9 +22,19 @@ import { emitToUser } from "../realtime/push";
  * got placed and the message still got sent — so these swallow their errors
  * rather than turning a successful request into a 500.
  *
- * Each write is also pushed over Socket.IO to the recipient's room, which is
- * what makes the bell update live. If they're offline the push is a no-op and
- * the row is simply waiting for them next time they load a page.
+ * Each write goes out over three channels, and this is the only place that
+ * decides between them:
+ *
+ *   bell   Socket.IO to the recipient's room — always, and instant, but only
+ *          reaches someone with a tab open.
+ *   push   Web Push — reaches the browser with every tab closed. Everything
+ *          except promotions and missed calls (see isPushWorthy).
+ *   email  Brevo — reaches someone away from a computer. Only the significant
+ *          events (see isEmailWorthy): money, decisions, commitments.
+ *
+ * Because every feature in the platform already funnels through here, adding
+ * those two channels gave push and email to all of them at once. Nothing
+ * downstream had to change.
  */
 
 /** Everything a notification needs, minus the recipient. */
@@ -56,6 +75,54 @@ async function populateActor(doc: HydratedDocument<NotificationDoc>) {
 }
 
 /**
+ * Fans one notification out to push and email, honouring both the event type
+ * and the recipient's own preferences.
+ *
+ * Runs detached from the caller: `notify` does not await this, because a slow
+ * push service or mail API must never hold up the request that triggered it.
+ * Every failure inside is already swallowed by the services themselves.
+ */
+function deliverOutOfApp(userId: string, input: NotifyInput): void {
+  void (async () => {
+    try {
+      const wantsPush = isPushWorthy(input.type);
+      const wantsEmail = isEmailWorthy(input.type);
+      if (!wantsPush && !wantsEmail) return;
+
+      // One lookup covers both channels and tells us whether the user opted out.
+      // `.lean()` matters: readPreferences explains why a subdocument must never
+      // be spread, and lean data sidesteps the problem entirely.
+      const user = await User.findById(userId).select("name email notificationPrefs").lean();
+      if (!user) return;
+      const prefs = readPreferences(user.notificationPrefs);
+
+      if (wantsPush && prefs.push) {
+        await pushToUser(userId, {
+          title: input.title,
+          body: input.body,
+          link: input.link,
+          // Grouping by type means a second milestone update replaces the first
+          // on the lock screen instead of stacking beside it.
+          tag: input.type,
+        });
+      }
+
+      if (wantsEmail && prefs.email && user.email) {
+        await sendEmail({
+          to: user.email,
+          toName: user.name,
+          subject: input.title,
+          text: input.body,
+          link: input.link,
+        });
+      }
+    } catch {
+      // Best-effort by design — see the note at the top of this file.
+    }
+  })();
+}
+
+/**
  * Creates one notification and pushes it to the recipient. Never throws — see
  * the note at the top of this file.
  */
@@ -73,6 +140,7 @@ export async function notify(userId: string, input: NotifyInput): Promise<void> 
     emitToUser(userId, NOTIFICATION_EVENTS.created, {
       notification: toNotificationDto(populated),
     });
+    deliverOutOfApp(userId, input);
   } catch {
     // Best-effort: the caller's real work is already committed.
   }
@@ -101,6 +169,21 @@ export async function notifyNewMessage(
 
   await notify(recipientId, { ...input, type: NotificationType.MESSAGE, actorId: senderId });
 }
+
+/**
+ * How many recipients still counts as transactional mail.
+ *
+ * Brevo's transactional API is for messages caused by one person's action — a
+ * decision, a payment, a booking. A platform-wide announcement is a *campaign*,
+ * a different product with different rules, and pushing one through this
+ * endpoint would both misuse it and empty the 300/day free quota in a single
+ * send. Above this size the announcement still reaches everyone by bell and by
+ * push, which cost nothing; it just doesn't go out as mail.
+ *
+ * Fifty comfortably covers the real transactional fan-outs, like telling every
+ * supervisor that a verification request came in.
+ */
+const TRANSACTIONAL_FANOUT_LIMIT = 50;
 
 /**
  * Creates the same notification for many recipients in one insert (the admin
@@ -142,9 +225,68 @@ export async function notifyMany(userIds: string[], input: NotifyInput): Promise
         } satisfies AppNotification,
       });
     }
+
+    // Push costs nothing per recipient, so everyone gets it. Email only for
+    // genuine transactional fan-outs — see the note on the limit above.
+    if (isPushWorthy(input.type)) {
+      void pushToManyRespectingPrefs(userIds, input);
+    }
+    if (isEmailWorthy(input.type)) {
+      if (userIds.length <= TRANSACTIONAL_FANOUT_LIMIT) {
+        for (const id of userIds) void emailOneRespectingPrefs(id, input);
+      } else {
+        console.info(
+          `[notify] ${userIds.length} recipients — announcement sent by bell and push only, not email`
+        );
+      }
+    }
+
     return docs.length;
   } catch {
     return 0;
+  }
+}
+
+/** Pushes to everyone who hasn't turned push off. One query, not one per user. */
+async function pushToManyRespectingPrefs(userIds: string[], input: NotifyInput): Promise<void> {
+  try {
+    // `notificationPrefs.push: { $ne: false }` keeps users who never set a
+    // preference, since the default is on.
+    const opted = await User.find({
+      _id: { $in: userIds },
+      "notificationPrefs.push": { $ne: false },
+    }).select("_id");
+
+    await Promise.all(
+      opted.map((u) =>
+        pushToUser(u._id.toString(), {
+          title: input.title,
+          body: input.body,
+          link: input.link,
+          tag: input.type,
+        })
+      )
+    );
+  } catch {
+    // Best-effort.
+  }
+}
+
+/** Emails one recipient of a fan-out, if they still want email. */
+async function emailOneRespectingPrefs(userId: string, input: NotifyInput): Promise<void> {
+  try {
+    const user = await User.findById(userId).select("name email notificationPrefs").lean();
+    if (!user?.email) return;
+    if (!readPreferences(user.notificationPrefs).email) return;
+    await sendEmail({
+      to: user.email,
+      toName: user.name,
+      subject: input.title,
+      text: input.body,
+      link: input.link,
+    });
+  } catch {
+    // Best-effort.
   }
 }
 

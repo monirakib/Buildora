@@ -4,6 +4,7 @@ import {
   UserRole,
   VerificationStatus,
   type BillingInfo,
+  type NotificationPreferences,
   type UserProfile,
 } from "@buildora/shared";
 
@@ -36,6 +37,12 @@ export interface UserDoc {
   /** Last time the user held a live signaling socket — powers "Active 5 mins ago". */
   lastSeenAt?: Date;
   billing?: BillingInfo;
+  /**
+   * Which out-of-app channels this user allows. Absent means "never chose",
+   * which is treated as the defaults (both on) — see DEFAULT_NOTIFICATION_PREFERENCES.
+   * The in-app bell isn't listed because it can't be turned off.
+   */
+  notificationPrefs?: NotificationPreferences;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -375,6 +382,18 @@ const userSchema = new Schema<UserDoc>(
     ratingCount: { type: Number, default: 0 },
     lastSeenAt: { type: Date },
     billing: { type: billingSchema, default: undefined },
+    // `default: undefined` so an untouched account stores nothing and simply
+    // inherits the defaults; only an explicit choice is written.
+    notificationPrefs: {
+      type: new Schema<NotificationPreferences>(
+        {
+          push: { type: Boolean, default: true },
+          email: { type: Boolean, default: true },
+        },
+        { _id: false }
+      ),
+      default: undefined,
+    },
   },
   { timestamps: true }
 );
