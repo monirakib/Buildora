@@ -98,6 +98,9 @@ export function StructuralSection({
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // True when the gateway can't take this payment, which is the only case that
+  // still offers the manual form. Set by GatewayPayButton once it knows.
+  const [gatewayDown, setGatewayDown] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -180,24 +183,32 @@ export function StructuralSection({
         {engagement.status === StructuralStatus.AWAITING_ESCROW &&
           (isClient ? (
             <>
-              {/* Real checkout when the gateway is configured; the manual form
-                  below is the fallback for a server without store keys. */}
-              <div className="mt-4">
+              {/* The gateway is the way to pay; the manual form below only
+                  appears when it can't take this payment. The explanation of
+                  what escrow means stays visible either way. */}
+              <p className="mt-4 text-sm text-stone-600 dark:text-slate-400">
+                The engineer can&apos;t start until the fee is held. It&apos;s only released when
+                you approve their drawings.
+              </p>
+              <div className="mt-3">
                 <GatewayPayButton
                   token={token}
                   purpose={PaymentPurpose.STRUCTURAL_ESCROW}
                   refId={engagement.id}
                   amountBdt={engagement.feeBdt}
                   label={`Deposit ${formatBdt(engagement.feeBdt)} into escrow`}
+                  onUnavailable={setGatewayDown}
                 />
               </div>
-              <EscrowForm
-                amountBdt={engagement.feeBdt}
-                busy={busy}
-                onPay={(method, reference) =>
-                  run(() => fundStructuralEscrow(token, engagement.id, method, reference))
-                }
-              />
+              {gatewayDown && (
+                <EscrowForm
+                  amountBdt={engagement.feeBdt}
+                  busy={busy}
+                  onPay={(method, reference) =>
+                    run(() => fundStructuralEscrow(token, engagement.id, method, reference))
+                  }
+                />
+              )}
             </>
           ) : (
             <p className="mt-4 text-sm text-stone-600 dark:text-slate-400">
@@ -254,10 +265,7 @@ export function StructuralSection({
             </h3>
             <ul className="mt-3 flex flex-col gap-3">
               {engagement.submissions.map((sub, i) => (
-                <li
-                  key={i}
-                  className="rounded-xl border border-black/5 p-4 dark:border-white/10"
-                >
+                <li key={i} className="rounded-xl border border-black/5 p-4 dark:border-white/10">
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div>
                       <p className="text-sm font-bold">{sub.title}</p>
@@ -388,7 +396,11 @@ function AppointPanel({
         </p>
 
         {!open ? (
-          <button type="button" onClick={() => setOpen(true)} className={`mt-4 ${primaryButtonClass}`}>
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            className={`mt-4 ${primaryButtonClass}`}
+          >
             Appoint a structural engineer
           </button>
         ) : (
@@ -500,10 +512,11 @@ function EscrowForm({
       }}
       className="mt-4 rounded-2xl border border-amber-400/40 bg-amber-400/10 p-4"
     >
-      <p className="text-sm font-bold">Move {formatBdt(amountBdt)} into escrow</p>
+      <p className="text-sm font-bold">Record a {formatBdt(amountBdt)} escrow deposit</p>
+      {/* The "why escrow" explanation lives above the gateway button now, so
+          it isn't repeated here. */}
       <p className="mt-1 text-xs text-stone-600 dark:text-slate-400">
-        The engineer can&apos;t start until the fee is held. It&apos;s only released when you
-        approve their drawings.
+        Pick the channel you paid through and enter the transaction reference.
       </p>
       <div className="mt-3 grid gap-2 sm:grid-cols-2">
         <select value={method} onChange={(e) => setMethod(e.target.value)} className={inputClass}>
