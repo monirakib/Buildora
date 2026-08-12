@@ -28,6 +28,8 @@ import {
   listFloorPlans,
   saveFloorPlan,
 } from "../controllers/floorplans.controller";
+import { createTender, getBoqTemplate, getProjectTender } from "../controllers/tenders.controller";
+import { getProjectBuild } from "../controllers/build.controller";
 import {
   createSiteDiaryEntry,
   deleteSiteDiaryEntry,
@@ -69,6 +71,12 @@ projectsRouter.post("/:id/ecps/advance", advanceEcpsApplication);
 projectsRouter.get("/:id/floor-plans", listFloorPlans);
 projectsRouter.put("/:id/floor-plans/:level", saveFloorPlan);
 projectsRouter.delete("/:id/floor-plans/:level", deleteFloorPlan);
+
+// Contractor tendering and the build contract that follows an award.
+projectsRouter.get("/:id/boq-template", requireRole(UserRole.LAND_OWNER), getBoqTemplate);
+projectsRouter.get("/:id/tender", getProjectTender);
+projectsRouter.post("/:id/tender", requireRole(UserRole.LAND_OWNER), createTender);
+projectsRouter.get("/:id/build", getProjectBuild);
 
 // Site diary — one entry per day, weather-stamped. `/forecast` before
 // `/:entryId` so the literal path isn't swallowed by the parameter.

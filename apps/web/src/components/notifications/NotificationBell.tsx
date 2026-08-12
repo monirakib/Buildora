@@ -9,6 +9,8 @@ import {
   CheckCheck,
   ClipboardList,
   FileText,
+  Gavel,
+  HardHat,
   Info,
   Inbox,
   Megaphone,
@@ -56,6 +58,18 @@ const TYPE_STYLES: Record<
   [NotificationType.MEETING]: {
     icon: CalendarClock,
     tone: "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300",
+  },
+  [NotificationType.TENDER]: {
+    icon: Gavel,
+    tone: "bg-cyan-100 text-cyan-700 dark:bg-cyan-500/15 dark:text-cyan-300",
+  },
+  [NotificationType.BID]: {
+    icon: Gavel,
+    tone: "bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300",
+  },
+  [NotificationType.MILESTONE]: {
+    icon: HardHat,
+    tone: "bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300",
   },
   [NotificationType.SITE_DIARY]: {
     icon: ClipboardList,
@@ -105,6 +119,9 @@ const FILTERS: { label: string; types: NotificationType[] | null }[] = [
       NotificationType.ORDER,
       NotificationType.VERIFICATION,
       NotificationType.SITE_DIARY,
+      NotificationType.TENDER,
+      NotificationType.BID,
+      NotificationType.MILESTONE,
     ],
   },
   { label: "Offers", types: [NotificationType.PROMOTION, NotificationType.SYSTEM] },
