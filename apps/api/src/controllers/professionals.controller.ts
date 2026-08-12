@@ -5,10 +5,11 @@ import { z } from "zod";
 import {
   BD_DIVISIONS,
   DEFAULT_PAGE_SIZE,
-  EXPERTISE_AREAS,
+  ProductCategory,
   UserRole,
   VerificationStatus,
   isDistrictInDivision,
+  isKnownExpertise,
   type Paginated,
   type ProfessionalProfile,
   type PublicProfessional,
@@ -109,7 +110,10 @@ export async function listProfessionals(req: Request, res: Response) {
   const expertise = ([] as string[])
     .concat(req.query.expertise as string | string[])
     .filter((v) => typeof v === "string" && v.trim() !== "")
-    .filter((v) => (EXPERTISE_AREAS as readonly string[]).includes(v));
+    // Every role's chip list is accepted, since the directory now lists all
+    // four professions — an engineer is filtered by "RCC Design", not by the
+    // architect's building types.
+    .filter((v) => isKnownExpertise(v));
   if (expertise.length > 0) {
     filter["profile.expertise"] = { $in: expertise };
   }
@@ -222,6 +226,12 @@ const portfolioProjectSchema = z.object({
   imageUrls: z.array(z.url()).max(8, "At most 8 images per project").default([]),
 });
 
+const brandAuthorizationSchema = z.object({
+  brand: z.string().trim().min(2, "Enter the brand name").max(80),
+  documentUrl: optionalUrl,
+  validTill: optionalText(10),
+});
+
 // The whole editable professional profile, submitted in one save (mirrors how
 // the land-owner profile PATCH replaces the profile subdocument).
 const professionalProfileSchema = z.object({
@@ -231,7 +241,15 @@ const professionalProfileSchema = z.object({
   ),
   phone: optionalText(30),
   avatarUrl: optionalUrl,
-  company: z.string({ message: "Enter your firm or company" }).trim().min(2).max(120),
+  // Optional at the schema level because plenty of professionals practise
+  // independently and the wizard hides the field for them. Where a firm name
+  // genuinely is required — contractors and suppliers, who are businesses —
+  // it's a mandatory row in that role's computeCompletion checklist instead,
+  // which is what gates the submit button and the submit endpoint.
+  company: z.preprocess(
+    emptyToUndef,
+    z.string().trim().min(2, "Enter your firm or company").max(120).optional()
+  ),
   bio: optionalText(1000),
   portfolioTitle: optionalText(90),
   portfolioIntro: optionalText(280),
@@ -266,6 +284,44 @@ const professionalProfileSchema = z.object({
   membershipCardUrl: optionalUrl,
   rajukEnlistmentNo: optionalText(60),
   rajukCertificateUrl: optionalUrl,
+  // ---- Engineer verification wizard ----
+  licenseCertificateUrl: optionalUrl,
+  professionalSealUrl: optionalUrl,
+  // ---- Contractor / supplier business registration ----
+  tradeLicenseNo: optionalText(60),
+  tradeLicenseIssuer: optionalText(120),
+  tradeLicenseExpiry: optionalText(10),
+  tradeLicenseUrl: optionalUrl,
+  binNumber: optionalText(30),
+  binCertificateUrl: optionalUrl,
+  tinNumber: optionalText(30),
+  tinCertificateUrl: optionalUrl,
+  rjscRegistrationNo: optionalText(60),
+  rjscCertificateUrl: optionalUrl,
+  // ---- Contractor capacity ----
+  enlistmentBody: optionalText(60),
+  contractorClass: optionalText(30),
+  enlistmentCertificateUrl: optionalUrl,
+  crewSize: optionalNonNegative(100_000),
+  equipment: z
+    .array(z.string().trim().min(1).max(60))
+    .max(30, "Too many equipment items")
+    .default([]),
+  largestProjectBdt: optionalNonNegative(100_000_000_000),
+  bankSolvencyUrl: optionalUrl,
+  // ---- Supplier catalogue ----
+  supplyCategories: z.array(z.enum(ProductCategory)).max(20, "Too many categories").default([]),
+  brandAuthorizations: z
+    .array(brandAuthorizationSchema)
+    .max(20, "At most 20 brand authorisations")
+    .default([]),
+  warehouseAddress: optionalText(300),
+  deliveryDistricts: z
+    .array(z.string().trim().min(1).max(40))
+    .max(64, "Too many districts")
+    .default([]),
+  bstiLicenseNo: optionalText(60),
+  bstiCertificateUrl: optionalUrl,
   declarationAgreed: z.boolean().optional(),
   declarationSignature: optionalText(120),
   declarationSignedAt: optionalText(30),

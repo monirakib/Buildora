@@ -171,6 +171,43 @@ const nidCheckSchema = new Schema(
   { _id: false }
 );
 
+// One brand a supplier is authorised to sell, with its dealership letter.
+const brandAuthorizationSchema = new Schema(
+  {
+    brand: { type: String, required: true, trim: true },
+    documentUrl: { type: String, trim: true },
+    validTill: { type: String, trim: true },
+  },
+  { _id: false }
+);
+
+// The automated business-credential pre-screen (see services/credentials.ts).
+// Server-written only — the profile PATCH schema drops a client-sent value, the
+// same rule that protects nidCheck and iabCheck.
+const credentialCheckSchema = new Schema(
+  {
+    items: {
+      type: [
+        new Schema(
+          {
+            label: { type: String, required: true, trim: true },
+            value: { type: String, required: true, trim: true },
+            formatOk: { type: Boolean, required: true },
+            issue: { type: String, trim: true },
+            duplicate: { type: Boolean, required: true },
+            // null means "no expiry date to judge", not "still valid".
+            expired: { type: Boolean, default: null },
+          },
+          { _id: false }
+        ),
+      ],
+      default: [],
+    },
+    checkedAt: { type: String, required: true },
+  },
+  { _id: false }
+);
+
 // Nested profile subdocument, shared across roles: land-owner build fields and
 // professional credential fields both live here (only the ones relevant to the
 // user's role get populated). `_id: false` — it's part of the user, not its
@@ -228,6 +265,45 @@ const profileSchema = new Schema<UserProfile>(
     // profile PATCH schema drops it, and the profile is replaced on every save,
     // so this only ever holds the result for the number actually submitted.
     iabCheck: { type: iabCheckSchema, default: undefined },
+    // Primary certificate for bodies other than IAB (the engineer's IEB one).
+    licenseCertificateUrl: { type: String, trim: true },
+
+    // Structural engineer — the seal their inspection signatures carry.
+    professionalSealUrl: { type: String, trim: true },
+
+    // Business registration (contractor & supplier). The three numbers are
+    // indexed because every pre-screen looks for another account claiming the
+    // same one. Not unique — most professionals never fill them in.
+    tradeLicenseNo: { type: String, trim: true, index: true },
+    tradeLicenseIssuer: { type: String, trim: true },
+    tradeLicenseExpiry: { type: String, trim: true },
+    tradeLicenseUrl: { type: String, trim: true },
+    binNumber: { type: String, trim: true, index: true },
+    binCertificateUrl: { type: String, trim: true },
+    tinNumber: { type: String, trim: true, index: true },
+    tinCertificateUrl: { type: String, trim: true },
+    rjscRegistrationNo: { type: String, trim: true },
+    rjscCertificateUrl: { type: String, trim: true },
+
+    // Contractor capacity
+    enlistmentBody: { type: String, trim: true },
+    contractorClass: { type: String, trim: true },
+    enlistmentCertificateUrl: { type: String, trim: true },
+    crewSize: { type: Number, min: 0 },
+    equipment: { type: [String], default: undefined },
+    largestProjectBdt: { type: Number, min: 0 },
+    bankSolvencyUrl: { type: String, trim: true },
+
+    // Supplier catalogue
+    supplyCategories: { type: [String], default: undefined },
+    brandAuthorizations: { type: [brandAuthorizationSchema], default: undefined },
+    warehouseAddress: { type: String, trim: true },
+    deliveryDistricts: { type: [String], default: undefined },
+    bstiLicenseNo: { type: String, trim: true },
+    bstiCertificateUrl: { type: String, trim: true },
+
+    credentialCheck: { type: credentialCheckSchema, default: undefined },
+
     // Final declaration
     declarationAgreed: { type: Boolean },
     declarationSignature: { type: String, trim: true },
