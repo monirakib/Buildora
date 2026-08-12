@@ -247,6 +247,8 @@ export enum NotificationType {
   CALL = "CALL",
   /** A meeting was booked, rescheduled, cancelled, or its venue moved on. */
   MEETING = "MEETING",
+  /** A site diary entry was logged on a project you're on. */
+  SITE_DIARY = "SITE_DIARY",
   /** A marketing announcement sent by an admin. */
   PROMOTION = "PROMOTION",
   /** A platform-wide notice sent by an admin (maintenance, policy, …). */
@@ -275,6 +277,36 @@ export enum StructuralStatus {
   /** Owner approved the set; escrow released and the project moves to permits. */
   COMPLETED = "COMPLETED",
   CANCELLED = "CANCELLED",
+}
+
+/**
+ * The trades counted in a site diary's daily headcount. Deliberately the coarse
+ * list a site supervisor would actually call out at muster — finer job titles
+ * exist, but nobody counting heads at 8am distinguishes them.
+ */
+export enum LabourTrade {
+  MASON = "MASON",
+  HELPER = "HELPER",
+  /** Rod/rebar binder — "rod mistri" on a Bangladeshi site. */
+  STEEL_FIXER = "STEEL_FIXER",
+  CARPENTER = "CARPENTER",
+  ELECTRICIAN = "ELECTRICIAN",
+  PLUMBER = "PLUMBER",
+  PAINTER = "PAINTER",
+  OPERATOR = "OPERATOR",
+  SUPERVISOR = "SUPERVISOR",
+  OTHER = "OTHER",
+}
+
+/**
+ * Which Open-Meteo endpoint a weather snapshot came from. Worth storing: the
+ * forecast endpoint covers today and the recent past from a live model, while
+ * the archive is reanalysis data that lags a few days behind. A reader deciding
+ * how much to trust a number should be able to see which one answered.
+ */
+export enum WeatherSource {
+  FORECAST = "FORECAST",
+  ARCHIVE = "ARCHIVE",
 }
 
 /** How a booked meeting is held. */
