@@ -4,6 +4,7 @@ import { isValidObjectId, type HydratedDocument } from "mongoose";
 import { z } from "zod";
 import {
   ContractStatus,
+  MilestoneStatus,
   NotificationType,
   OrderStatus,
   PaymentKind,
@@ -16,11 +17,14 @@ import {
   type PaymentConfig,
 } from "@buildora/shared";
 import { env } from "../config/env";
+import { BuildContract } from "../models/BuildContract";
 import { Contract } from "../models/Contract";
+import { Milestone } from "../models/Milestone";
 import { MarketOrder } from "../models/MarketOrder";
 import { PaymentSession, type PaymentSessionDoc } from "../models/PaymentSession";
 import { StructuralEngagement } from "../models/StructuralEngagement";
 import { User } from "../models/User";
+import { applyMilestoneFunding } from "./build.controller";
 import { notify } from "../services/notifications";
 import { createSession, isGatewayConfigured, validate } from "../services/sslcommerz";
 
@@ -72,7 +76,10 @@ async function describe(
   switch (purpose) {
     case PaymentPurpose.CONTRACT_CONCEPT_FEE:
     case PaymentPurpose.CONTRACT_ESCROW: {
-      const contract = await Contract.findById(refId).populate({ path: "project", select: "title" });
+      const contract = await Contract.findById(refId).populate({
+        path: "project",
+        select: "title",
+      });
       if (!contract || String(contract.client) !== userId) return null;
 
       const project = contract.project as unknown as { _id: unknown; title: string };
@@ -113,6 +120,27 @@ async function describe(
           engagement.status === StructuralStatus.AWAITING_ESCROW
             ? undefined
             : "This engagement is already funded",
+      };
+    }
+
+    case PaymentPurpose.MILESTONE_ESCROW: {
+      // The ref is the milestone; the contract behind it says who may pay.
+      const milestone = await Milestone.findById(refId);
+      if (!milestone) return null;
+      const contract = await BuildContract.findById(milestone.buildContract).populate({
+        path: "project",
+        select: "title",
+      });
+      if (!contract || String(contract.client) !== userId) return null;
+
+      const project = contract.project as unknown as { _id: unknown; title: string };
+      return {
+        amountBdt: milestone.amountBdt,
+        label: `${milestone.title} (escrow) — ${project.title}`,
+        category: "construction-services",
+        returnPath: `/projects/${String(project._id)}`,
+        blocked:
+          milestone.status === MilestoneStatus.PENDING ? undefined : "This stage is already funded",
       };
     }
 
@@ -205,6 +233,17 @@ async function settle(session: HydratedDocument<PaymentSessionDoc>): Promise<voi
         body: `৳${engagement.feeBdt.toLocaleString("en-BD")} is held. You can start submitting drawings.`,
         link: `/projects/${String(engagement.project)}`,
       });
+      return;
+    }
+
+    case PaymentPurpose.MILESTONE_ESCROW: {
+      const milestone = await Milestone.findById(session.refId);
+      if (!milestone || milestone.status !== MilestoneStatus.PENDING) return;
+      const contract = await BuildContract.findById(milestone.buildContract);
+      if (!contract) return;
+      // Same helper the manual form uses, so both paths write one ledger entry
+      // and one status change rather than two versions of the same rule.
+      await applyMilestoneFunding(contract, milestone, ledgerEntry.method, ledgerEntry.reference);
       return;
     }
 
@@ -355,7 +394,8 @@ export async function callbackSuccess(req: Request, res: Response) {
   if (session.status === PaymentSessionStatus.PAID) {
     return backToApp(res, session.returnPath, "success");
   }
-  if (!valId) return backToApp(res, session.returnPath, "error", "The gateway sent no validation id");
+  if (!valId)
+    return backToApp(res, session.returnPath, "error", "The gateway sent no validation id");
 
   const result = await validate(valId);
 
@@ -364,7 +404,12 @@ export async function callbackSuccess(req: Request, res: Response) {
     session.status = PaymentSessionStatus.FAILED;
     session.failReason = result.reason ?? result.status ?? "Not validated";
     await session.save();
-    return backToApp(res, session.returnPath, "failed", "The gateway couldn't confirm that payment");
+    return backToApp(
+      res,
+      session.returnPath,
+      "failed",
+      "The gateway couldn't confirm that payment"
+    );
   }
   if (result.tranId && result.tranId !== session.tranId) {
     console.error(`[payments] tran_id mismatch: ${result.tranId} vs ${session.tranId}`);
@@ -400,7 +445,9 @@ export async function callbackEnded(req: Request, res: Response) {
   // Don't overwrite a payment that already succeeded.
   if (session.status === PaymentSessionStatus.INITIATED) {
     session.status = cancelled ? PaymentSessionStatus.CANCELLED : PaymentSessionStatus.FAILED;
-    session.failReason = cancelled ? "Cancelled by the payer" : String(req.body?.error ?? "Failed at the gateway");
+    session.failReason = cancelled
+      ? "Cancelled by the payer"
+      : String(req.body?.error ?? "Failed at the gateway");
     await session.save();
   }
   return backToApp(res, session.returnPath, cancelled ? "cancelled" : "failed");
