@@ -120,6 +120,37 @@ export default function DashboardPage() {
               </Link>
             )}
 
+            {user.role === UserRole.CONTRACTOR && (
+              <Link href="/tenders" className={cardClass}>
+                <span className="grid h-11 w-11 place-items-center rounded-2xl bg-amber-400 text-stone-950">
+                  {/* Gavel — bidding */}
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="h-5.5 w-5.5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="m14 13-7.5 7.5a2.1 2.1 0 0 1-3-3L11 10" />
+                    <path d="m16 16 6-6" />
+                    <path d="m8 8 6-6" />
+                    <path d="m9 7 8 8" />
+                    <path d="m21 11-8-8" />
+                  </svg>
+                </span>
+                <h2 className="mt-4 text-lg font-bold">Tenders</h2>
+                <p className="mt-1 text-sm text-stone-600 dark:text-slate-400">
+                  Price open Bills of Quantities and submit sealed bids. Nobody sees your rates
+                  until bidding closes.
+                </p>
+                <span className="mt-4 inline-block text-sm font-bold text-amber-600 dark:text-amber-400">
+                  Find work →
+                </span>
+              </Link>
+            )}
+
             {isLandOwner && (
               <Link href="/architects" className={cardClass}>
                 <span className="grid h-11 w-11 place-items-center rounded-2xl bg-amber-400 text-stone-950">

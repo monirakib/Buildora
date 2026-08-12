@@ -27,6 +27,8 @@ import { readPaymentNotice } from "@/lib/apiPayments";
 import { FloorPlanSection } from "@/components/project/FloorPlanSection";
 import { DocumentsSection } from "@/components/project/DocumentsSection";
 import { SiteDiarySection } from "@/components/project/SiteDiarySection";
+import { TenderSection } from "@/components/project/TenderSection";
+import { BuildSection } from "@/components/project/BuildSection";
 import { PlotMapView } from "@/components/project/PlotMapView";
 import {
   buildingTypeLabels,
@@ -372,6 +374,12 @@ export default function ProjectDetailPage() {
           {(isOwner || isAssignedArchitect) && project.architect && (
             <FloorPlanSection project={project} token={token} />
           )}
+
+          {/* Contractor bidding (owner drafts, publishes, compares, awards) - */}
+          <TenderSection project={project} token={token} isOwner={isOwner} onChanged={load} />
+
+          {/* Construction, once a bid is awarded -------------------------- */}
+          <BuildSection project={project} token={token} userId={user.id} onChanged={load} />
 
           {/* Site diary — everyone working on the project writes and reads it */}
           {(isOwner || isAssignedArchitect || isAssignedEngineer) && (

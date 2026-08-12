@@ -552,6 +552,8 @@ function SideMenu({
         { href: "/dashboard", label: "Dashboard" },
         ...(!isAdmin ? [{ href: "/projects", label: "Projects" }] : []),
         ...(isProfessional ? [{ href: "/briefs", label: "Open briefs" }] : []),
+        // Only contractors bid — a supplier sells materials, they don't build.
+        ...(role === UserRole.CONTRACTOR ? [{ href: "/tenders", label: "Tenders to bid on" }] : []),
         ...(isLandOwner ? [{ href: "/architects", label: "Find an architect" }] : []),
         ...(isSeller ? [{ href: "/marketplace/sell", label: "My listings" }] : []),
         ...(isLandOwner || isSeller
