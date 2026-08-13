@@ -5,53 +5,55 @@ import { LOGO_CID, LOGO_PNG } from "./email-logo";
 import { renderEmail } from "./email-template";
 
 /**
- * Transactional email over SMTP.
+ * Transactional email: one message, two ways out.
  *
  * This is the platform's first contact that reaches someone who isn't on the
  * site: a supervisor's verification decision, an escrow release, a booked
- * meeting. It goes out through an ordinary mailbox — Gmail by default — using
- * SMTP, the same protocol any mail client speaks. No email provider account,
- * no API key, nothing to sign up for beyond the address we already own.
+ * meeting. How it leaves the building is a deployment detail, so both routes
+ * sit behind one `sendEmail`:
  *
- * Authentication is an **app password**, not the account password: Google
- * stopped accepting the real one for SMTP in 2022. Generate a 16-character app
- * password under Google Account → Security → 2-Step Verification → App
- * passwords, and put it in SMTP_PASSWORD.
+ *   Brevo   Their REST API, over HTTPS on port 443. Used whenever a key is
+ *           set, because it is the only route that survives deployment —
+ *           Render's free tier blocks outbound SMTP (ports 25, 465, 587), so
+ *           a deployed API can never open a mail connection at all. Free tier
+ *           is 300 messages a day. Called directly rather than through their
+ *           SDK: one POST with a JSON body needs no dependency.
+ *   SMTP    Gmail with an app password, straight from a mailbox we already
+ *           own. No third-party account and nothing to activate, which is why
+ *           it stays as the fallback and the local path. The app password is
+ *           *not* the Google account password — Google stopped accepting that
+ *           for SMTP in 2022.
+ *
+ * Either way the mail comes from EMAIL_FROM_ADDRESS, which Brevo requires to
+ * be a verified sender and Gmail requires to be the authenticated account.
  *
  * Only the events in EMAIL_WORTHY (see packages/shared/src/delivery.ts) are
- * sent at all — see the note there on why not everything deserves a mailbox.
- * Without SMTP_USER and SMTP_PASSWORD every send is a logged no-op, so local
- * development never tries to mail anyone and never fails because it couldn't.
+ * sent at all, and only to confirmed addresses (see emailVerification.ts).
+ * With neither route configured every send is a logged no-op, so a bare
+ * checkout never tries to mail anyone and never fails because it couldn't.
  *
  * What the message actually looks like lives in email-template.ts.
  */
 
-const configured = Boolean(env.SMTP_USER && env.SMTP_PASSWORD);
+const BREVO_ENDPOINT = "https://api.brevo.com/v3/smtp/email";
+const REQUEST_TIMEOUT_MS = 10000;
+
+const brevoConfigured = Boolean(env.BREVO_API_KEY);
+const smtpConfigured = Boolean(env.SMTP_USER && env.SMTP_PASSWORD);
+const configured = brevoConfigured || smtpConfigured;
 
 if (!configured) {
-  console.warn("[email] SMTP_USER / SMTP_PASSWORD not set — transactional email is disabled");
-}
-
-export function isEmailConfigured(): boolean {
-  return configured;
+  console.warn("[email] no BREVO_API_KEY and no SMTP_USER/SMTP_PASSWORD — email is disabled");
+} else {
+  console.info(`[email] sending over ${brevoConfigured ? "the Brevo API" : "Gmail SMTP"}`);
 }
 
 /**
- * The address in the From line.
+ * One SMTP connection pool for the process, built on first use.
  *
- * With Gmail this has to be the account that authenticated (or one of its
- * verified aliases). Anything else and Gmail quietly rewrites the header to the
- * real account, which looks broken to the recipient — so defaulting to
- * SMTP_USER is both the safe choice and the one that needs no configuration.
- */
-const fromAddress = env.EMAIL_FROM_ADDRESS || env.SMTP_USER || "";
-
-/**
- * One connection pool for the whole process, built on first use.
- *
- * Built lazily rather than at import time so that a server with no mail
- * configured never opens a socket, and so a bad password fails on the send
- * (where the error is visible and swallowed safely) instead of at boot.
+ * Lazy rather than at import time so a Brevo-only deployment never opens a
+ * socket, and so a bad password fails on the send — where the error is visible
+ * and already handled — instead of at boot.
  */
 let transporter: Transporter | null = null;
 
@@ -59,25 +61,27 @@ function getTransporter(): Transporter {
   if (!transporter) {
     transporter = nodemailer.createTransport({
       host: env.SMTP_HOST,
-      // Port 465 is TLS from the first byte; 587 starts plain and upgrades with
-      // STARTTLS. Both are encrypted — they just negotiate it at different
-      // moments, and `secure` is what tells nodemailer which one this is.
+      // Port 465 is TLS from the first byte; 587 starts plain and upgrades
+      // with STARTTLS. Both are encrypted — `secure` says which this is.
       port: env.SMTP_PORT,
       secure: env.SMTP_PORT === 465,
       auth: {
         user: env.SMTP_USER!,
-        // Google shows app passwords as four groups of four ("abcd efgh ijkl
-        // mnop") and people paste them exactly like that, spaces included. The
-        // spaces are display only; leaving them in is a guaranteed 535.
+        // Google shows app passwords as four groups of four and people paste
+        // them that way. The spaces are display only; leaving them in is a
+        // guaranteed 535.
         pass: env.SMTP_PASSWORD!.replace(/\s+/g, ""),
       },
-      // A mail server that stops answering must not hold a request open.
       connectionTimeout: 10000,
       greetingTimeout: 10000,
       socketTimeout: 20000,
     });
   }
   return transporter;
+}
+
+export function isEmailConfigured(): boolean {
+  return configured;
 }
 
 export interface EmailInput {
@@ -96,13 +100,16 @@ export interface EmailInput {
 /**
  * Sends one email and throws if it didn't go.
  *
- * Used by the "send a test email" button, where the actual SMTP error ("Invalid
- * login: 535…") is exactly what the person setting this up needs to see. Every
+ * Used by the "send a test email" button and by the verification link, where
+ * the reason for a refusal is exactly what the person needs to see. Every
  * other caller wants sendEmail below, which swallows the failure.
  */
 export async function sendEmailOrThrow(input: EmailInput): Promise<void> {
   if (!configured) {
     throw new Error("Email isn't configured on this server");
+  }
+  if (!env.EMAIL_FROM_ADDRESS) {
+    throw new Error("EMAIL_FROM_ADDRESS isn't set — there's no address to send from");
   }
 
   // An absolute URL is required in mail — a relative path has nothing to
@@ -123,29 +130,87 @@ export async function sendEmailOrThrow(input: EmailInput): Promise<void> {
     settingsUrl: `${env.WEB_BASE_URL}/account`,
   });
 
+  // The header that puts a one-click "unsubscribe" control in Gmail's own UI,
+  // pointed at our notification settings. Spam filters look for it, and
+  // honouring it is simply correct.
+  const headers = { "List-Unsubscribe": `<${env.WEB_BASE_URL}/account>` };
+
+  if (brevoConfigured) {
+    await sendViaBrevo(input, html, text, headers);
+  } else {
+    await sendViaSmtp(input, html, text, headers);
+  }
+}
+
+/** Posts the message to Brevo's REST API. */
+async function sendViaBrevo(
+  input: EmailInput,
+  html: string,
+  text: string,
+  headers: Record<string, string>
+): Promise<void> {
+  const payload = {
+    sender: { name: env.EMAIL_FROM_NAME, email: env.EMAIL_FROM_ADDRESS },
+    to: [{ email: input.to, ...(input.toName ? { name: input.toName } : {}) }],
+    subject: input.subject,
+    textContent: text,
+    htmlContent: html,
+    headers,
+    // Brevo addresses an inline attachment by its filename, so this name and
+    // the template's <img src="cid:buildora.png"> have to stay identical —
+    // that pairing is exactly what LOGO_CID holds.
+    attachment: [{ name: LOGO_CID, content: LOGO_PNG.toString("base64") }],
+  };
+
+  // fetch has no timeout of its own; without this a hung mail API would hold a
+  // request open until something else gave up.
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const res = await fetch(BREVO_ENDPOINT, {
+    method: "POST",
+    headers: {
+      "api-key": env.BREVO_API_KEY!,
+      "content-type": "application/json",
+      accept: "application/json",
+    },
+    body: JSON.stringify(payload),
+    signal: controller.signal,
+  }).finally(() => clearTimeout(timer));
+
+  if (!res.ok) {
+    // Brevo explains refusals in the body — worth passing on, since the causes
+    // are all things a person has to go and fix in their dashboard: an
+    // unverified sender, an unlisted IP, an account not yet activated.
+    const detail = await res.text().catch(() => "");
+    throw new Error(`Brevo refused the message (${res.status}) ${detail}`.trim());
+  }
+}
+
+/** Hands the message to Gmail over SMTP. */
+async function sendViaSmtp(
+  input: EmailInput,
+  html: string,
+  text: string,
+  headers: Record<string, string>
+): Promise<void> {
   await getTransporter().sendMail({
-    from: { name: env.EMAIL_FROM_NAME, address: fromAddress },
+    from: { name: env.EMAIL_FROM_NAME, address: env.EMAIL_FROM_ADDRESS! },
     to: input.toName ? { name: input.toName, address: input.to } : input.to,
     subject: input.subject,
     text,
     html,
+    headers,
     attachments: [
       {
-        // `cid` is what makes this an *inline* part rather than a download:
-        // the template's <img src="cid:buildora-mark"> resolves to these bytes
-        // inside the message, so the logo shows with no server to fetch from.
-        filename: "buildora.png",
+        // `cid` is what makes this inline rather than a download: the
+        // template's <img src="cid:buildora.png"> resolves to these bytes
+        // inside the message, with no server to fetch from.
+        filename: LOGO_CID,
         content: LOGO_PNG,
         cid: LOGO_CID,
         contentType: "image/png",
       },
     ],
-    headers: {
-      // Standard header that puts a one-click "unsubscribe" control in Gmail's
-      // own UI, pointed at our notification settings. Spam filters look for it
-      // on bulk-ish mail, and honouring it is simply correct.
-      "List-Unsubscribe": `<${env.WEB_BASE_URL}/account>`,
-    },
   });
 }
 
@@ -160,8 +225,6 @@ export async function sendEmail(input: EmailInput): Promise<boolean> {
     await sendEmailOrThrow(input);
     return true;
   } catch (err) {
-    // Worth logging in full: the usual causes are a stale app password or
-    // Gmail's daily send cap, and both say so plainly in the SMTP reply.
     console.error("[email] send failed:", err instanceof Error ? err.message : err);
     return false;
   }

@@ -18,8 +18,12 @@
  * base64 the resulting PNG back into the constant below.
  */
 
-/** The Content-ID the template's <img src="cid:…"> points at. */
-export const LOGO_CID = "buildora-mark";
+/**
+ * The name the attachment travels under, and the Content-ID the template's
+ * <img src="cid:…"> points at — deliberately the same string, because Brevo
+ * addresses an inline attachment by its filename rather than by a separate id.
+ */
+export const LOGO_CID = "buildora.png";
 
 const LOGO_BASE64 =
   "iVBORw0KGgoAAAANSUhEUgAAAEgAAABICAYAAABV7bNHAAAE4UlEQVR4nOycX2xTVRzHv23mw9wSE2PWTtlWIo5iwphLdBuY" +
