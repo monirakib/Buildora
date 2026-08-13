@@ -18,6 +18,7 @@ import { BuildContract, type BuildContractDoc } from "../models/BuildContract";
 import { InspectionTemplate } from "../models/InspectionTemplate";
 import { Milestone, type InspectionDoc, type MilestoneDoc } from "../models/Milestone";
 import { Project, type ProjectDoc } from "../models/Project";
+import { hasLiveDispute } from "./disputes.controller";
 import { notify } from "../services/notifications";
 import { refId } from "../utils/refId";
 import { findProjectOr404 } from "./projects.controller";
@@ -487,6 +488,18 @@ export async function releaseMilestone(req: Request, res: Response) {
   if (milestone.status !== MilestoneStatus.INSPECTION_PASSED) {
     return res.status(409).json({
       error: { message: "An engineer has to pass this stage before the money can be released" },
+    });
+  }
+
+  // An open dispute freezes this tranche. Without the freeze the owner could
+  // simply release the moment the contractor raised one, and the dispute would
+  // be decoration — only a supervisor's decision reopens the money.
+  if (await hasLiveDispute(milestone._id)) {
+    return res.status(409).json({
+      error: {
+        code: "DISPUTE_OPEN",
+        message: "This tranche is frozen while the dispute on it is being reviewed",
+      },
     });
   }
 

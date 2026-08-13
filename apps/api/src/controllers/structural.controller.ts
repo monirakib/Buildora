@@ -24,6 +24,7 @@ import {
   type StructuralEngagementDoc,
 } from "../models/StructuralEngagement";
 import { User } from "../models/User";
+import { hasLiveDispute } from "./disputes.controller";
 import { notify, preview } from "../services/notifications";
 
 /**
@@ -491,6 +492,17 @@ export async function reviewDrawings(req: Request, res: Response) {
     });
 
     return respond(res, doc);
+  }
+
+  // Approving releases the escrow, so an open dispute freezes it — the same
+  // rule the design contract and the milestone tranches follow.
+  if (await hasLiveDispute(doc._id)) {
+    return res.status(409).json({
+      error: {
+        code: "DISPUTE_OPEN",
+        message: "This engagement's escrow is frozen while the dispute on it is being reviewed",
+      },
+    });
   }
 
   // Approved — settle the money and move the project along.

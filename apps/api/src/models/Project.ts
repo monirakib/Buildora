@@ -42,6 +42,12 @@ export interface ProjectDoc {
   ownershipDocsReady?: boolean;
   photoUrls?: string[];
   status: ProjectStatus;
+  /**
+   * Opaque token for the public read-only progress page, when the owner has
+   * turned sharing on. Absent means not shared — and revoking is simply
+   * unsetting it, which instantly breaks every link that was ever handed out.
+   */
+  shareToken?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -98,6 +104,9 @@ const projectSchema = new Schema<ProjectDoc>(
     timeline: { type: String, trim: true, maxlength: 40 },
     ownershipDocsReady: { type: Boolean },
     photoUrls: { type: [String], default: undefined },
+    // Sparse so the unique index only covers projects that are actually
+    // shared; without sparse, every unshared project would collide on null.
+    shareToken: { type: String, unique: true, sparse: true, index: true },
     status: {
       type: String,
       enum: Object.values(ProjectStatus),

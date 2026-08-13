@@ -421,6 +421,12 @@ export interface ProfessionalProfile {
   brandAuthorizations?: BrandAuthorization[];
   /** Where the stock actually is. */
   warehouseAddress?: string;
+  /**
+   * The warehouse pinned on a map. Needed because delivery routing works in
+   * coordinates, and Bangladeshi street addresses geocode badly enough that
+   * guessing from the text would give buyers confidently wrong ETAs.
+   */
+  warehouseLocation?: LatLng;
   /** BD_DISTRICTS values they deliver to. */
   deliveryDistricts?: string[];
   /** BSTI licence — mandatory for some materials (cement, rod, tiles). */

@@ -16,6 +16,7 @@ import {
 import { Contract, type ContractDoc } from "../models/Contract";
 import { Project } from "../models/Project";
 import { Proposal } from "../models/Proposal";
+import { hasLiveDispute } from "./disputes.controller";
 import { notify } from "../services/notifications";
 import { findProjectOr404 } from "./projects.controller";
 
@@ -388,6 +389,15 @@ export async function decideDeliverable(req: Request, res: Response) {
     if (deliverable.kind === DeliverableKind.CONCEPT) {
       doc.status = ContractStatus.AWAITING_ESCROW;
       await doc.save();
+    } else if (await hasLiveDispute(doc._id)) {
+      // Approving the design releases the escrow, so it's frozen for the same
+      // reason a milestone tranche is: only a supervisor reopens disputed money.
+      return res.status(409).json({
+        error: {
+          code: "DISPUTE_OPEN",
+          message: "This contract's escrow is frozen while the dispute on it is being reviewed",
+        },
+      });
     } else {
       // Design approved: split the escrowed design fee between the platform
       // (commission) and the architect, and close the contract.

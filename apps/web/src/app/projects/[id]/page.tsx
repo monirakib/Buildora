@@ -2,9 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { Lock } from "lucide-react";
+import Link from "next/link";
+import { FileText, Lock } from "lucide-react";
 import {
+  DisputeScope,
+  MilestoneStatus,
+  PaymentKind,
   ProjectStatus,
+  StructuralStatus,
   type BuildContract,
   type Contract,
   type EcpsApplication,
@@ -38,6 +43,12 @@ import { DocumentsSection } from "@/components/project/DocumentsSection";
 import { SiteDiarySection } from "@/components/project/SiteDiarySection";
 import { TenderSection } from "@/components/project/TenderSection";
 import { BuildSection } from "@/components/project/BuildSection";
+import { ChangeOrderSection } from "@/components/project/ChangeOrderSection";
+import { DisputeSection } from "@/components/project/DisputeSection";
+import { HandoverSection } from "@/components/project/HandoverSection";
+import { AttendanceSection } from "@/components/project/AttendanceSection";
+import { EstimateSection } from "@/components/project/EstimateSection";
+import { ShareSection } from "@/components/project/ShareSection";
 import { ProjectProgress } from "@/components/project/hub/ProjectProgress";
 import { ProjectTabs, type TabDescriptor } from "@/components/project/hub/ProjectTabs";
 import { OverviewTab } from "@/components/project/hub/OverviewTab";
@@ -178,6 +189,41 @@ export default function ProjectDetailPage() {
     };
     return computeProjectProgress(snapshot, isOwner);
   }, [project, contract, structural, ecps, tender, build, milestones, pendingProposals, isOwner]);
+
+  /**
+   * What this viewer could raise a dispute about.
+   *
+   * Only things with money actually behind them: a contract that's been funded,
+   * an engagement past its escrow, a milestone that's funded but not yet paid
+   * out. Offering to dispute an empty contract would just be noise.
+   */
+  const disputeTargets = useMemo(() => {
+    const targets: { scope: DisputeScope; id: string; label: string }[] = [];
+    if (contract && contract.payments.some((p) => p.kind === PaymentKind.ESCROW_DEPOSIT)) {
+      targets.push({
+        scope: DisputeScope.DESIGN_CONTRACT,
+        id: contract.id,
+        label: "Design contract",
+      });
+    }
+    if (structural && structural.status !== StructuralStatus.AWAITING_ESCROW) {
+      targets.push({
+        scope: DisputeScope.STRUCTURAL,
+        id: structural.id,
+        label: "Structural engagement",
+      });
+    }
+    for (const m of milestones) {
+      if (m.status !== MilestoneStatus.PENDING && m.status !== MilestoneStatus.RELEASED) {
+        targets.push({
+          scope: DisputeScope.BUILD_MILESTONE,
+          id: m.id,
+          label: `Milestone ${m.order} — ${m.title}`,
+        });
+      }
+    }
+    return targets;
+  }, [contract, structural, milestones]);
 
   /** Which tabs this viewer gets, in journey order. */
   const visibleTabs = useMemo(() => {
@@ -409,7 +455,21 @@ export default function ProjectDetailPage() {
             ) : (
               <>
                 {tab === "overview" && (
-                  <OverviewTab project={project} progress={progress} onJump={selectTab} />
+                  <>
+                    <OverviewTab project={project} progress={progress} onJump={selectTab} />
+                    {/* Disputes live on Overview because they cut across every
+                        phase — the money in question may be design, structural
+                        or construction. */}
+                    {isOwner && <EstimateSection projectId={project.id} token={token} />}
+                    {isOwner && <ShareSection projectId={project.id} token={token} />}
+                    <DisputeSection
+                      projectId={project.id}
+                      token={token}
+                      userId={user.id}
+                      targets={disputeTargets}
+                      onChanged={load}
+                    />
+                  </>
                 )}
 
                 {/* Architect — proposals, the design contract, the floor plan */}
@@ -465,7 +525,7 @@ export default function ProjectDetailPage() {
                   />
                 )}
 
-                {/* Contractor — bidding, then the construction schedule */}
+                {/* Contractor — bidding, the schedule, then variations */}
                 {tab === "contractor" && (
                   <>
                     <TenderSection
@@ -480,6 +540,25 @@ export default function ProjectDetailPage() {
                       userId={user.id}
                       onChanged={load}
                     />
+                    {build && (
+                      <div>
+                        <Link
+                          href={`/projects/${project.id}/report`}
+                          className="inline-flex items-center gap-2 rounded-full border border-stone-300 px-5 py-2.5 text-sm font-bold text-stone-700 transition hover:bg-stone-100 dark:border-white/20 dark:text-slate-200 dark:hover:bg-white/10"
+                        >
+                          <FileText className="h-4 w-4" /> Printable inspection report
+                        </Link>
+                      </div>
+                    )}
+                    {build && (
+                      <ChangeOrderSection
+                        buildContractId={build.id}
+                        token={token}
+                        isOwner={isOwner}
+                        isContractor={user.id === build.contractor.id}
+                        onChanged={load}
+                      />
+                    )}
                     {!tender && !build && !isOwner && (
                       <EmptyTab
                         title="Nothing to show yet"
@@ -490,21 +569,36 @@ export default function ProjectDetailPage() {
                 )}
 
                 {tab === "diary" && (
-                  <SiteDiarySection
+                  <>
+                    <AttendanceSection
+                      projectId={project.id}
+                      token={token}
+                      hasPlotPin={!!project.location}
+                    />
+                    <SiteDiarySection
                     project={project}
                     token={token}
                     userId={user.id}
                     canWrite={isOwner || isAssignedArchitect || isAssignedEngineer}
-                  />
+                    />
+                  </>
                 )}
 
                 {tab === "documents" && (
-                  <DocumentsSection
-                    projectId={project.id}
-                    token={token}
-                    userId={user.id}
-                    isOwner={isOwner}
-                  />
+                  <>
+                    <HandoverSection
+                      projectId={project.id}
+                      token={token}
+                      isOwner={isOwner}
+                      onChanged={load}
+                    />
+                    <DocumentsSection
+                      projectId={project.id}
+                      token={token}
+                      userId={user.id}
+                      isOwner={isOwner}
+                    />
+                  </>
                 )}
               </>
             )}

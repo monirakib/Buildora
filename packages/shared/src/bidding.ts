@@ -135,3 +135,39 @@ export interface BuildContract {
   createdAt: string;
   updatedAt: string;
 }
+
+/* ---------- Cost estimate ---------- */
+
+/** One priced line of an estimate, straight from the BOQ rate table. */
+export interface CostLine {
+  description: string;
+  category: string;
+  unit: string;
+  quantity: number;
+  ratePerUnitBdt: number;
+  totalBdt: number;
+}
+
+/**
+ * A build's estimated cost.
+ *
+ * The arithmetic is done from the admin-maintained BoqRate table, not by a
+ * language model — an owner budgeting a building deserves better than numbers
+ * that merely look right, and it means this estimate agrees with the BOQ a
+ * contractor later bids against. `narrative` is the only part written by
+ * Gemini, and it is absent when no key is configured.
+ */
+export interface CostEstimate {
+  areaSqft: number;
+  floors: number;
+  buildingType: string;
+  lines: CostLine[];
+  byCategory: { category: string; totalBdt: number }[];
+  totalBdt: number;
+  perSqftBdt: number;
+  /** Written explanation, when the AI key is set. The figures never depend on it. */
+  narrative?: string;
+  /** How many rate rows fed the estimate — zero means the table is unseeded. */
+  ratesFrom: number;
+  estimatedAt: string;
+}

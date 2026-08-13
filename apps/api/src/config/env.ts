@@ -42,6 +42,23 @@ const envSchema = z.object({
   // https://aistudio.google.com; the assistant 503s until it's set.
   GEMINI_API_KEY: z.string().optional(),
   GEMINI_MODEL: z.string().default("gemini-flash-latest"),
+  // Web Push (VAPID). No account and no third party: generate the pair once
+  // with `node -e "console.log(require('web-push').generateVAPIDKeys())"` and
+  // paste them here. The subject identifies this server to the push service
+  // and must be a mailto: or https: URL. Push is simply off until both are set.
+  VAPID_PUBLIC_KEY: z.string().optional(),
+  VAPID_PRIVATE_KEY: z.string().optional(),
+  VAPID_SUBJECT: z.string().default("mailto:support@buildora.local"),
+  // Brevo transactional email — free key from https://app.brevo.com (300/day).
+  // EMAIL_FROM_ADDRESS must be a sender Brevo has verified, or it refuses the
+  // send with a 400. Email is off until the key is set.
+  BREVO_API_KEY: z.string().optional(),
+  EMAIL_FROM_NAME: z.string().default("Buildora"),
+  EMAIL_FROM_ADDRESS: z.string().default("no-reply@buildora.local"),
+  // OpenRouteService — driving distance and ETA from a supplier's warehouse to
+  // the build site. Free key from https://openrouteservice.org; delivery
+  // estimates are hidden until it's set. Note ORS takes coordinates lng-first.
+  ORS_API_KEY: z.string().optional(),
   // OpenStreetMap's Nominatim geocoder — powers the plot map picker's search
   // box and the address lookup for a dropped pin. Free and keyless, but its
   // usage policy wants an identifying User-Agent with a contact address and at

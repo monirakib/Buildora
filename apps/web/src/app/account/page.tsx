@@ -19,6 +19,7 @@ import {
   Minus,
   Monitor,
   Moon,
+  BellRing,
   Palette,
   Phone,
   Shield,
@@ -50,6 +51,7 @@ import { useSession } from "@/store/useSession";
 import { useTheme } from "@/store/useTheme";
 import { NidCheckPanel } from "@/components/app/NidCheckPanel";
 import { AccountShell, initialsOf, type NavGroup } from "@/components/account/AccountShell";
+import { NotificationsSection } from "@/components/account/NotificationsSection";
 import {
   ActionRow,
   Card,
@@ -102,7 +104,13 @@ const PROFESSIONAL_ROLES: UserRole[] = [
   UserRole.SUPPLIER,
 ];
 
-type SectionId = "profile" | "contact" | "security" | "billing" | "appearance";
+type SectionId =
+  | "profile"
+  | "contact"
+  | "security"
+  | "billing"
+  | "notifications"
+  | "appearance";
 
 /** One side of the NID card: a file picker, or a thumbnail once uploaded. */
 function NidPhotoField({
@@ -546,7 +554,14 @@ export default function AccountPage() {
     },
     {
       heading: "Preferences",
-      items: [{ id: "appearance", label: "Appearance", icon: <Palette className="h-4.5 w-4.5" /> }],
+      items: [
+        {
+          id: "notifications",
+          label: "Notifications",
+          icon: <BellRing className="h-4.5 w-4.5" />,
+        },
+        { id: "appearance", label: "Appearance", icon: <Palette className="h-4.5 w-4.5" /> },
+      ],
     },
   ];
 
@@ -555,6 +570,10 @@ export default function AccountPage() {
     contact: { title: "Contact", subtitle: "For project updates, payments and permit notices" },
     security: { title: "Security", subtitle: "How you sign in, and where you're signed in" },
     billing: { title: "Billing", subtitle: "Where invoices go and how you're paid" },
+    notifications: {
+      title: "Notifications",
+      subtitle: "How Buildora reaches you when you're away",
+    },
     appearance: { title: "Appearance", subtitle: "Saved in this browser" },
   };
 
@@ -1216,6 +1235,10 @@ export default function AccountPage() {
               </div>
             )}
           </Card>
+        )}
+
+        {section === "notifications" && token && (
+          <NotificationsSection token={token} onToast={pushToast} />
         )}
 
         {section === "appearance" && (
