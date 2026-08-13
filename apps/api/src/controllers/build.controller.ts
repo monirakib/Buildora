@@ -293,7 +293,7 @@ export async function applyMilestoneFunding(
   void notify(refId(contract.contractor), {
     type: NotificationType.MILESTONE,
     title: "Milestone funded",
-    body: `"${milestone.title}" is in escrow — you can start this stage.`,
+    body: `"${milestone.title}" is in escrow. You can start this stage.`,
     link: `/projects/${refId(contract.project)}`,
   });
 }
@@ -460,7 +460,7 @@ export async function inspectMilestone(req: Request, res: Response) {
       title: passed ? "Inspection passed" : "Inspection failed",
       body: passed
         ? `"${milestone.title}" was signed off by the engineer.`
-        : `"${milestone.title}" did not pass — see the engineer's notes.`,
+        : `"${milestone.title}" did not pass, see the engineer's notes.`,
       link: `/projects/${refId(contract.project)}`,
       actorId: req.auth!.sub,
     });
@@ -575,7 +575,7 @@ export async function updateMilestone(req: Request, res: Response) {
   if (milestone.status !== MilestoneStatus.PENDING) {
     return res
       .status(409)
-      .json({ error: { message: "This stage has already been funded — it can't be changed" } });
+      .json({ error: { message: "This stage has already been funded and can't be changed" } });
   }
 
   const parsed = editMilestoneSchema.safeParse(req.body);

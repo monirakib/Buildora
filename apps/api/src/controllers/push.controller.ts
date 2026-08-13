@@ -1,10 +1,6 @@
 import type { Request, Response } from "express";
 import { z } from "zod";
-import {
-  NotificationType,
-  type NotificationPreferences,
-  type PushDevice,
-} from "@buildora/shared";
+import { NotificationType, type NotificationPreferences, type PushDevice } from "@buildora/shared";
 import { PushSubscription } from "../models/PushSubscription";
 import { User } from "../models/User";
 import { getPublicKey, isPushConfigured, pushToUser } from "../services/webpush";
@@ -235,7 +231,7 @@ export async function sendTestEmail(req: Request, res: Response) {
   // confirmation link itself.
   if (!user.emailVerifiedAt) {
     return res.status(403).json({
-      error: { message: "Confirm your email address first — check your account information" },
+      error: { message: "Confirm your email address first, check your account information" },
     });
   }
 

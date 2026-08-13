@@ -163,8 +163,7 @@ function engineerPhase(snap: ProjectSnapshot, isClient: boolean): PhaseProgress 
     unlocked: designApproved || !!structural || !!project.engineer,
     blockedReason: "Opens once your architect's design is approved.",
     needsYou:
-      isClient &&
-      (structural?.status === StructuralStatus.AWAITING_ESCROW || awaitingReview),
+      isClient && (structural?.status === StructuralStatus.AWAITING_ESCROW || awaitingReview),
   };
 }
 
@@ -220,9 +219,7 @@ function contractorPhase(snap: ProjectSnapshot, isClient: boolean): PhaseProgres
   // One gate per milestone, each worth its percentage of the contract sum, so
   // the bar tracks value delivered rather than items ticked off.
   for (const m of milestones) {
-    gates.push(
-      gate(m.title, m.status === MilestoneStatus.RELEASED, Math.max(m.amountPct, 1) / 10)
-    );
+    gates.push(gate(m.title, m.status === MilestoneStatus.RELEASED, Math.max(m.amountPct, 1) / 10));
   }
 
   // The owner funds a tranche, and releases it once an engineer passes it.

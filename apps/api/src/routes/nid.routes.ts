@@ -15,6 +15,6 @@ nidRouter.get("/preview", previewNid);
 // Limited per session-holder to keep a stuck form from looping on it.
 nidRouter.post(
   "/check",
-  rateLimit({ windowMs: 60_000, max: 10, message: "Too many NID checks — wait a minute" }),
+  rateLimit({ windowMs: 60_000, max: 10, message: "Too many NID checks, wait a minute" }),
   checkMyNid
 );

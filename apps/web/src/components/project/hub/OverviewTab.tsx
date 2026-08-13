@@ -147,8 +147,8 @@ export function OverviewTab({
               <dt className="text-xs text-stone-500 dark:text-slate-500">Budget</dt>
               <dd className="mt-0.5 font-semibold">
                 {project.budgetMinBdt || project.budgetMaxBdt
-                  ? `${project.budgetMinBdt ? formatBdt(project.budgetMinBdt) : "—"} – ${
-                      project.budgetMaxBdt ? formatBdt(project.budgetMaxBdt) : "—"
+                  ? `${project.budgetMinBdt ? formatBdt(project.budgetMinBdt) : "-"} – ${
+                      project.budgetMaxBdt ? formatBdt(project.budgetMaxBdt) : "-"
                     }`
                   : "Not set"}
               </dd>
@@ -171,7 +171,12 @@ export function OverviewTab({
         <h2 className="text-xl font-extrabold tracking-tight">Your team</h2>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <Participant role="Land owner" person={project.owner} />
-          <Participant role="Architect" person={project.architect} tab="architect" onJump={onJump} />
+          <Participant
+            role="Architect"
+            person={project.architect}
+            tab="architect"
+            onJump={onJump}
+          />
           <Participant role="Engineer" person={project.engineer} tab="engineer" onJump={onJump} />
         </div>
       </section>

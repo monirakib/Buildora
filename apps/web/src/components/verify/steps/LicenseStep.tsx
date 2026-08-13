@@ -15,7 +15,7 @@ export function LicenseStep({ form, patch, onError }: StepProps) {
     <div>
       <StepHeader
         title="Professional License"
-        subtitle="Your Institute of Architects Bangladesh membership — the core credential Buildora verifies."
+        subtitle="Your Institute of Architects Bangladesh membership, the core credential Buildora verifies."
       />
 
       <div className="flex flex-col gap-5">

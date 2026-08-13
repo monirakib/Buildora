@@ -1,5 +1,10 @@
 import { Router } from "express";
-import { imageUpload, modelUpload, uploadImage, uploadModel } from "../controllers/uploads.controller";
+import {
+  imageUpload,
+  modelUpload,
+  uploadImage,
+  uploadModel,
+} from "../controllers/uploads.controller";
 import { requireAuth } from "../middleware/auth";
 
 export const uploadsRouter = Router();

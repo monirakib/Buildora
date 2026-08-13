@@ -70,7 +70,7 @@ export function IdentityStep({ form, patch, onError, email }: StepProps & { emai
           </Field>
         </div>
 
-        <Field id="email" title="Email" hint="Your account email — changed from account settings.">
+        <Field id="email" title="Email" hint="Your account email, changed from account settings.">
           <input id="email" type="email" value={email} disabled className={input} />
         </Field>
 
@@ -99,7 +99,7 @@ export function IdentityStep({ form, patch, onError, email }: StepProps & { emai
           id="nid"
           title="NID Number"
           required
-          hint="10, 13, or 17 digits — checked against your uploaded card."
+          hint="10, 13, or 17 digits, checked against your uploaded card."
         >
           <input
             id="nid"
@@ -141,10 +141,10 @@ export function IdentityStep({ form, patch, onError, email }: StepProps & { emai
             chips are placeholders until it ships. */}
         <div className="flex flex-wrap gap-2">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-white/40 dark:bg-white/[0.05] px-3 py-1.5 text-xs font-semibold text-stone-600 dark:text-slate-400">
-            <BadgeCheck className="h-3.5 w-3.5" /> Phone verification — coming soon
+            <BadgeCheck className="h-3.5 w-3.5" /> Phone verification, coming soon
           </span>
           <span className="inline-flex items-center gap-1.5 rounded-full bg-white/40 dark:bg-white/[0.05] px-3 py-1.5 text-xs font-semibold text-stone-600 dark:text-slate-400">
-            <BadgeCheck className="h-3.5 w-3.5" /> Email verification — coming soon
+            <BadgeCheck className="h-3.5 w-3.5" /> Email verification, coming soon
           </span>
         </div>
       </div>

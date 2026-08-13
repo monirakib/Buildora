@@ -26,7 +26,7 @@ export function CapacityStep({ form, patch, onError }: StepProps) {
     <div>
       <StepHeader
         title="Enlistment & Capacity"
-        subtitle="Your contractor class, permanent crew and plant — what land owners compare when awarding a tender."
+        subtitle="Your contractor class, permanent crew and plant, what land owners compare when awarding a tender."
       />
 
       <div className="flex flex-col gap-5">
@@ -110,7 +110,7 @@ export function CapacityStep({ form, patch, onError }: StepProps) {
             onToggle={toggleEquipment}
           />
           <p className="mt-4 text-xs text-stone-500 dark:text-slate-500">
-            {form.equipment.length} selected — pick only what your firm owns or holds on a standing
+            {form.equipment.length} selected, pick only what your firm owns or holds on a standing
             hire.
           </p>
         </div>

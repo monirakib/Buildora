@@ -209,8 +209,8 @@ export function CredentialField({
         >
           {verdict.ok ? (
             <>
-              <Check className="h-3.5 w-3.5" /> Looks like a valid number — a supervisor still
-              checks the document.
+              <Check className="h-3.5 w-3.5" /> Looks like a valid number, a supervisor still checks
+              the document.
             </>
           ) : (
             <>

@@ -35,11 +35,26 @@ const buildingTypes = [
   { value: BuildingType.MIXED_USE, label: "Mixed use", hint: "Shops below, homes above" },
 ];
 
-const facings = ["North", "South", "East", "West", "North-East corner", "North-West corner", "South-East corner", "South-West corner"];
+const facings = [
+  "North",
+  "South",
+  "East",
+  "West",
+  "North-East corner",
+  "North-West corner",
+  "South-East corner",
+  "South-West corner",
+];
 
 const styles = ["Modern", "Contemporary", "Minimalist", "Traditional", "Duplex", "No preference"];
 
-const timelines = ["Immediately", "Within 3 months", "Within 6 months", "Within a year", "Just exploring"];
+const timelines = [
+  "Immediately",
+  "Within 3 months",
+  "Within 6 months",
+  "Within a year",
+  "Just exploring",
+];
 
 const emptyForm = {
   title: "",
@@ -92,15 +107,7 @@ function SectionHeading({ n, title, sub }: { n: number; title: string; sub: stri
 }
 
 /** Pill toggle for yes/no extras — pressed state styled like the chips. */
-function Toggle({
-  label,
-  on,
-  onClick,
-}: {
-  label: string;
-  on: boolean;
-  onClick: () => void;
-}) {
+function Toggle({ label, on, onClick }: { label: string; on: boolean; onClick: () => void }) {
   return (
     <button
       type="button"
@@ -150,8 +157,7 @@ export default function NewProjectPage() {
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
       setForm((f) => ({ ...f, [field]: e.target.value }));
 
-  const flip = (field: keyof FormState) => () =>
-    setForm((f) => ({ ...f, [field]: !f[field] }));
+  const flip = (field: keyof FormState) => () => setForm((f) => ({ ...f, [field]: !f[field] }));
 
   // ---- What the map hands back ----
   // Both of these overwrite the typed fields, because filling them in is the
@@ -210,16 +216,32 @@ export default function NewProjectPage() {
   }
 
   // Completeness meter: required fields count double, extras count once.
-  const required = [form.title, form.description, form.address, form.areaName, form.landAreaKatha, form.buildingType, form.floors];
-  const extras = [form.budgetMinBdt || form.budgetMaxBdt, form.roadWidthFt, form.plotFacing, form.unitsPerFloor, form.parkingSpaces, form.designStyle, form.timeline, form.photoUrls.length > 0 ? "y" : "", form.location ? "y" : ""];
-  const score =
-    required.filter(Boolean).length * 2 + extras.filter(Boolean).length;
+  const required = [
+    form.title,
+    form.description,
+    form.address,
+    form.areaName,
+    form.landAreaKatha,
+    form.buildingType,
+    form.floors,
+  ];
+  const extras = [
+    form.budgetMinBdt || form.budgetMaxBdt,
+    form.roadWidthFt,
+    form.plotFacing,
+    form.unitsPerFloor,
+    form.parkingSpaces,
+    form.designStyle,
+    form.timeline,
+    form.photoUrls.length > 0 ? "y" : "",
+    form.location ? "y" : "",
+  ];
+  const score = required.filter(Boolean).length * 2 + extras.filter(Boolean).length;
   const completeness = Math.round((score / (required.length * 2 + extras.length)) * 100);
 
   // Same check the zone card makes, repeated in the preview so it stays visible
   // while the floors field itself is being filled in further down the form.
-  const overZoneFloors =
-    !!dapZone?.maxFloors && (Number(form.floors) || 0) > dapZone.maxFloors;
+  const overZoneFloors = !!dapZone?.maxFloors && (Number(form.floors) || 0) > dapZone.maxFloors;
 
   const amenities = [
     form.hasLift && "Lift",
@@ -251,7 +273,7 @@ export default function NewProjectPage() {
           </h1>
           <p className="mt-3 max-w-2xl text-stone-600 dark:text-slate-400">
             Verified architects will read this brief and send you proposals with their fees. The
-            more you tell them, the sharper their proposals — and the fewer surprises later.
+            more you tell them, the sharper their proposals, and the fewer surprises later.
           </p>
 
           <div className="mt-10 grid gap-8 lg:grid-cols-[1fr_22rem] lg:items-start">
@@ -307,13 +329,11 @@ export default function NewProjectPage() {
                 <SectionHeading
                   n={2}
                   title="The plot"
-                  sub="Where it is and what's on it — road width decides how tall you can build."
+                  sub="Where it is and what's on it, road width decides how tall you can build."
                 />
                 <div className="relative z-10 grid gap-4 sm:grid-cols-2">
                   <div className="sm:col-span-2">
-                    <span className={labelClass}>
-                      Find the plot on the map {optionalTag}
-                    </span>
+                    <span className={labelClass}>Find the plot on the map {optionalTag}</span>
                     <PlotMapPicker
                       value={form.location}
                       onChange={takeMapLocation}
@@ -436,7 +456,7 @@ export default function NewProjectPage() {
                 <SectionHeading
                   n={3}
                   title="The building"
-                  sub="Shape and size — every field here sharpens the cost estimate."
+                  sub="Shape and size, every field here sharpens the cost estimate."
                 />
                 <div className="relative z-10 grid gap-4">
                   {/* Building type as radio cards */}
@@ -636,7 +656,7 @@ export default function NewProjectPage() {
                 <SectionHeading
                   n={5}
                   title="Plot photos"
-                  sub="Up to six photos of the land — architects propose better when they can see it."
+                  sub="Up to six photos of the land, architects propose better when they can see it."
                 />
                 <div className="relative z-10">
                   <div className="flex flex-wrap gap-3">
@@ -737,7 +757,7 @@ export default function NewProjectPage() {
                     >
                       {`DAP zone ${dapZone.zoneCode} · FAR ${dapZone.maxFar}`}
                       {dapZone.maxFloors ? ` · max ${dapZone.maxFloors} floors` : ""}
-                      {overZoneFloors ? ` — your ${form.floors} exceed it` : ""}
+                      {overZoneFloors ? `, your ${form.floors} exceed it` : ""}
                     </p>
                   )}
 
@@ -802,7 +822,13 @@ export default function NewProjectPage() {
                   <div className="mt-6 border-t border-stone-200/70 pt-4 dark:border-white/10">
                     <div className="flex justify-between text-xs font-bold">
                       <span className="text-stone-500 dark:text-slate-400">Brief completeness</span>
-                      <span className={completeness >= 70 ? "text-emerald-600 dark:text-emerald-400" : "text-stone-500 dark:text-slate-400"}>
+                      <span
+                        className={
+                          completeness >= 70
+                            ? "text-emerald-600 dark:text-emerald-400"
+                            : "text-stone-500 dark:text-slate-400"
+                        }
+                      >
                         {completeness}%
                       </span>
                     </div>

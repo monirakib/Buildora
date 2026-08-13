@@ -42,7 +42,7 @@ export function ProjectProgress({
             type="button"
             onClick={() => onJump(phase.key)}
             style={{ flexGrow: phase.weight, flexBasis: 0 }}
-            title={`${PHASE_LABELS[phase.key]} — ${Math.round(phase.fraction * 100)}%`}
+            title={`${PHASE_LABELS[phase.key]}, ${Math.round(phase.fraction * 100)}%`}
             aria-label={`${PHASE_LABELS[phase.key]}, ${Math.round(phase.fraction * 100)} percent complete`}
             className="group relative h-2.5 overflow-hidden rounded-full bg-black/10 transition hover:h-3 dark:bg-white/10"
           >

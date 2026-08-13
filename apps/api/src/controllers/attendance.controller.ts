@@ -40,8 +40,7 @@ function dhakaToday(): string {
 
 function toDto(doc: HydratedDocument<SiteCheckInDoc>): SiteCheckInDto {
   const who = doc.recordedBy as unknown as
-    | { _id: unknown; name: string; username: string; company?: string }
-    | undefined;
+    { _id: unknown; name: string; username: string; company?: string } | undefined;
   return {
     id: doc._id.toString(),
     projectId: doc.project.toString(),

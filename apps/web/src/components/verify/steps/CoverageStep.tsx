@@ -49,7 +49,7 @@ export function CoverageStep({ form, patch }: StepProps) {
           id="warehouseAddress"
           title="Warehouse / outlet address"
           required
-          hint="The address a supervisor could visit. Not shown publicly — buyers see your district only."
+          hint="The address a supervisor could visit. Not shown publicly, buyers see your district only."
         >
           <textarea
             id="warehouseAddress"

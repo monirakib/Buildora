@@ -120,7 +120,9 @@ export function UploadZone({
           ) : (
             <ImagePlus
               className={`h-6 w-6 transition-all duration-300 group-hover:-translate-y-0.5 group-hover:text-amber-600 dark:group-hover:text-[#F5B400] ${
-                dragging ? "-translate-y-0.5 text-amber-600 dark:text-[#F5B400]" : "text-stone-600 dark:text-slate-400"
+                dragging
+                  ? "-translate-y-0.5 text-amber-600 dark:text-[#F5B400]"
+                  : "text-stone-600 dark:text-slate-400"
               }`}
             />
           )}

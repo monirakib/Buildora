@@ -348,7 +348,7 @@ export default function ArchitectsPage() {
               <p className="text-sm text-stone-500 dark:text-slate-500">
                 {search || filtersOn
                   ? "No architects match these filters. Try widening them."
-                  : "No architects have joined yet — check back soon."}
+                  : "No architects have joined yet, check back soon."}
               </p>
             ) : (
               /* Stagger *is* the grid — it animates its own children in

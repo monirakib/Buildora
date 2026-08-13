@@ -241,9 +241,7 @@ export default function MarketOrdersPage() {
                       ) : (
                         <>
                           Seller:{" "}
-                          <span className="font-semibold">
-                            {o.seller.company || o.seller.name}
-                          </span>
+                          <span className="font-semibold">{o.seller.company || o.seller.name}</span>
                         </>
                       )}
                     </p>
@@ -306,8 +304,8 @@ export default function MarketOrdersPage() {
                       </div>
                       {o.deliveryDurationMin != null && (
                         <p className="text-xs text-stone-600 dark:text-slate-400">
-                          It&apos;s a {o.deliveryDistanceKm} km run — about{" "}
-                          {o.deliveryDurationMin} minutes each way.
+                          It&apos;s a {o.deliveryDistanceKm} km run, about {o.deliveryDurationMin}{" "}
+                          minutes each way.
                         </p>
                       )}
                       <div className="flex gap-2">

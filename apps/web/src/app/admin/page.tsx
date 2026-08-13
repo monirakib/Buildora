@@ -144,7 +144,7 @@ export default function AdminOverviewPage() {
           {/* ---- Trends ---- */}
           <div className="grid gap-5 xl:grid-cols-3">
             <div className="min-w-0 xl:col-span-2">
-              <Card title="New signups — last 30 days">
+              <Card title="New signups, last 30 days">
                 <TrendChart data={overview.signupsByDay} />
               </Card>
             </div>
@@ -175,7 +175,7 @@ export default function AdminOverviewPage() {
           <div className="grid gap-5 xl:grid-cols-3">
             <div className="min-w-0 xl:col-span-2">
               <Card
-                title="Marketplace orders — last 30 days"
+                title="Marketplace orders, last 30 days"
                 action={
                   <Link
                     href="/admin/market"
@@ -214,7 +214,7 @@ export default function AdminOverviewPage() {
               <Card title="Recent activity">
                 {overview.activity.length === 0 ? (
                   <p className="py-8 text-center text-sm text-stone-400 dark:text-stone-500">
-                    Nothing yet — activity shows up as people use the platform
+                    Nothing yet, activity shows up as people use the platform
                   </p>
                 ) : (
                   <ul className="divide-y divide-stone-100 dark:divide-white/5">

@@ -77,7 +77,7 @@ export function CatalogueStep({ form, patch, onError }: StepProps) {
             onToggle={toggleCategory}
           />
           <p className="mt-4 text-xs text-stone-500 dark:text-slate-500">
-            {form.supplyCategories.length} selected — your marketplace listings appear under these.
+            {form.supplyCategories.length} selected, your marketplace listings appear under these.
           </p>
         </div>
 
@@ -88,7 +88,7 @@ export function CatalogueStep({ form, patch, onError }: StepProps) {
           </p>
           <p className="mt-1 mb-4 text-xs text-stone-500 dark:text-slate-500">
             Add a dealership letter for each brand you&apos;re an authorised seller of. Leave this
-            empty if you re-sell without a dealership — buyers see the difference.
+            empty if you re-sell without a dealership, buyers see the difference.
           </p>
 
           <div className="flex flex-col gap-4">
@@ -170,7 +170,7 @@ export function CatalogueStep({ form, patch, onError }: StepProps) {
             BSTI licence (optional)
           </p>
           <p className="mt-1 mb-4 text-xs text-stone-500 dark:text-slate-500">
-            Required by law for some materials — cement, rod and tiles among them. Add it if you
+            Required by law for some materials, cement, rod and tiles among them. Add it if you
             manufacture or import any of them.
           </p>
           <div className="grid items-start gap-5 sm:grid-cols-2">

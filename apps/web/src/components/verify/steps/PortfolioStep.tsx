@@ -140,7 +140,7 @@ export function PortfolioStep({ form, patch, onError, role }: StepProps) {
               <p className="mb-2 text-sm font-semibold text-stone-800 dark:text-slate-200">
                 Gallery{" "}
                 <span className="font-normal text-stone-500 dark:text-slate-500">
-                  ({project.imageUrls.length}/8 — first photo is the cover)
+                  ({project.imageUrls.length}/8, first photo is the cover)
                 </span>
               </p>
               <div className="flex flex-wrap items-start gap-3">

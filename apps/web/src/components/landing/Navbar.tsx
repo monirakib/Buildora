@@ -53,7 +53,7 @@ const megaMenu = [
       {
         href: "/projects/new",
         label: "Post a project brief",
-        desc: "Land, budget, floors — in minutes",
+        desc: "Land, budget and floors in minutes",
       },
       { href: "/architects", label: "Find architects", desc: "Browse verified portfolios" },
       { href: "/marketplace", label: "Marketplace", desc: "Order materials straight to your site" },

@@ -97,7 +97,7 @@ export default function BriefsPage() {
               </p>
             ) : !result || result.items.length === 0 ? (
               <p className="rounded-2xl border border-white/50 bg-white/55 p-8 text-center text-stone-600 backdrop-blur-xl dark:border-white/10 dark:bg-white/5 dark:text-slate-400">
-                No open briefs right now — check back soon.
+                No open briefs right now, check back soon.
               </p>
             ) : (
               <>

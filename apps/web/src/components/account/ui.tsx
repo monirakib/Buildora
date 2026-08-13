@@ -316,10 +316,7 @@ export function Tabs<T extends string>({
   onChange: (id: T) => void;
 }) {
   return (
-    <div
-      role="tablist"
-      className="flex gap-1 rounded-full bg-stone-900/5 p-1 dark:bg-white/5"
-    >
+    <div role="tablist" className="flex gap-1 rounded-full bg-stone-900/5 p-1 dark:bg-white/5">
       {tabs.map((tab) => (
         <button
           key={tab.id}
@@ -480,11 +477,7 @@ export function ToastStack({
           }`}
         >
           <span className="mt-0.5 shrink-0">
-            {toast.tone === "error" ? (
-              <Info className="h-4 w-4" />
-            ) : (
-              <Check className="h-4 w-4" />
-            )}
+            {toast.tone === "error" ? <Info className="h-4 w-4" /> : <Check className="h-4 w-4" />}
           </span>
           <span className="min-w-0 flex-1">{toast.message}</span>
           <button

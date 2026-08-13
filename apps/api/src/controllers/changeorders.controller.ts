@@ -29,8 +29,7 @@ import { refId } from "../utils/refId";
 
 function toDto(doc: HydratedDocument<ChangeOrderDoc>): ChangeOrderDto {
   const raiser = doc.raisedBy as unknown as
-    | { _id: unknown; name: string; username: string; company?: string }
-    | undefined;
+    { _id: unknown; name: string; username: string; company?: string } | undefined;
   return {
     id: doc._id.toString(),
     projectId: refId(doc.project),
@@ -60,11 +59,7 @@ const raiserRef = { path: "raisedBy", select: "name username company" };
 
 const proposeSchema = z.object({
   title: z.string().trim().min(4, "Give the variation a title").max(160),
-  description: z
-    .string()
-    .trim()
-    .min(20, "Explain what the work is and why it's needed")
-    .max(2000),
+  description: z.string().trim().min(20, "Explain what the work is and why it's needed").max(2000),
   amountDeltaBdt: z.coerce
     .number({ message: "Enter the cost change" })
     .min(-100_000_000_000)
@@ -94,7 +89,9 @@ export async function proposeChangeOrder(req: Request, res: Response) {
   const contract = await BuildContract.findById(req.params.id);
   if (!contract) return res.status(404).json({ error: { message: "Build contract not found" } });
   if (refId(contract.contractor) !== req.auth!.sub) {
-    return res.status(403).json({ error: { message: "Only the contractor can propose a variation" } });
+    return res
+      .status(403)
+      .json({ error: { message: "Only the contractor can propose a variation" } });
   }
   if (contract.status !== BuildContractStatus.ACTIVE) {
     return res.status(409).json({ error: { message: "This contract is no longer active" } });
@@ -119,7 +116,7 @@ export async function proposeChangeOrder(req: Request, res: Response) {
   notify(refId(contract.client), {
     type: NotificationType.CONTRACT,
     title: "Variation proposed",
-    body: `${parsed.data.title} — ${sign}৳${Math.abs(parsed.data.amountDeltaBdt).toLocaleString("en-BD")}. ${preview(parsed.data.description, 80)}`,
+    body: `${parsed.data.title}, ${sign}৳${Math.abs(parsed.data.amountDeltaBdt).toLocaleString("en-BD")}. ${preview(parsed.data.description, 80)}`,
     link: `/projects/${refId(contract.project)}?tab=contractor`,
     actorId: req.auth!.sub,
   });
@@ -218,7 +215,7 @@ export async function decideChangeOrder(req: Request, res: Response) {
       buildContract: contract._id,
       project: contract.project,
       order: (last?.order ?? 0) + 1,
-      title: `Variation — ${doc.title}`,
+      title: `Variation, ${doc.title}`,
       description: doc.description,
       amountPct:
         contract.contractSumBdt > 0
@@ -240,7 +237,7 @@ export async function decideChangeOrder(req: Request, res: Response) {
   notify(refId(doc.raisedBy), {
     type: NotificationType.CONTRACT,
     title: "Variation approved",
-    body: `${doc.title} — contract sum is now ৳${contract.contractSumBdt.toLocaleString("en-BD")} (${sign}৳${Math.abs(doc.amountDeltaBdt).toLocaleString("en-BD")}).`,
+    body: `${doc.title}, contract sum is now ৳${contract.contractSumBdt.toLocaleString("en-BD")} (${sign}৳${Math.abs(doc.amountDeltaBdt).toLocaleString("en-BD")}).`,
     link: `/projects/${refId(doc.project)}?tab=contractor`,
     actorId: req.auth!.sub,
   });

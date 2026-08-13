@@ -32,5 +32,4 @@ export const surfaceHeaderClass =
 export const surfaceBodyClass = "p-4 sm:p-5";
 
 /** Interactive surface — a card that is itself a link or button. */
-export const surfaceHoverClass =
-  "transition hover:-translate-y-0.5 hover:border-amber-400/60";
+export const surfaceHoverClass = "transition hover:-translate-y-0.5 hover:border-amber-400/60";

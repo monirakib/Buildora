@@ -174,7 +174,7 @@ export function BookMeeting({
           {booked.pending ? (
             <>
               Time held for {booked.when}. {architectName} still has to agree to the place you
-              suggested — you&apos;ll see their answer under{" "}
+              suggested, you&apos;ll see their answer under{" "}
               <Link href="/meetings" className="underline underline-offset-2">
                 your meetings
               </Link>
@@ -228,7 +228,7 @@ export function BookMeeting({
               selected={venueChoice === "PROPOSE"}
               onSelect={() => setVenueChoice("PROPOSE")}
               title="Somewhere else"
-              detail="Suggest a place — they can accept or counter"
+              detail="Suggest a place, they can accept or counter"
             />
           </div>
 
@@ -243,7 +243,7 @@ export function BookMeeting({
               />
               <p className="mt-1.5 text-xs font-medium text-stone-600 dark:text-slate-400">
                 The time is held straight away. The meeting is confirmed once{" "}
-                {architectName.split(" ")[0]} accepts the place — they can also suggest another one
+                {architectName.split(" ")[0]} accepts the place, they can also suggest another one
                 or move it to their office.
               </p>
             </div>

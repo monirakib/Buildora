@@ -19,10 +19,7 @@ export async function listDapZones(search: string): Promise<DapZone[]> {
  * when no zone record covers it. Used by the brief form once the plot's area is
  * known; the wider /dap-zones search is for people browsing by hand.
  */
-export async function findDapZoneFor(
-  area: string,
-  signal?: AbortSignal
-): Promise<DapZone | null> {
+export async function findDapZoneFor(area: string, signal?: AbortSignal): Promise<DapZone | null> {
   const res = await request<{ data: { zone: DapZone | null } }>(
     `/api/permits/dap-zone-for?area=${encodeURIComponent(area)}`,
     { signal }

@@ -89,7 +89,7 @@ export function Statement() {
           </p>
           <ul className="mt-8 flex flex-col gap-4">
             {[
-              "Every professional is human-verified — NID, IAB/IEB, RAJUK",
+              "Every professional is human-verified. NID, IAB/IEB, RAJUK",
               "Every taka sits in escrow until an engineer signs off",
               "Every permit step is tracked in the open, end to end",
             ].map((point) => (
@@ -179,7 +179,7 @@ export function Features() {
           Everything your build needs
         </h2>
         <p className="mt-4 max-w-2xl text-lg text-stone-600 dark:text-slate-400">
-          One trusted home for the entire journey — from an empty plot to the occupancy certificate.
+          One trusted home for the entire journey, from an empty plot to the occupancy certificate.
         </p>
       </Reveal>
 
@@ -195,7 +195,7 @@ export function Features() {
                 <h3 className="mt-5 text-lg font-bold">Verified professionals</h3>
                 <p className="mt-2 text-sm leading-relaxed text-stone-600 dark:text-slate-400">
                   Architects, engineers, and contractors screened through NID, IAB/IEB membership,
-                  and RAJUK registration checks — reviewed by a human supervisor.
+                  and RAJUK registration checks, reviewed by a human supervisor.
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2">
                   <CredChip>NID checked</CredChip>
@@ -246,7 +246,7 @@ export function Features() {
             <TileIcon>{icons.escrow}</TileIcon>
             <h3 className="mt-5 text-lg font-bold">Escrow-protected payments</h3>
             <p className="mt-2 text-sm leading-relaxed text-stone-600 dark:text-slate-400">
-              Funds release only at approved milestones — via bKash, Nagad, or bank.
+              Funds release only at approved milestones, via bKash, Nagad, or bank.
             </p>
             <div className="mt-auto flex flex-col gap-3 pt-6">
               {[
@@ -311,7 +311,7 @@ export function Features() {
             <TileIcon>{icons.design}</TileIcon>
             <h3 className="mt-5 text-lg font-bold">Design studio</h3>
             <p className="mt-2 text-sm leading-relaxed text-stone-600 dark:text-slate-400">
-              Concept briefs, floor plans, and 3D previews — with revision rounds built in.
+              Concept briefs, floor plans, and 3D previews, with revision rounds built in.
             </p>
             {/* Tiny floor plan; strokes warm to amber on hover */}
             <svg
@@ -369,14 +369,14 @@ export function Features() {
                 <TileIcon>{icons.diary}</TileIcon>
                 <h3 className="mt-5 text-lg font-bold">Live site diary</h3>
                 <p className="mt-2 text-sm leading-relaxed text-stone-600 dark:text-slate-400">
-                  Daily work logs, photos, attendance, and weather from your site — visible from
+                  Daily work logs, photos, attendance, and weather from your site, visible from
                   anywhere, any time.
                 </p>
               </div>
               {/* Mini visual: recent log entries */}
               <ul className="flex min-w-56 flex-1 flex-col gap-2.5 self-center sm:max-w-xs">
                 {[
-                  { day: "Day 42", note: "Slab casting — 14 workers" },
+                  { day: "Day 42", note: "Slab casting, 14 workers" },
                   { day: "Day 41", note: "Rebar inspection passed" },
                   { day: "Day 40", note: "Materials delivered on site" },
                 ].map((row, i) => (
@@ -416,7 +416,11 @@ export function Stats() {
       <div className="grid gap-x-8 gap-y-10 border-y border-stone-200 py-12 sm:grid-cols-2 lg:grid-cols-4 dark:border-white/10">
         {stats.map((stat, i) => (
           <Reveal key={stat.label} delay={i * 100}>
-            <div className={i > 0 ? "lg:border-l lg:border-stone-200 lg:pl-8 dark:lg:border-white/10" : ""}>
+            <div
+              className={
+                i > 0 ? "lg:border-l lg:border-stone-200 lg:pl-8 dark:lg:border-white/10" : ""
+              }
+            >
               <p className="text-5xl font-extrabold tracking-tight text-amber-600 tabular-nums sm:text-6xl dark:text-amber-400">
                 <CountUp to={stat.to} suffix={stat.suffix} />
               </p>
@@ -465,7 +469,7 @@ export function Vision() {
             “
           </span>
           <p className="-mt-6 text-2xl leading-snug font-bold tracking-tight text-stone-800 sm:-mt-8 sm:text-4xl dark:text-slate-100">
-            The single digital home for every construction project in Bangladesh — where every
+            The single digital home for every construction project in Bangladesh, where every
             professional is <span className="text-amber-600 dark:text-amber-400">verified</span>,
             every payment is <span className="text-amber-600 dark:text-amber-400">protected</span>,
             and every permit is <span className="text-amber-600 dark:text-amber-400">tracked</span>.
@@ -507,15 +511,13 @@ export function CtaSection() {
 
       <div className="relative mx-auto max-w-6xl px-5 py-28 sm:px-8 sm:py-40">
         <Reveal>
-          <p className="text-sm font-bold tracking-[0.2em] text-amber-400 uppercase">
-            Start today
-          </p>
+          <p className="text-sm font-bold tracking-[0.2em] text-amber-400 uppercase">Start today</p>
           <h2 className="mt-4 max-w-2xl text-4xl leading-[1.05] font-extrabold tracking-tight text-white sm:text-6xl">
             Let&apos;s build something that lasts.
           </h2>
           <p className="mt-5 max-w-xl text-lg text-white/70">
-            Post your project brief and meet verified professionals — starting in Dhaka, under
-            RAJUK jurisdiction.
+            Post your project brief and meet verified professionals, starting in Dhaka, under RAJUK
+            jurisdiction.
           </p>
 
           <div className="mt-10 flex flex-wrap items-center gap-4">

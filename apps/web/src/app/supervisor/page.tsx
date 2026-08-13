@@ -102,7 +102,7 @@ function IabCheckBanner({
           </p>
           {check.nameMatches === false && (
             <p className="mt-1 font-bold">
-              Name mismatch — the account is named “{check.claimedName}”. This submission bypassed
+              Name mismatch, the account is named “{check.claimedName}”. This submission bypassed
               the automated check.
             </p>
           )}
@@ -115,7 +115,7 @@ function IabCheckBanner({
       )}
 
       {manualReview && (
-        <p className="mt-1 font-bold">Sent for manual review — the automated check was skipped.</p>
+        <p className="mt-1 font-bold">Sent for manual review, the automated check was skipped.</p>
       )}
       <p className="mt-1 text-xs opacity-80">
         Confirm the directory name matches the applicant&apos;s NID and the uploaded certificate.
@@ -173,7 +173,7 @@ function CredentialCheckBanner({
       </p>
       {clean ? (
         <p className="mt-1">
-          {check.items.map((i) => `${i.label} ${i.value}`).join(", ")} — valid shapes, in date, and
+          {check.items.map((i) => `${i.label} ${i.value}`).join(", ")}, valid shapes, in date, and
           not used elsewhere.
         </p>
       ) : (
@@ -184,7 +184,7 @@ function CredentialCheckBanner({
         </ul>
       )}
       <p className="mt-1 text-xs opacity-80">
-        Automated pre-screen only — no public register exists for these numbers. Read the uploaded
+        Automated pre-screen only, no public register exists for these numbers. Read the uploaded
         documents yourself before approving.
       </p>
     </div>
@@ -207,9 +207,9 @@ function NidCheckBanner({ check }: { check: NonNullable<ProfessionalProfile["nid
   if (check.ocr?.readable === false)
     flags.push(check.ocr.note ?? "The card image couldn't be read");
   if (check.ocr?.nameMatches === false)
-    flags.push(`Card reads "${check.ocr.name}" — a different name`);
+    flags.push(`Card reads "${check.ocr.name}", a different name`);
   if (check.ocr?.nidMatches === false)
-    flags.push(`Card shows NID ${check.ocr.nid} — a different number`);
+    flags.push(`Card shows NID ${check.ocr.nid}, a different number`);
   if (check.ocr?.dobMatches === false) flags.push("Date of birth on the card is different");
 
   const clean = flags.length === 0;
@@ -226,7 +226,7 @@ function NidCheckBanner({ check }: { check: NonNullable<ProfessionalProfile["nid
       </p>
       {clean ? (
         <p className="mt-1">
-          {check.nid} — valid format, not used elsewhere
+          {check.nid}, valid format, not used elsewhere
           {check.ocr?.readable ? ", and the uploaded card agrees" : ""}.
         </p>
       ) : (
@@ -237,7 +237,7 @@ function NidCheckBanner({ check }: { check: NonNullable<ProfessionalProfile["nid
         </ul>
       )}
       <p className="mt-1 text-xs opacity-80">
-        Automated pre-screen only — Buildora cannot confirm an NID against the Election Commission.
+        Automated pre-screen only. Buildora cannot confirm an NID against the Election Commission.
         Compare the uploaded card yourself before approving.
       </p>
     </div>
@@ -453,16 +453,16 @@ export default function SupervisorPage() {
                   {/* Contact + credentials — supervisor-only detail */}
                   <div className="grid gap-4 sm:grid-cols-2">
                     <Field label="Email">{detail.professional.email}</Field>
-                    <Field label="Phone">{detail.professional.phone || "—"}</Field>
-                    <Field label="Firm / company">{profile.company || "—"}</Field>
+                    <Field label="Phone">{detail.professional.phone || "-"}</Field>
+                    <Field label="Firm / company">{profile.company || "-"}</Field>
                     <Field label="Experience">
-                      {profile.yearsExperience != null ? `${profile.yearsExperience} years` : "—"}
+                      {profile.yearsExperience != null ? `${profile.yearsExperience} years` : "-"}
                     </Field>
-                    <Field label="License body">{profile.licenseAuthority || "—"}</Field>
+                    <Field label="License body">{profile.licenseAuthority || "-"}</Field>
                     {/* Labelled by profession — "IAB membership number" for an
                         architect, "Trade licence number" for a supplier. */}
                     <Field label={credentialFor(detail.professional.role).numberLabel}>
-                      {profile.licenseNumber || profile.tradeLicenseNo || "—"}
+                      {profile.licenseNumber || profile.tradeLicenseNo || "-"}
                     </Field>
                     {profile.website && (
                       <Field label="Website">
@@ -488,8 +488,8 @@ export default function SupervisorPage() {
                   {/* Identity documents (architect verification wizard) */}
                   {(profile.nid || profile.nidFrontUrl || profile.dateOfBirth) && (
                     <div className="grid gap-4 sm:grid-cols-2">
-                      <Field label="NID number">{profile.nid || "—"}</Field>
-                      <Field label="Date of birth">{profile.dateOfBirth || "—"}</Field>
+                      <Field label="NID number">{profile.nid || "-"}</Field>
+                      <Field label="Date of birth">{profile.dateOfBirth || "-"}</Field>
                       {profile.gender && <Field label="Gender">{profile.gender}</Field>}
                       {profile.currentAddress && (
                         <Field label="Current address">{profile.currentAddress}</Field>
@@ -605,14 +605,14 @@ export default function SupervisorPage() {
                       </p>
                       <div className="mt-2 grid gap-4 sm:grid-cols-2">
                         <Field label="Trade licence">
-                          {profile.tradeLicenseNo || "—"}
+                          {profile.tradeLicenseNo || "-"}
                           {profile.tradeLicenseIssuer ? ` · ${profile.tradeLicenseIssuer}` : ""}
                         </Field>
                         <Field label="Licence valid until">
-                          {profile.tradeLicenseExpiry || "—"}
+                          {profile.tradeLicenseExpiry || "-"}
                         </Field>
-                        <Field label="TIN">{profile.tinNumber || "—"}</Field>
-                        <Field label="BIN (VAT)">{profile.binNumber || "—"}</Field>
+                        <Field label="TIN">{profile.tinNumber || "-"}</Field>
+                        <Field label="BIN (VAT)">{profile.binNumber || "-"}</Field>
                         {profile.rjscRegistrationNo && (
                           <Field label="RJSC registration">{profile.rjscRegistrationNo}</Field>
                         )}
@@ -643,7 +643,7 @@ export default function SupervisorPage() {
                           {profile.contractorClass ? ` · ${profile.contractorClass}` : ""}
                         </Field>
                         <Field label="Permanent crew">
-                          {profile.crewSize != null ? `${profile.crewSize} people` : "—"}
+                          {profile.crewSize != null ? `${profile.crewSize} people` : "-"}
                         </Field>
                         {profile.largestProjectBdt != null && (
                           <Field label="Largest contract">
@@ -691,11 +691,11 @@ export default function SupervisorPage() {
                         ))}
                       </div>
                       <div className="mt-3 grid gap-4 sm:grid-cols-2">
-                        <Field label="Warehouse / outlet">{profile.warehouseAddress || "—"}</Field>
+                        <Field label="Warehouse / outlet">{profile.warehouseAddress || "-"}</Field>
                         <Field label="Delivers to">
                           {(profile.deliveryDistricts?.length ?? 0) > 0
-                            ? `${profile.deliveryDistricts!.length} districts — ${profile.deliveryDistricts!.slice(0, 6).join(", ")}${profile.deliveryDistricts!.length > 6 ? "…" : ""}`
-                            : "—"}
+                            ? `${profile.deliveryDistricts!.length} districts, ${profile.deliveryDistricts!.slice(0, 6).join(", ")}${profile.deliveryDistricts!.length > 6 ? "…" : ""}`
+                            : "-"}
                         </Field>
                         {profile.bstiLicenseNo && (
                           <Field label="BSTI licence">
@@ -714,7 +714,7 @@ export default function SupervisorPage() {
                               <span className="font-semibold">{b.brand}</span>
                               {b.validTill && (
                                 <span className="text-stone-600 dark:text-slate-400">
-                                  — authorised until {b.validTill}
+                                  , authorised until {b.validTill}
                                 </span>
                               )}
                               <span className="ml-auto text-xs">
@@ -769,7 +769,7 @@ export default function SupervisorPage() {
                             <span className="font-semibold">{x.designation}</span>
                             <span className="text-stone-600 dark:text-slate-400">
                               {" "}
-                              — {x.company}
+                              , {x.company}
                               {x.startDate ? ` · ${x.startDate}` : ""}
                               {x.isCurrent ? " – present" : x.endDate ? ` – ${x.endDate}` : ""}
                             </span>
@@ -798,7 +798,7 @@ export default function SupervisorPage() {
                           >
                             <span className="font-semibold">{e.degree}</span>
                             <span className="text-stone-600 dark:text-slate-400">
-                              — {e.institution}
+                              , {e.institution}
                               {e.department ? `, ${e.department}` : ""}
                               {e.year ? `, ${e.year}` : ""}
                               {e.cgpa ? ` · CGPA ${e.cgpa}` : ""}
@@ -908,7 +908,7 @@ export default function SupervisorPage() {
                     <div className="rounded-xl bg-emerald-400/10 px-4 py-3 text-sm">
                       <span className="font-bold">Declaration signed:</span>{" "}
                       <span className="font-serif italic">{profile.declarationSignature}</span>
-                      {profile.declarationSignedAt ? ` — ${profile.declarationSignedAt}` : ""}
+                      {profile.declarationSignedAt ? `, ${profile.declarationSignedAt}` : ""}
                     </div>
                   )}
 
@@ -968,7 +968,7 @@ export default function SupervisorPage() {
                       {detail.request.decidedAt
                         ? ` on ${formatDate(detail.request.decidedAt)}`
                         : ""}
-                      {detail.request.note ? ` — "${detail.request.note}"` : ""}
+                      {detail.request.note ? `, "${detail.request.note}"` : ""}
                     </div>
                   )}
                 </div>

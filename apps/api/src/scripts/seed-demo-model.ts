@@ -29,12 +29,12 @@ async function main() {
   const owner = await User.findOne({ email: "monirakib10@gmail.com" });
   const architect = await User.findOne({ email: "nusrat.jahan.madhurzo@g.bracu.ac.bd" });
   if (!owner || !architect) {
-    throw new Error("Expected demo owner/architect accounts not found — check emails.");
+    throw new Error("Expected demo owner/architect accounts not found, check emails.");
   }
 
   const project = await Project.findOne({ owner: owner._id, architect: architect._id });
   if (!project) {
-    throw new Error("No project links this owner and architect — nothing to attach to.");
+    throw new Error("No project links this owner and architect, nothing to attach to.");
   }
 
   const doc = await ProjectDocument.findOneAndUpdate(

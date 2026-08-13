@@ -127,7 +127,7 @@ export function Showcase() {
               {/* eslint-disable-next-line @next/next/no-img-element -- local asset */}
               <img
                 src={card.src}
-                alt={`${card.tag} — ${card.line}`}
+                alt={`${card.tag}, ${card.line}`}
                 loading="lazy"
                 className="h-full w-full object-cover transition duration-700 group-hover:scale-105"
               />

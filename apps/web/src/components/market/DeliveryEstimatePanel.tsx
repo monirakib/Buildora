@@ -81,7 +81,7 @@ export function DeliveryEstimatePanel({
           <option value="">Choose a project…</option>
           {projects.map((p) => (
             <option key={p.id} value={p.id}>
-              {p.title} — {p.areaName}
+              {p.title}, {p.areaName}
             </option>
           ))}
         </select>

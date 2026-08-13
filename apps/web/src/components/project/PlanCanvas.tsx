@@ -277,7 +277,12 @@ export function PlanCanvas({
         </pattern>
         <pattern id={majorGrid} width={5} height={5} patternUnits="userSpaceOnUse">
           <rect width={5} height={5} fill={`url(#${minorGrid})`} />
-          <path d="M 5 0 L 0 0 0 5" fill="none" stroke="var(--plan-grid-major)" strokeWidth={0.07} />
+          <path
+            d="M 5 0 L 0 0 0 5"
+            fill="none"
+            stroke="var(--plan-grid-major)"
+            strokeWidth={0.07}
+          />
         </pattern>
       </defs>
 
@@ -409,10 +414,7 @@ export function PlanCanvas({
               </g>
             ) : (
               // Window: the two wall faces carried across the gap, plus the pane.
-              <g
-                stroke={isSelected ? "var(--plan-accent)" : "var(--plan-ink)"}
-                strokeWidth={0.07}
-              >
+              <g stroke={isSelected ? "var(--plan-accent)" : "var(--plan-ink)"} strokeWidth={0.07}>
                 <line
                   x1={ax + (nx * thickness) / 2}
                   y1={ay + (ny * thickness) / 2}

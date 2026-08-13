@@ -42,7 +42,7 @@ async function main() {
 
   const connected = await connectDb();
   if (!connected) {
-    console.error("[reset:bidding] No database connection — set MONGODB_URI first.");
+    console.error("[reset:bidding] No database connection, set MONGODB_URI first.");
     process.exit(1);
   }
 
@@ -100,7 +100,7 @@ async function main() {
   );
 
   if (!apply) {
-    console.log("[reset:bidding] Dry run — nothing deleted. Re-run with --apply.");
+    console.log("[reset:bidding] Dry run, nothing deleted. Re-run with --apply.");
     await mongoose.disconnect();
     return;
   }
@@ -117,7 +117,7 @@ async function main() {
     { $unset: { contractor: "" }, $set: { status: ProjectStatus.PERMIT_STAGE } }
   );
 
-  console.log("[reset:bidding] Done — project is back at PERMIT_STAGE with no contractor.");
+  console.log("[reset:bidding] Done, project is back at PERMIT_STAGE with no contractor.");
   await mongoose.disconnect();
 }
 

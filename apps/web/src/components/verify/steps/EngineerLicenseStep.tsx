@@ -118,7 +118,7 @@ export function EngineerLicenseStep({ form, patch, onError }: StepProps) {
           </p>
           <p className="mb-4 inline-flex items-start gap-2 text-xs text-stone-500 dark:text-slate-500">
             <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
-            Your seal is what a milestone inspection is signed with — passing an inspection releases
+            Your seal is what a milestone inspection is signed with, passing an inspection releases
             the contractor&apos;s escrow tranche. Upload a clear scan of the seal you use on
             structural drawings.
           </p>

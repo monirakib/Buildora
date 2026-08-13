@@ -71,7 +71,7 @@ export async function checkIabMembership(req: Request, res: Response) {
   if (!membershipNo) {
     return res.status(400).json({
       error: {
-        message: "IAB numbers look like AA-920 or S-098 — one or two letters, then three digits",
+        message: "IAB numbers look like AA-920 or S-098, one or two letters, then three digits",
       },
     });
   }

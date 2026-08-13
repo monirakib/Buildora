@@ -584,7 +584,7 @@ function SubmitForm({
         onChange={(e) => setNote(e.target.value)}
         rows={3}
         maxLength={1000}
-        placeholder="Notes for the owner — assumptions, soil data used, anything outstanding"
+        placeholder="Notes for the owner, assumptions, soil data used, anything outstanding"
         className={inputClass}
       />
 
@@ -659,7 +659,7 @@ function ReviewForm({
           onClick={() => onDecide("approve", note.trim() || undefined)}
           className={primaryButtonClass}
         >
-          {busy ? "Working…" : `Approve — release ${formatBdt(release)}`}
+          {busy ? "Working…" : `Approve, release ${formatBdt(release)}`}
         </button>
         <button
           type="button"
@@ -694,8 +694,8 @@ function CommentForm({
     <div className="mt-4 rounded-2xl border border-black/10 p-4 dark:border-white/15">
       <p className="text-sm font-bold">Your note on these drawings</p>
       <p className="mt-1 text-xs text-stone-600 dark:text-slate-400">
-        The owner decides whether to approve, but they and the engineer both see what you write —
-        say if the structure clashes with your design.
+        The owner decides whether to approve, but they and the engineer both see what you write, say
+        if the structure clashes with your design.
       </p>
       <textarea
         value={note}
@@ -753,7 +753,7 @@ function CancelForm({
         value={reason}
         onChange={(e) => setReason(e.target.value)}
         maxLength={500}
-        placeholder="Reason (optional) — the other side sees this"
+        placeholder="Reason (optional), the other side sees this"
         className={`mt-3 ${inputClass}`}
       />
       <div className="mt-3 flex gap-2">

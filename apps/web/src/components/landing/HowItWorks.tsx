@@ -8,7 +8,7 @@ import { Reveal } from "./Reveal";
 const steps = [
   {
     title: "Post your project brief",
-    body: "Land area, location, floors, budget, and style — done in minutes.",
+    body: "Land area, location, floors, budget and style. Done in minutes.",
     meta: "Takes ~5 minutes",
   },
   {
@@ -104,7 +104,7 @@ export function HowItWorks() {
               plot to keys
             </h2>
             <p className="mt-4 max-w-sm text-lg text-stone-600 dark:text-slate-400">
-              The whole journey lives on one platform — no chasing offices, no cash handshakes.
+              The whole journey lives on one platform, no chasing offices, no cash handshakes.
             </p>
             <Link
               href="/architects"

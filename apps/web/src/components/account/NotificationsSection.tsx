@@ -125,7 +125,7 @@ export function NotificationsSection({
                 : !config?.pushEnabled
                   ? "Not configured on this server yet."
                   : permission === "denied"
-                    ? "Blocked for this site — allow notifications in your browser's site settings."
+                    ? "Blocked for this site, allow notifications in your browser's site settings."
                     : "Alerts even when Buildora is closed."
             }
           >
@@ -147,7 +147,7 @@ export function NotificationsSection({
               config && !config.emailEnabled
                 ? "Not configured on this server yet."
                 : !emailVerified
-                  ? "Confirm your address first — nothing is sent to an unconfirmed inbox."
+                  ? "Confirm your address first, nothing is sent to an unconfirmed inbox."
                   : "Only the things that matter: decisions, money, and booked meetings."
             }
           >
@@ -215,7 +215,7 @@ export function NotificationsSection({
 
       <Card
         title="Email"
-        description="One message per significant event — never a digest, never marketing."
+        description="One message per significant event, never a digest, never marketing."
         bodyClassName=""
         action={
           <button
@@ -264,7 +264,7 @@ export function NotificationsSection({
                   ? "Use the banner at the top of this page to send yourself a confirmation link."
                   : prefs.email
                     ? "Change it under Security if this address is out of date."
-                    : "Turned off above — only the test button will reach you."}
+                    : "Turned off above, only the test button will reach you."}
             </p>
           </div>
         </div>
@@ -335,8 +335,8 @@ export function NotificationsSection({
 
       <p className="inline-flex items-start gap-2 px-1 text-xs text-stone-500 dark:text-slate-400">
         <Mail className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-        Chat messages, missed calls and site diary entries stay in the app — they never email
-        you, and platform announcements never buzz your phone.
+        Chat messages, missed calls and site diary entries stay in the app, they never email you,
+        and platform announcements never buzz your phone.
       </p>
     </div>
   );

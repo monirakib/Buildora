@@ -29,7 +29,7 @@ authRouter.post("/register-professional", registerProfessional);
 // a request. Generous enough that a person filling in a form never notices.
 authRouter.get(
   "/iab",
-  rateLimit({ windowMs: 60_000, max: 20, message: "Too many lookups — wait a minute" }),
+  rateLimit({ windowMs: 60_000, max: 20, message: "Too many lookups, wait a minute" }),
   checkIabMembership
 );
 authRouter.post("/login", login);
@@ -47,13 +47,13 @@ authRouter.post("/change-email", requireAuth, changeEmail);
 // more than one a minute per account, and this stops a script cycling accounts.
 authRouter.post(
   "/verify-email",
-  rateLimit({ windowMs: 60_000, max: 20, message: "Too many attempts — wait a minute" }),
+  rateLimit({ windowMs: 60_000, max: 20, message: "Too many attempts, wait a minute" }),
   verifyEmail
 );
 authRouter.post(
   "/verify-email/send",
   requireAuth,
-  rateLimit({ windowMs: 60_000, max: 5, message: "Too many requests — wait a minute" }),
+  rateLimit({ windowMs: 60_000, max: 5, message: "Too many requests, wait a minute" }),
   sendVerificationEmail
 );
 authRouter.post("/change-password", requireAuth, changePassword);

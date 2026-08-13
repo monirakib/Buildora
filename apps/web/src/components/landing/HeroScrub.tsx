@@ -26,7 +26,7 @@ const STAGES: { start: number; end: number; eyebrow: string; title: string; sub:
     end: 0.54,
     eyebrow: "02 · End to end",
     title: "From first sketch to final handover.",
-    sub: "Verified architects, engineers, and contractors — all in one place.",
+    sub: "Verified architects, engineers and contractors. All in one place.",
   },
   {
     start: 0.58,

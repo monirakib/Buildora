@@ -102,7 +102,7 @@ export default function InspectionReportPage() {
           <p className="text-xs font-bold tracking-[0.2em] uppercase">Buildora</p>
           <h1 className="mt-1 text-2xl font-extrabold">Inspection &amp; Progress Report</h1>
           <p className="mt-2 text-sm">
-            <strong>{project.title}</strong> — {project.address}, {project.areaName}
+            <strong>{project.title}</strong>, {project.address}, {project.areaName}
           </p>
           <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-1 text-xs sm:grid-cols-4">
             <div>
@@ -164,10 +164,7 @@ export default function InspectionReportPage() {
 
             {/* One block per milestone, each starting a fresh page after the first */}
             {milestones.map((m, index) => (
-              <section
-                key={m.id}
-                className={`mt-8 ${index > 0 ? "break-before-page" : ""}`}
-              >
+              <section key={m.id} className={`mt-8 ${index > 0 ? "break-before-page" : ""}`}>
                 <div className="flex items-baseline justify-between gap-4 border-b border-stone-300 pb-1">
                   <h2 className="text-base font-extrabold">
                     {m.order}. {m.title}
@@ -213,11 +210,9 @@ export default function InspectionReportPage() {
                     <div key={ins.id} className="mt-4 border border-stone-300 p-3">
                       <div className="flex flex-wrap items-baseline justify-between gap-2">
                         <p className="text-sm font-bold">
-                          {ins.templateName} —{" "}
+                          {ins.templateName},{" "}
                           <span
-                            className={
-                              ins.verdict === InspectionVerdict.FAIL ? "text-red-700" : ""
-                            }
+                            className={ins.verdict === InspectionVerdict.FAIL ? "text-red-700" : ""}
                           >
                             {ins.verdict.replace(/_/g, " ").toLowerCase()}
                           </span>
@@ -248,7 +243,7 @@ export default function InspectionReportPage() {
                         <p className="mt-2 text-xs text-stone-600">
                           Recorded at {ins.location.lat.toFixed(5)}, {ins.location.lng.toFixed(5)}
                           {ins.location.distanceFromPlotM != null &&
-                            ` — ${Math.round(ins.location.distanceFromPlotM)} m from the plot pin`}
+                            `, ${Math.round(ins.location.distanceFromPlotM)} m from the plot pin`}
                           {ins.location.address ? ` (${ins.location.address})` : ""}
                         </p>
                       )}
@@ -271,7 +266,7 @@ export default function InspectionReportPage() {
                         <p className="font-serif text-sm italic">{ins.signature}</p>
                         <p className="text-xs text-stone-500">
                           {ins.inspector.name}
-                          {ins.inspector.company ? `, ${ins.inspector.company}` : ""} — signing
+                          {ins.inspector.company ? `, ${ins.inspector.company}` : ""}, signing
                           engineer
                         </p>
                       </div>

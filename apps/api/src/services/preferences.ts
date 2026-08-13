@@ -1,7 +1,4 @@
-import {
-  DEFAULT_NOTIFICATION_PREFERENCES,
-  type NotificationPreferences,
-} from "@buildora/shared";
+import { DEFAULT_NOTIFICATION_PREFERENCES, type NotificationPreferences } from "@buildora/shared";
 
 /**
  * Reading a user's notification preferences safely.

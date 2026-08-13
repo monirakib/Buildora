@@ -58,7 +58,7 @@ export async function estimateProject(req: Request, res: Response) {
 
   if (estimate.ratesFrom === 0) {
     return res.status(503).json({
-      error: { message: "No BOQ rates are configured yet — run the build seed first" },
+      error: { message: "No BOQ rates are configured yet, run the build seed first" },
     });
   }
 

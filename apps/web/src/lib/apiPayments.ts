@@ -55,7 +55,7 @@ export function readPaymentNotice(): { tone: "success" | "error"; message: strin
     case "success":
       return { tone: "success", message: "Payment received." };
     case "cancelled":
-      return { tone: "error", message: "Payment cancelled — nothing was charged." };
+      return { tone: "error", message: "Payment cancelled, nothing was charged." };
     case "failed":
       return { tone: "error", message: reason ?? "That payment didn't go through." };
     default:

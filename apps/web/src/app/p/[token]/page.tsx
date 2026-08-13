@@ -167,7 +167,7 @@ export default function PublicProgressPage() {
 
         <p className="mt-8 text-xs text-stone-500 dark:text-slate-500">
           Shared by the project owner · last updated{" "}
-          {new Date(progress.updatedAt).toLocaleDateString()}. This page shows progress only — no
+          {new Date(progress.updatedAt).toLocaleDateString()}. This page shows progress only, no
           financial or contract details are included.
         </p>
       </div>

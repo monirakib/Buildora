@@ -15,7 +15,7 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: "Buildora — Bangladesh Construction Super-Platform",
+  title: "Buildora. Bangladesh Construction Super-Platform",
   description:
     "Buildora connects land owners, architects, engineers, contractors, and material suppliers in one trusted digital ecosystem.",
 };

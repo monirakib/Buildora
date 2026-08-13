@@ -18,7 +18,6 @@ const inputClass =
 const cardClass =
   "rounded-2xl border border-white/50 bg-white/55 p-5 shadow-xl shadow-black/5 backdrop-blur-xl sm:p-6 dark:border-white/10 dark:bg-white/5";
 
-
 type Tab = "dap" | "fees" | "ecps";
 
 /**
@@ -49,7 +48,7 @@ export default function PermitsPage() {
           </h1>
           <p className="mt-3 text-stone-600 dark:text-slate-400">
             Check what your plot allows, estimate the RAJUK permit fee, and see the ECPS process end
-            to end. Buildora guides you through RAJUK&apos;s system — it doesn&apos;t replace it.
+            to end. Buildora guides you through RAJUK&apos;s system, it doesn&apos;t replace it.
           </p>
 
           <div className="mt-8 flex flex-wrap gap-2">
@@ -111,7 +110,7 @@ function DapChecker() {
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search your area — Dhanmondi, Gulshan, Uttara…"
+          placeholder="Search your area. Dhanmondi, Gulshan, Uttara…"
           className={inputClass}
         />
         <input
@@ -135,7 +134,7 @@ function DapChecker() {
         <p className="mt-4 text-sm text-stone-500 dark:text-slate-500">Loading…</p>
       ) : zones.length === 0 ? (
         <p className="mt-4 text-sm text-stone-600 dark:text-slate-400">
-          No zone matched — try a different spelling, or ask a supervisor to add your area.
+          No zone matched, try a different spelling, or ask a supervisor to add your area.
         </p>
       ) : (
         <ul className="mt-4 flex flex-col gap-3">
@@ -169,7 +168,7 @@ function DapChecker() {
                   </div>
                   <div>
                     <dt className="text-xs text-stone-500 dark:text-slate-500">Max floors</dt>
-                    <dd className="mt-0.5 font-bold">{z.maxFloors ?? "—"}</dd>
+                    <dd className="mt-0.5 font-bold">{z.maxFloors ?? "-"}</dd>
                   </div>
                 </dl>
                 {allowedFloorAreaSqm != null && (
@@ -279,7 +278,7 @@ function FeeCalculator() {
             </div>
           </dl>
           <p className="mt-3 text-xs text-stone-500 dark:text-slate-500">
-            Indicative only — the final assessment is made by RAJUK on your ECPS application.
+            Indicative only, the final assessment is made by RAJUK on your ECPS application.
           </p>
         </div>
       )}

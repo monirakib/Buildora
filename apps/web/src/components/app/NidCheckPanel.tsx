@@ -65,7 +65,7 @@ export function NidCheckPanel({
       </p>
       <p className="mt-1 text-xs text-stone-500 dark:text-slate-500">
         Buildora checks the number&apos;s structure, whether it&apos;s already in use, and whether
-        your uploaded card matches. A supervisor confirms your identity — this is not a government
+        your uploaded card matches. A supervisor confirms your identity, this is not a government
         verification.
       </p>
 
@@ -170,7 +170,7 @@ function OcrRows({ ocr }: { ocr: NonNullable<NidCheck["ocr"]> }) {
       <li className="flex items-start gap-2 text-xs">
         <AlertTriangle className="mt-px h-3.5 w-3.5 shrink-0 text-amber-500" />
         <span className="text-stone-600 dark:text-slate-400">
-          {ocr.note ?? "Your NID card image couldn't be read"} — a supervisor will check it by hand.
+          {ocr.note ?? "Your NID card image couldn't be read"}, a supervisor will check it by hand.
         </span>
       </li>
     );

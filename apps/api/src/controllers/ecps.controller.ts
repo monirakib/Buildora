@@ -80,7 +80,7 @@ export async function startEcpsApplication(req: Request, res: Response) {
   const firstStep = await EcpsStep.findOne().sort({ order: 1 });
   if (!firstStep) {
     return res.status(503).json({
-      error: { message: "No ECPS steps are configured yet — ask a supervisor to add them" },
+      error: { message: "No ECPS steps are configured yet, ask a supervisor to add them" },
     });
   }
 

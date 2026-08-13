@@ -182,7 +182,7 @@ const ECPS_STEPS = [
 async function main() {
   const connected = await connectDb();
   if (!connected) {
-    console.error("[seed] MONGODB_URI is not set — can't seed without a database.");
+    console.error("[seed] MONGODB_URI is not set, can't seed without a database.");
     process.exit(1);
   }
 
@@ -190,21 +190,21 @@ async function main() {
     await DapZone.insertMany(DAP_ZONES);
     console.log(`[seed] Inserted ${DAP_ZONES.length} DAP zones`);
   } else {
-    console.log("[seed] DAP zones already present — skipped");
+    console.log("[seed] DAP zones already present, skipped");
   }
 
   if ((await FeeRule.countDocuments()) === 0) {
     await FeeRule.insertMany(FEE_RULES);
     console.log(`[seed] Inserted ${FEE_RULES.length} fee rules`);
   } else {
-    console.log("[seed] Fee rules already present — skipped");
+    console.log("[seed] Fee rules already present, skipped");
   }
 
   if ((await EcpsStep.countDocuments()) === 0) {
     await EcpsStep.insertMany(ECPS_STEPS);
     console.log(`[seed] Inserted ${ECPS_STEPS.length} ECPS steps`);
   } else {
-    console.log("[seed] ECPS steps already present — skipped");
+    console.log("[seed] ECPS steps already present, skipped");
   }
 
   await mongoose.disconnect();

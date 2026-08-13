@@ -39,7 +39,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
   if (payload.sid) {
     const session = await touchSession(payload.sid, payload.sub);
     if (!session) {
-      return res.status(401).json({ error: { message: "Session expired — please sign in again" } });
+      return res.status(401).json({ error: { message: "Session expired, please sign in again" } });
     }
   }
 

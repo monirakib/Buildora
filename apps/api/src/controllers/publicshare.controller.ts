@@ -49,7 +49,9 @@ export async function getPublicProgress(req: Request, res: Response) {
 
   const project = await Project.findOne({ shareToken: token });
   if (!project) {
-    return res.status(404).json({ error: { message: "This link isn't valid or has been revoked" } });
+    return res
+      .status(404)
+      .json({ error: { message: "This link isn't valid or has been revoked" } });
   }
 
   const [contract, structural, ecps, build, handover] = await Promise.all([
@@ -61,7 +63,9 @@ export async function getPublicProgress(req: Request, res: Response) {
   ]);
 
   const milestones = build
-    ? await Milestone.find({ buildContract: build._id }).sort({ order: 1 }).select("order title status amountPct")
+    ? await Milestone.find({ buildContract: build._id })
+        .sort({ order: 1 })
+        .select("order title status amountPct")
     : [];
 
   // Construction progress is weighted by each stage's share of the contract

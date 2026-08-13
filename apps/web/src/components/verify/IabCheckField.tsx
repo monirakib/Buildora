@@ -97,7 +97,7 @@ export function IabCheckField({
         </button>
       </div>
       <p className="mt-1 text-xs text-stone-500 dark:text-slate-500">
-        Format: AA-920 or S-098 — one or two letters, then the digits.
+        Format: AA-920 or S-098, one or two letters, then the digits.
       </p>
 
       {check && <IabResult check={check} accountName={accountName} />}
@@ -125,8 +125,8 @@ function IabResult({ check, accountName }: { check: IabCheck; accountName: strin
         <XCircle className="mt-px h-4 w-4 shrink-0" />
         <span>
           The IAB directory has no member <strong>{check.membershipNo}</strong>. Double-check the
-          number. If your membership is new and not listed yet, you can still continue — a
-          supervisor will verify it by hand.
+          number. If your membership is new and not listed yet, you can still continue, a supervisor
+          will verify it by hand.
         </span>
       </p>
     );
@@ -138,7 +138,7 @@ function IabResult({ check, accountName }: { check: IabCheck; accountName: strin
   const nameOk = !accountName.trim() || iabNameMatches(accountName, name);
   const summary = (
     <>
-      <strong>{check.membershipNo}</strong> — {name}
+      <strong>{check.membershipNo}</strong>, {name}
       {category && <> · {category}</>} · <span className="uppercase">{status ?? "unknown"}</span>
       {email && (
         <>
@@ -157,8 +157,8 @@ function IabResult({ check, accountName }: { check: IabCheck; accountName: strin
           {summary}
           <br />
           This account is named <strong>{accountName}</strong>, which doesn&apos;t match the
-          directory. You can&apos;t submit for verification until these agree — or send it for
-          manual review if IAB has your name recorded differently.
+          directory. You can&apos;t submit for verification until these agree, or send it for manual
+          review if IAB has your name recorded differently.
         </span>
       </p>
     );
@@ -174,8 +174,8 @@ function IabResult({ check, accountName }: { check: IabCheck; accountName: strin
       <span>
         {summary}
         {isRegular
-          ? " — a membership in good standing."
-          : " — only a “Regular” standing counts as valid. A supervisor will look at this."}
+          ? ", a membership in good standing."
+          : ", only a “Regular” standing counts as valid. A supervisor will look at this."}
       </span>
     </p>
   );

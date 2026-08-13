@@ -85,7 +85,7 @@ export default function DashboardPage() {
                 <p className="mt-1 text-sm text-stone-600 dark:text-slate-400">
                   {isLandOwner
                     ? "Post a brief, review proposals, and drive your build from concept to handover."
-                    : "The projects you've been engaged on — contracts, submissions, and escrow."}
+                    : "The projects you've been engaged on, contracts, submissions, and escrow."}
                 </p>
                 <span className="mt-4 inline-block text-sm font-bold text-amber-600 dark:text-amber-400">
                   Open projects →
@@ -196,7 +196,7 @@ export default function DashboardPage() {
               </span>
               <h2 className="mt-4 text-lg font-bold">Messages</h2>
               <p className="mt-1 text-sm text-stone-600 dark:text-slate-400">
-                Chat with the people on your projects — everything stays on the platform.
+                Chat with the people on your projects, everything stays on the platform.
               </p>
               <span className="mt-4 inline-block text-sm font-bold text-amber-600 dark:text-amber-400">
                 Open inbox →
@@ -364,7 +364,7 @@ export default function DashboardPage() {
                 </span>
                 <h2 className="mt-4 text-lg font-bold">Complete your profile</h2>
                 <p className="mt-1 text-sm text-stone-600 dark:text-slate-400">
-                  Add your credentials, education, and portfolio — then request verification.
+                  Add your credentials, education, and portfolio, then request verification.
                 </p>
                 <span className="mt-4 inline-block text-sm font-bold text-amber-600 dark:text-amber-400">
                   Edit profile →

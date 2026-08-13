@@ -138,10 +138,9 @@ export function OrderTracker({ order }: { order: MarketOrder }) {
       {cancelled && (
         <p className="mt-1 rounded-lg bg-rose-500/10 px-3 py-2 text-sm font-semibold text-rose-700 dark:text-rose-300">
           Cancelled
-          {eventFor(OrderStatus.CANCELLED) &&
-            ` on ${when(eventFor(OrderStatus.CANCELLED)!.at)}`}
+          {eventFor(OrderStatus.CANCELLED) && ` on ${when(eventFor(OrderStatus.CANCELLED)!.at)}`}
           {eventFor(OrderStatus.CANCELLED)?.note
-            ? ` — ${eventFor(OrderStatus.CANCELLED)!.note}`
+            ? `, ${eventFor(OrderStatus.CANCELLED)!.note}`
             : ""}
         </p>
       )}

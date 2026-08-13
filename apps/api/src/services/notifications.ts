@@ -246,7 +246,7 @@ export async function notifyMany(userIds: string[], input: NotifyInput): Promise
         for (const id of userIds) void emailOneRespectingPrefs(id, input);
       } else {
         console.info(
-          `[notify] ${userIds.length} recipients — announcement sent by bell and push only, not email`
+          `[notify] ${userIds.length} recipients, announcement sent by bell and push only, not email`
         );
       }
     }

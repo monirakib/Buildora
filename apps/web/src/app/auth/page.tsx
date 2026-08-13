@@ -40,7 +40,7 @@ const heroCopy: Record<Mode, { kicker: string; title: string; sub: string }> = {
   pro: {
     kicker: "For professionals",
     title: "Grow your practice.",
-    sub: "Architects, engineers, contractors, and suppliers — meet serious clients, get paid through protected escrow, and carry a badge people trust.",
+    sub: "Architects, engineers, contractors and suppliers: meet serious clients, get paid through protected escrow, and carry a badge people trust.",
   },
 };
 
@@ -534,7 +534,7 @@ export default function AuthPage() {
                         {/* Credentials — optional now, required before the account
                             can be submitted for verification review. The section
                             label marks everything below as optional. */}
-                        <SectionLabel>Credentials &amp; experience — optional</SectionLabel>
+                        <SectionLabel>Credentials &amp; experience, optional</SectionLabel>
 
                         <div className="grid gap-4 sm:grid-cols-2">
                           <div>
@@ -601,7 +601,7 @@ export default function AuthPage() {
                             Filled in from the IAB directory:{" "}
                             <strong>{form.membershipCategory}</strong>, standing{" "}
                             <strong>{form.membershipStatus}</strong>. Your name and email were set
-                            to the directory&apos;s — edit them above if you&apos;d rather use
+                            to the directory&apos;s, edit them above if you&apos;d rather use
                             different ones. If you change the email, IAB&apos;s is kept on your
                             account as a secondary contact.
                           </p>
@@ -698,8 +698,8 @@ export default function AuthPage() {
 
                     {mode === "pro" && (
                       <p className="rounded-xl border border-amber-500/25 bg-amber-400/10 px-4 py-2.5 text-xs font-medium text-stone-700 dark:border-amber-300/15 dark:text-slate-300">
-                        Your account starts unverified — submit your documents afterwards to earn
-                        the Platform Verified badge.
+                        Your account starts unverified. Submit your documents afterwards to earn the
+                        Platform Verified badge.
                       </p>
                     )}
 

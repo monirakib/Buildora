@@ -95,7 +95,8 @@ export async function findDapZoneForArea(req: Request, res: Response) {
       const name = zone.areaName;
       let rank = 0;
       if (name.toLowerCase() === area.toLowerCase()) rank = 3;
-      else if (containsWord(area, name)) rank = 2; // "Gulshan 2" is in zone "Gulshan"
+      else if (containsWord(area, name))
+        rank = 2; // "Gulshan 2" is in zone "Gulshan"
       else if (containsWord(name, area)) rank = 1; // "Gulshan" typed, zone "Gulshan Model Town"
       return { zone, rank };
     })
@@ -244,7 +245,7 @@ export async function createFeeRule(req: Request, res: Response) {
   const existing = await FeeRule.findOne({ category: parsed.data.category });
   if (existing) {
     return res.status(409).json({
-      error: { message: "A rate for this category already exists — edit it instead" },
+      error: { message: "A rate for this category already exists. Edit it instead" },
     });
   }
   const doc = await FeeRule.create(parsed.data);

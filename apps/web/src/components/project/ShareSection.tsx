@@ -2,11 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Copy, Link2, RefreshCw } from "lucide-react";
-import {
-  disableProjectShare,
-  enableProjectShare,
-  getProjectShare,
-} from "@/lib/apiEstimator";
+import { disableProjectShare, enableProjectShare, getProjectShare } from "@/lib/apiEstimator";
 
 const cardClass =
   "rounded-2xl border border-white/50 bg-white/55 p-5 shadow-xl shadow-black/5 backdrop-blur-xl sm:p-6 dark:border-white/10 dark:bg-white/5";
@@ -69,7 +65,7 @@ export function ShareSection({ projectId, token }: { projectId: string; token: s
 
         <p className="text-sm text-stone-600 dark:text-slate-400">
           A read-only page for family or investors. It shows which stage the build has reached and
-          how far construction has got — never money, contracts, or who you&apos;ve hired.
+          how far construction has got, never money, contracts, or who you&apos;ve hired.
         </p>
 
         {url ? (

@@ -55,14 +55,14 @@ export function meetingEventFields(meeting: Meeting, party: MeetingParty): Calen
 
   const lines = [
     meeting.mode === MeetingMode.ONLINE
-      ? `Online meeting — start the video call from Buildora: ${origin}/meetings`
+      ? `Online meeting, start the video call from Buildora: ${origin}/meetings`
       : `In-person meeting${location ? ` at ${location}` : ""}`,
   ];
   if (meeting.agenda) lines.push("", `What it's about: ${meeting.agenda}`);
   lines.push("", `Manage this meeting: ${origin}/meetings`);
 
   return {
-    title: `Buildora — meeting with ${other.name}`,
+    title: `Buildora, meeting with ${other.name}`,
     details: lines.join("\n"),
     location,
     startAt: meeting.startAt,

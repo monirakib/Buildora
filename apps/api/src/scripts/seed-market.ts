@@ -39,29 +39,144 @@ const suppliers = [
 // seller: a supplier key above, or "karim" for the existing contractor.
 const products = [
   // -- BuildMart (general building materials) --
-  { seller: "buildmart", name: "1st Class Auto Bricks", brand: "Mirpur Ceramic", category: ProductCategory.BRICKS, unit: "1000 pcs", priceBdt: 13500, imageUrl: "/market/bricks.jpg", description: "Machine-made auto bricks, uniform size and colour. Delivery within Dhaka included for 5,000+ pcs." },
-  { seller: "buildmart", name: "Stone Chips 3/4\"", category: ProductCategory.SAND_AGGREGATE, unit: "cft", priceBdt: 210, imageUrl: "/market/stone-chips.jpg", description: "Crushed stone aggregate for RCC casting. Sieved and washed." },
-  { seller: "buildmart", name: "Sylhet Coarse Sand", category: ProductCategory.SAND_AGGREGATE, unit: "cft", priceBdt: 68, imageUrl: "/market/sand.jpg", description: "FM 2.5+ coarse sand for structural work, sourced from Sylhet." },
-  { seller: "buildmart", name: "Glazed Floor Tiles 24×24", brand: "RAK Ceramics", category: ProductCategory.TILES, unit: "sqft", priceBdt: 95, imageUrl: "/market/tiles.jpg", description: "Scratch-resistant glazed tiles, stock colours. Grade A." },
-  { seller: "buildmart", name: "GI Pipe 1\" (20ft)", brand: "National Tubes", category: ProductCategory.PLUMBING, unit: "piece", priceBdt: 1450, imageUrl: "/market/pipes.jpg", description: "Galvanized iron pipe for water lines, BSTI certified." },
-  { seller: "buildmart", name: "Basin & Bath Fittings Set", brand: "Nazma", category: ProductCategory.PLUMBING, unit: "set", priceBdt: 6800, imageUrl: "/market/bathroom.jpg", description: "Chrome basin mixer, shower set, and angle stops — full bathroom set." },
-  { seller: "buildmart", name: "Flush Door Shutter 39\"", brand: "Partex", category: ProductCategory.WOOD, unit: "piece", priceBdt: 4200, imageUrl: "/market/door.jpg", description: "Veneered flush door shutter, seasoned core, ready to fit." },
+  {
+    seller: "buildmart",
+    name: "1st Class Auto Bricks",
+    brand: "Mirpur Ceramic",
+    category: ProductCategory.BRICKS,
+    unit: "1000 pcs",
+    priceBdt: 13500,
+    imageUrl: "/market/bricks.jpg",
+    description:
+      "Machine-made auto bricks, uniform size and colour. Delivery within Dhaka included for 5,000+ pcs.",
+  },
+  {
+    seller: "buildmart",
+    name: 'Stone Chips 3/4"',
+    category: ProductCategory.SAND_AGGREGATE,
+    unit: "cft",
+    priceBdt: 210,
+    imageUrl: "/market/stone-chips.jpg",
+    description: "Crushed stone aggregate for RCC casting. Sieved and washed.",
+  },
+  {
+    seller: "buildmart",
+    name: "Sylhet Coarse Sand",
+    category: ProductCategory.SAND_AGGREGATE,
+    unit: "cft",
+    priceBdt: 68,
+    imageUrl: "/market/sand.jpg",
+    description: "FM 2.5+ coarse sand for structural work, sourced from Sylhet.",
+  },
+  {
+    seller: "buildmart",
+    name: "Glazed Floor Tiles 24×24",
+    brand: "RAK Ceramics",
+    category: ProductCategory.TILES,
+    unit: "sqft",
+    priceBdt: 95,
+    imageUrl: "/market/tiles.jpg",
+    description: "Scratch-resistant glazed tiles, stock colours. Grade A.",
+  },
+  {
+    seller: "buildmart",
+    name: 'GI Pipe 1" (20ft)',
+    brand: "National Tubes",
+    category: ProductCategory.PLUMBING,
+    unit: "piece",
+    priceBdt: 1450,
+    imageUrl: "/market/pipes.jpg",
+    description: "Galvanized iron pipe for water lines, BSTI certified.",
+  },
+  {
+    seller: "buildmart",
+    name: "Basin & Bath Fittings Set",
+    brand: "Nazma",
+    category: ProductCategory.PLUMBING,
+    unit: "set",
+    priceBdt: 6800,
+    imageUrl: "/market/bathroom.jpg",
+    description: "Chrome basin mixer, shower set, and angle stops. A full bathroom set.",
+  },
+  {
+    seller: "buildmart",
+    name: 'Flush Door Shutter 39"',
+    brand: "Partex",
+    category: ProductCategory.WOOD,
+    unit: "piece",
+    priceBdt: 4200,
+    imageUrl: "/market/door.jpg",
+    description: "Veneered flush door shutter, seasoned core, ready to fit.",
+  },
 
   // -- Metro Hardware (steel, electric, paint) --
-  { seller: "metro", name: "60-Grade Deformed Rebar 16mm", brand: "BSRM", category: ProductCategory.STEEL, unit: "ton", priceBdt: 94500, imageUrl: "/market/steel.jpg", description: "500W grade TMT rebar. Mill test certificate provided with delivery." },
-  { seller: "metro", name: "WeatherCoat Exterior Paint 18L", brand: "Berger", category: ProductCategory.PAINT, unit: "bucket", priceBdt: 8200, imageUrl: "/market/paint.jpg", description: "Weather-resistant exterior emulsion, 10-year warranty range." },
-  { seller: "metro", name: "Copper Wire 1.5mm (90m coil)", brand: "BRB Cable", category: ProductCategory.ELECTRICAL, unit: "coil", priceBdt: 3250, imageUrl: "/market/wire.jpg", description: "BYA insulated 100% copper house wiring cable, fire retardant." },
-  { seller: "metro", name: "LED Bulb 12W (pack of 6)", brand: "Walton", category: ProductCategory.ELECTRICAL, unit: "pack", priceBdt: 990, imageUrl: "/market/bulb.jpg", description: "Daylight 6500K, E27 base, 2-year replacement warranty." },
-  { seller: "metro", name: "Distribution Board 8-way", brand: "Havells", category: ProductCategory.ELECTRICAL, unit: "piece", priceBdt: 3900, imageUrl: "/market/dboard.jpg", description: "Metal-clad DB with MCB slots, suitable for a full floor." },
+  {
+    seller: "metro",
+    name: "60-Grade Deformed Rebar 16mm",
+    brand: "BSRM",
+    category: ProductCategory.STEEL,
+    unit: "ton",
+    priceBdt: 94500,
+    imageUrl: "/market/steel.jpg",
+    description: "500W grade TMT rebar. Mill test certificate provided with delivery.",
+  },
+  {
+    seller: "metro",
+    name: "WeatherCoat Exterior Paint 18L",
+    brand: "Berger",
+    category: ProductCategory.PAINT,
+    unit: "bucket",
+    priceBdt: 8200,
+    imageUrl: "/market/paint.jpg",
+    description: "Weather-resistant exterior emulsion, 10-year warranty range.",
+  },
+  {
+    seller: "metro",
+    name: "Copper Wire 1.5mm (90m coil)",
+    brand: "BRB Cable",
+    category: ProductCategory.ELECTRICAL,
+    unit: "coil",
+    priceBdt: 3250,
+    imageUrl: "/market/wire.jpg",
+    description: "BYA insulated 100% copper house wiring cable, fire retardant.",
+  },
+  {
+    seller: "metro",
+    name: "LED Bulb 12W (pack of 6)",
+    brand: "Walton",
+    category: ProductCategory.ELECTRICAL,
+    unit: "pack",
+    priceBdt: 990,
+    imageUrl: "/market/bulb.jpg",
+    description: "Daylight 6500K, E27 base, 2-year replacement warranty.",
+  },
+  {
+    seller: "metro",
+    name: "Distribution Board 8-way",
+    brand: "Havells",
+    category: ProductCategory.ELECTRICAL,
+    unit: "piece",
+    priceBdt: 3900,
+    imageUrl: "/market/dboard.jpg",
+    description: "Metal-clad DB with MCB slots, suitable for a full floor.",
+  },
 
   // -- Karim Builder (contractor extras) --
-  { seller: "karim", name: "Seasoned Gamari Wood Plank", category: ProductCategory.WOOD, unit: "cft", priceBdt: 1650, imageUrl: "/market/lumber.jpg", description: "Kiln-dried gamari planks for doors, frames, and furniture work." },
+  {
+    seller: "karim",
+    name: "Seasoned Gamari Wood Plank",
+    category: ProductCategory.WOOD,
+    unit: "cft",
+    priceBdt: 1650,
+    imageUrl: "/market/lumber.jpg",
+    description: "Kiln-dried gamari planks for doors, frames, and furniture work.",
+  },
 ];
 
 async function main() {
   const connected = await connectDb();
   if (!connected) {
-    console.error("[seed] MONGODB_URI is not set — can't seed without a database.");
+    console.error("[seed] MONGODB_URI is not set, can't seed without a database.");
     process.exit(1);
   }
 
@@ -97,7 +212,7 @@ async function main() {
   for (const p of products) {
     const sellerId = sellerIds[p.seller];
     if (!sellerId) {
-      console.warn(`[seed] skipping "${p.name}" — no ${p.seller} account found`);
+      console.warn(`[seed] skipping "${p.name}", no ${p.seller} account found`);
       continue;
     }
     const { seller: _key, ...fields } = p;
@@ -115,7 +230,7 @@ async function main() {
     { $set: { imageUrl: "/market/cement-bags.jpg" } }
   );
 
-  console.log(`[seed] done — ${created} new products, ${products.length - created} updated.`);
+  console.log(`[seed] done, ${created} new products, ${products.length - created} updated.`);
   await mongoose.disconnect();
 }
 

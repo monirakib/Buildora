@@ -46,10 +46,11 @@ export async function enableProjectShare(
   projectId: string,
   rotate = false
 ): Promise<string> {
-  const res = await request<{ data: { shareToken: string } }>(
-    `/api/projects/${projectId}/share`,
-    { method: "POST", headers: authed(token), body: JSON.stringify({ rotate }) }
-  );
+  const res = await request<{ data: { shareToken: string } }>(`/api/projects/${projectId}/share`, {
+    method: "POST",
+    headers: authed(token),
+    body: JSON.stringify({ rotate }),
+  });
   return res.data.shareToken;
 }
 

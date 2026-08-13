@@ -108,7 +108,7 @@ export function ProfessionalStep({ form, patch, role }: StepProps) {
           <Field
             id="practiceDivision"
             title={isBusiness ? "Operating Division" : "Practice Division"}
-            hint="Where you take on work — land owners filter by this."
+            hint="Where you take on work, land owners filter by this."
           >
             <select
               id="practiceDivision"
@@ -198,7 +198,7 @@ export function ProfessionalStep({ form, patch, role }: StepProps) {
         <Field
           id="portfolioIntro"
           title="Introduction"
-          hint="One or two sentences under your headline — what you do and why."
+          hint="One or two sentences under your headline, what you do and why."
         >
           <textarea
             id="portfolioIntro"

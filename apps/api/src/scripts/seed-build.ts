@@ -159,7 +159,7 @@ const TEMPLATES = [
   },
   {
     name: "Foundation & substructure",
-    description: "Before backfilling — once it's buried, nobody can check it.",
+    description: "Before backfilling, once it's buried, nobody can check it.",
     items: [
       "Excavation depth and bearing stratum match the soil report",
       "Base concrete thickness and level as drawn",
@@ -212,7 +212,7 @@ const TEMPLATES = [
 async function main() {
   const connected = await connectDb();
   if (!connected) {
-    console.error("[seed:build] No database connection — set MONGODB_URI first.");
+    console.error("[seed:build] No database connection, set MONGODB_URI first.");
     process.exit(1);
   }
 
@@ -221,7 +221,7 @@ async function main() {
     await BoqRate.insertMany(BOQ_RATES);
     console.log(`[seed:build] inserted ${BOQ_RATES.length} BOQ rates`);
   } else {
-    console.log(`[seed:build] ${rateCount} BOQ rates already present — left alone`);
+    console.log(`[seed:build] ${rateCount} BOQ rates already present, left alone`);
   }
 
   const templateCount = await InspectionTemplate.countDocuments();
@@ -229,7 +229,7 @@ async function main() {
     await InspectionTemplate.insertMany(TEMPLATES);
     console.log(`[seed:build] inserted ${TEMPLATES.length} inspection checklists`);
   } else {
-    console.log(`[seed:build] ${templateCount} checklists already present — left alone`);
+    console.log(`[seed:build] ${templateCount} checklists already present, left alone`);
   }
 
   await mongoose.disconnect();

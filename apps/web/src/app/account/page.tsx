@@ -105,13 +105,7 @@ const PROFESSIONAL_ROLES: UserRole[] = [
   UserRole.SUPPLIER,
 ];
 
-type SectionId =
-  | "profile"
-  | "contact"
-  | "security"
-  | "billing"
-  | "notifications"
-  | "appearance";
+type SectionId = "profile" | "contact" | "security" | "billing" | "notifications" | "appearance";
 
 /** One side of the NID card: a file picker, or a thumbnail once uploaded. */
 function NidPhotoField({
@@ -384,7 +378,7 @@ export default function AccountPage() {
     setUploading(true);
     try {
       setValue("avatarUrl", await uploadImage(token, file));
-      pushToast("Photo uploaded — save to make it live");
+      pushToast("Photo uploaded, save to make it live");
     } catch (err) {
       pushToast(err instanceof Error ? err.message : "Upload failed", "error");
     } finally {
@@ -406,7 +400,7 @@ export default function AccountPage() {
     setUploading(true);
     try {
       setValue(side, await uploadImage(token, file));
-      pushToast("NID photo uploaded — save, then run the check");
+      pushToast("NID photo uploaded, save, then run the check");
     } catch (err) {
       pushToast(err instanceof Error ? err.message : "Upload failed", "error");
     } finally {
@@ -638,7 +632,7 @@ export default function AccountPage() {
 
         <StatTile
           label="Active logins"
-          value={sessions === null ? "—" : `${sessions.length}`}
+          value={sessions === null ? "-" : `${sessions.length}`}
           icon={<Monitor className="h-4 w-4" />}
           foot={
             sessions === null
@@ -752,7 +746,7 @@ export default function AccountPage() {
 
             <Card title="Personal details" description="Who you are on Buildora." bodyClassName="">
               <List>
-                <FieldRow label="Username" hint="Permanent — chosen at signup" htmlFor="username">
+                <FieldRow label="Username" hint="Permanent, chosen at signup" htmlFor="username">
                   <input
                     id="username"
                     type="text"
@@ -850,7 +844,7 @@ export default function AccountPage() {
 
             {isProfessional && (
               <p className="text-xs text-stone-500 dark:text-slate-400">
-                Your public profile — credentials, portfolio and verification — is edited on{" "}
+                Your public profile, credentials, portfolio and verification, is edited on{" "}
                 <Link
                   href="/profile/professional"
                   className="font-bold text-amber-600 dark:text-amber-400"
@@ -1261,7 +1255,7 @@ export default function AccountPage() {
         {section === "appearance" && (
           <Card
             title="How Buildora looks"
-            description="Saved in this browser, applied the moment you pick — no save needed."
+            description="Saved in this browser, applied the moment you pick, no save needed."
           >
             <div className="grid gap-3 sm:grid-cols-2">
               {[

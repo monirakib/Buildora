@@ -85,7 +85,7 @@ export default function ProjectsPage() {
               <div className="rounded-2xl border border-white/50 bg-white/55 p-8 text-center backdrop-blur-xl dark:border-white/10 dark:bg-white/5">
                 <p className="text-stone-600 dark:text-slate-400">
                   {isLandOwner
-                    ? "No projects yet — post your first brief and let architects come to you."
+                    ? "No projects yet, post your first brief and let architects come to you."
                     : "You're not engaged on any projects yet. Browse the open briefs to pitch."}
                 </p>
                 <Link

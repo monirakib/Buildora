@@ -100,7 +100,7 @@ export async function createSession(input: CreateSessionInput): Promise<string> 
     });
   } catch (err) {
     console.error("[sslcommerz] session request failed:", err);
-    throw new Error("Couldn't reach the payment gateway — try again in a moment");
+    throw new Error("Couldn't reach the payment gateway, try again in a moment");
   }
 
   const data = (await res.json().catch(() => ({}))) as SessionResponse;
@@ -145,9 +145,7 @@ export async function validate(valId: string): Promise<ValidationResult> {
   });
 
   try {
-    const res = await fetch(
-      `${host()}/validator/api/validationserverAPI.php?${query.toString()}`
-    );
+    const res = await fetch(`${host()}/validator/api/validationserverAPI.php?${query.toString()}`);
     const data = (await res.json().catch(() => ({}))) as Record<string, string>;
     const status = data.status;
     return {

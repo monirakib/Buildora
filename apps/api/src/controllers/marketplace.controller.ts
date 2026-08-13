@@ -301,7 +301,7 @@ export async function createOrder(req: Request, res: Response) {
   const buyer = doc.buyer as unknown as UserRef;
   notify(String(product.seller), {
     type: NotificationType.ORDER,
-    title: `New order — ${quantity} × ${product.name}`,
+    title: `New order, ${quantity} × ${product.name}`,
     body: `${buyer.name} ordered ${quantity} ${product.unit}${quantity > 1 ? "s" : ""} for ৳ ${(
       product.priceBdt * quantity
     ).toLocaleString("en-US")}. Confirm it to start fulfilment.`,
@@ -340,11 +340,7 @@ export async function listOrders(req: Request, res: Response) {
  */
 const sellerMoves: Record<string, OrderStatus[]> = {
   [OrderStatus.PLACED]: [OrderStatus.CONFIRMED, OrderStatus.CANCELLED],
-  [OrderStatus.CONFIRMED]: [
-    OrderStatus.DISPATCHED,
-    OrderStatus.DELIVERED,
-    OrderStatus.CANCELLED,
-  ],
+  [OrderStatus.CONFIRMED]: [OrderStatus.DISPATCHED, OrderStatus.DELIVERED, OrderStatus.CANCELLED],
   [OrderStatus.DISPATCHED]: [OrderStatus.DELIVERED],
 };
 
@@ -411,7 +407,7 @@ export async function updateOrderStatus(req: Request, res: Response) {
   const recipient = isSeller ? String(buyer._id) : String(seller._id);
   const bodyByStatus: Partial<Record<OrderStatus, string>> = {
     [OrderStatus.CONFIRMED]: `${seller.name} confirmed your order for ${doc.productSnapshot.name}.`,
-    [OrderStatus.DISPATCHED]: `${seller.name} has dispatched your ${doc.productSnapshot.name} — it's on the way.`,
+    [OrderStatus.DISPATCHED]: `${seller.name} has dispatched your ${doc.productSnapshot.name}, it's on the way.`,
     [OrderStatus.DELIVERED]: `${seller.name} marked your order for ${doc.productSnapshot.name} as delivered.`,
     [OrderStatus.CANCELLED]: isSeller
       ? `${seller.name} cancelled your order for ${doc.productSnapshot.name}.`

@@ -73,7 +73,7 @@ TOTAL: ${totalBdt} BDT
 Write 3 short paragraphs, plain English, no markdown headings:
 1. What this estimate covers and roughly what it works out to per square foot.
 2. The two or three line items that dominate the cost, and why.
-3. What could push the real figure up or down — soil conditions, finish quality, material price movement. Be specific to Bangladesh.
+3. What could push the real figure up or down, soil conditions, finish quality, material price movement. Be specific to Bangladesh.
 
 Do not invent numbers that are not above. Do not give advice about hiring.`;
 
@@ -99,7 +99,10 @@ Do not invent numbers that are not above. Do not give advice about hiring.`;
     const body = (await res.json()) as {
       candidates?: { content?: { parts?: { text?: string }[] } }[];
     };
-    const text = body.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("").trim();
+    const text = body.candidates?.[0]?.content?.parts
+      ?.map((p) => p.text ?? "")
+      .join("")
+      .trim();
     return text || undefined;
   } catch (err) {
     // A missing narrative is a much smaller loss than a failed estimate, so
@@ -132,13 +135,7 @@ export async function estimateBuild(input: {
     byCategory: [...byCategory.entries()].map(([category, totalBdt]) => ({ category, totalBdt })),
     totalBdt,
     perSqftBdt: input.areaSqft > 0 ? Math.round(totalBdt / input.areaSqft) : 0,
-    narrative: await narrate(
-      input.areaSqft,
-      input.floors,
-      input.buildingType,
-      lines,
-      totalBdt
-    ),
+    narrative: await narrate(input.areaSqft, input.floors, input.buildingType, lines, totalBdt),
     ratesFrom: lines.length,
     estimatedAt: new Date().toISOString(),
   };

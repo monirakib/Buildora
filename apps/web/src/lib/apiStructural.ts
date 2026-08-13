@@ -59,12 +59,7 @@ export function appointEngineer(
 }
 
 /** POST /api/structural/:id/escrow — the owner funds the agreed fee. */
-export function fundStructuralEscrow(
-  token: string,
-  id: string,
-  method: string,
-  reference: string
-) {
+export function fundStructuralEscrow(token: string, id: string, method: string, reference: string) {
   return action(token, `/api/structural/${id}/escrow`, { method, reference });
 }
 
