@@ -90,23 +90,46 @@ function VerifyEmailInner() {
                 {state.email}
               </span>{" "}
               {state.alreadyVerified
-                ? "was already confirmed — nothing more to do."
+                ? "was already confirmed, nothing more to do."
                 : "is confirmed. Buildora can now email you when a decision, a payment or a booked meeting needs you."}
             </p>
-            <div className="mt-7 flex flex-wrap justify-center gap-3">
-              <Link
-                href="/dashboard"
-                className="rounded-full bg-amber-400 px-6 py-2.5 text-sm font-bold text-stone-950 shadow-lg transition hover:scale-[1.03] hover:bg-amber-300"
-              >
-                Go to dashboard
-              </Link>
-              <Link
-                href="/account"
-                className="rounded-full border border-white/60 bg-white/60 px-6 py-2.5 text-sm font-bold transition hover:bg-white/80 dark:border-white/15 dark:bg-white/10 dark:hover:bg-white/15"
-              >
-                Notification settings
-              </Link>
-            </div>
+
+            {/* Where this page is open decides what's useful next. The link is
+                usually followed on the phone holding the mailbox, which isn't
+                signed in — offering "go to dashboard" there just bounces
+                someone to a login screen they didn't ask for. */}
+            {sessionToken ? (
+              <div className="mt-7 flex flex-wrap justify-center gap-3">
+                <Link
+                  href="/dashboard"
+                  className="rounded-full bg-amber-400 px-6 py-2.5 text-sm font-bold text-stone-950 shadow-lg transition hover:scale-[1.03] hover:bg-amber-300"
+                >
+                  Go to dashboard
+                </Link>
+                <Link
+                  href="/account"
+                  className="rounded-full border border-white/60 bg-white/60 px-6 py-2.5 text-sm font-bold transition hover:bg-white/80 dark:border-white/15 dark:bg-white/10 dark:hover:bg-white/15"
+                >
+                  Notification settings
+                </Link>
+              </div>
+            ) : (
+              <>
+                <p className="mt-4 text-xs leading-relaxed text-stone-500 dark:text-slate-500">
+                  You&apos;re not signed in on this device, and you don&apos;t need to be, the
+                  confirmation is already saved. If you were signed in somewhere else, that page
+                  will catch up on its own.
+                </p>
+                <div className="mt-7 flex justify-center">
+                  <Link
+                    href="/auth"
+                    className="rounded-full bg-amber-400 px-6 py-2.5 text-sm font-bold text-stone-950 shadow-lg transition hover:scale-[1.03] hover:bg-amber-300"
+                  >
+                    Sign in here
+                  </Link>
+                </div>
+              </>
+            )}
           </>
         )}
 

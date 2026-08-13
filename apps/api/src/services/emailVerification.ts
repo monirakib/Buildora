@@ -26,8 +26,25 @@ import { notify } from "./notifications";
 /** How long a link stays good. Long enough to survive a night's sleep. */
 export const LINK_TTL_HOURS = 24;
 
-/** How long before the same account can ask for another one. */
-const RESEND_COOLDOWN_MS = 60_000;
+/**
+ * How long before the same account can ask for another link — and it grows.
+ *
+ * A flat cooldown treats the second request like the tenth, but they mean
+ * different things. Asking twice is normal: mail is slow, spam folders exist.
+ * Asking ten times means the link isn't arriving, and sending ten more won't
+ * change that — it just burns a daily send quota that other people's escrow
+ * notices need, and hammers an inbox that may not even belong to the person
+ * clicking. So each send pushes the next one further out.
+ *
+ * The ladder is indexed by how many have already gone out, and the last entry
+ * is the ceiling: 1 min, 2, 5, 15, 30, then an hour from there on.
+ */
+const RESEND_LADDER_MS = [60_000, 120_000, 300_000, 900_000, 1_800_000, 3_600_000];
+
+/** The wait owed after `sends` links have already gone out. */
+function cooldownAfter(sends: number): number {
+  return RESEND_LADDER_MS[Math.min(sends - 1, RESEND_LADDER_MS.length - 1)]!;
+}
 
 /** The bell entry that nags an unverified account, deduped on this exact title. */
 const NUDGE_TITLE = "Confirm your email address";
@@ -41,6 +58,14 @@ export interface IssueResult {
   sent: boolean;
   /** Set when nothing was sent, so the caller can say why. */
   reason?: "already-verified" | "cooldown" | "not-configured" | "send-failed";
+  /** On "cooldown", how long is still owed — so the caller can say when. */
+  retryAfterMs?: number;
+  /**
+   * On a successful send, how long before another one is allowed. Handed back
+   * so the button can count down from the real figure rather than assume the
+   * first rung of the ladder and be corrected by a rejection.
+   */
+  nextRetryAfterMs?: number;
 }
 
 /**
@@ -58,10 +83,13 @@ export async function issueVerification(user: HydratedDocument<UserDoc>): Promis
   // address being used to mail-bomb somebody, and an IP limit wouldn't.
   const latest = await EmailVerification.findOne({ user: user._id })
     .sort({ createdAt: -1 })
-    .select("createdAt")
+    .select("createdAt sends")
     .lean();
-  if (latest && Date.now() - latest.createdAt.getTime() < RESEND_COOLDOWN_MS) {
-    return { sent: false, reason: "cooldown" };
+
+  const sentSoFar = latest?.sends ?? 0;
+  if (latest) {
+    const owed = cooldownAfter(sentSoFar) - (Date.now() - latest.createdAt.getTime());
+    if (owed > 0) return { sent: false, reason: "cooldown", retryAfterMs: owed };
   }
 
   const token = randomBytes(32).toString("hex");
@@ -70,6 +98,9 @@ export async function issueVerification(user: HydratedDocument<UserDoc>): Promis
     user: user._id,
     tokenHash: hash(token),
     email: user.email,
+    // Deleting the old row loses its count, so carry it across by hand — this
+    // is what makes the next wait longer than this one.
+    sends: sentSoFar + 1,
     expiresAt: new Date(Date.now() + LINK_TTL_HOURS * 60 * 60 * 1000),
   });
 
@@ -77,13 +108,22 @@ export async function issueVerification(user: HydratedDocument<UserDoc>): Promis
     await sendEmailOrThrow({
       to: user.email,
       toName: user.name,
-      subject: "Confirm your email address",
-      text: `Welcome to Buildora. Confirm this address and we'll be able to reach you when something on your projects needs you — a decision, a payment, a booked meeting.\n\nThe link is good for ${LINK_TTL_HOURS} hours. If you didn't create a Buildora account, ignore this email and nothing will happen.`,
+      subject: "Confirm your email to activate the platform",
+      accent: "activate",
+      text: `Welcome to Buildora, the construction super-platform. Confirming your address unlocks your workspace and lets us reach you the moment a job needs a call: a decision to sign, a payment to release, a site walk to schedule.\n\nIf you didn't create a Buildora account, ignore this email and nothing will happen.`,
       // Absolute on purpose: this link is followed from a mailbox, where the
       // API's own address means nothing.
       link: `${env.WEB_BASE_URL}/verify-email?token=${token}`,
-      linkLabel: "Confirm my email",
+      linkLabel: "Verify my email",
+      meta: `Link expires in ${LINK_TTL_HOURS} hours · Single use`,
       category: NotificationType.VERIFICATION,
+      // The one mail where "here is what the platform does" earns its space:
+      // it is the first thing most people ever see from us.
+      highlights: [
+        { title: "Projects", blurb: "Plans, permits and progress" },
+        { title: "Payments", blurb: "Escrow and milestone releases" },
+        { title: "Schedule", blurb: "Crews, meetings and site diary" },
+      ],
     });
   } catch (err) {
     // Drop the token we just wrote — nobody received it, and leaving it there
@@ -93,7 +133,7 @@ export async function issueVerification(user: HydratedDocument<UserDoc>): Promis
     return { sent: false, reason: "send-failed" };
   }
 
-  return { sent: true };
+  return { sent: true, nextRetryAfterMs: cooldownAfter(sentSoFar + 1) };
 }
 
 export type ConsumeResult =
@@ -173,7 +213,7 @@ export async function nudgeIfUnverified(user: HydratedDocument<UserDoc>): Promis
     await notify(user._id.toString(), {
       type: NotificationType.SYSTEM,
       title: NUDGE_TITLE,
-      body: `We can't send anything to ${user.email} until you confirm it — open your account information and send yourself the link.`,
+      body: `We can't send anything to ${user.email} until you confirm it, open your account information and send yourself the link.`,
       link: "/account",
     });
   } catch {
