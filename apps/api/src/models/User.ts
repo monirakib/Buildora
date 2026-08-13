@@ -305,6 +305,12 @@ const profileSchema = new Schema<UserProfile>(
     supplyCategories: { type: [String], default: undefined },
     brandAuthorizations: { type: [brandAuthorizationSchema], default: undefined },
     warehouseAddress: { type: String, trim: true },
+    // Stored as a plain lat/lng pair rather than GeoJSON: nothing here does a
+    // geospatial query, and a 2dsphere index would be weight without a use.
+    warehouseLocation: {
+      type: new Schema({ lat: { type: Number }, lng: { type: Number } }, { _id: false }),
+      default: undefined,
+    },
     deliveryDistricts: { type: [String], default: undefined },
     bstiLicenseNo: { type: String, trim: true },
     bstiCertificateUrl: { type: String, trim: true },
