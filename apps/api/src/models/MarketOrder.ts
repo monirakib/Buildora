@@ -18,6 +18,15 @@ export interface MarketOrderDoc {
   phone: string;
   note?: string;
   status: OrderStatus;
+  /** Every status this order has been through, with when. */
+  timeline: { status: OrderStatus; at: Date; note?: string }[];
+  /** What the seller promised when they confirmed. */
+  expectedDeliveryAt?: Date;
+  /** The build this is for, when the buyer picked one at checkout. */
+  project?: Types.ObjectId;
+  /** Road distance and drive time, snapshotted at order time. */
+  deliveryDistanceKm?: number;
+  deliveryDurationMin?: number;
   /** Set when the buyer's gateway payment clears. Unpaid orders show a Pay button. */
   paidAt?: Date;
   /** SSLCommerz reference for the payment that settled this order. */
@@ -50,6 +59,24 @@ const marketOrderSchema = new Schema<MarketOrderDoc>(
       default: OrderStatus.PLACED,
       index: true,
     },
+    // Appended to on every move, never rewritten — the history is the point.
+    timeline: {
+      type: [
+        new Schema(
+          {
+            status: { type: String, enum: Object.values(OrderStatus), required: true },
+            at: { type: Date, default: Date.now },
+            note: { type: String, trim: true, maxlength: 300 },
+          },
+          { _id: false }
+        ),
+      ],
+      default: [],
+    },
+    expectedDeliveryAt: { type: Date },
+    project: { type: Schema.Types.ObjectId, ref: "Project" },
+    deliveryDistanceKm: { type: Number, min: 0 },
+    deliveryDurationMin: { type: Number, min: 0 },
   },
   { timestamps: true }
 );

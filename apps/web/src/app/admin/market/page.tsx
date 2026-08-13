@@ -23,6 +23,18 @@ function OrderChip({ status }: { status: OrderStatus }) {
       cls: "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300",
       icon: <path d="m5 13 4 4L19 7" />,
     },
+    [OrderStatus.DISPATCHED]: {
+      cls: "bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300",
+      // A truck: loaded and moving, distinct at a glance from the tick that
+      // means confirmed and the double tick that means delivered.
+      icon: (
+        <>
+          <path d="M3 7h11v9H3zM14 10h4l3 3v3h-7z" />
+          <circle cx="7" cy="18" r="1.5" />
+          <circle cx="17" cy="18" r="1.5" />
+        </>
+      ),
+    },
     [OrderStatus.DELIVERED]: {
       cls: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300",
       icon: (

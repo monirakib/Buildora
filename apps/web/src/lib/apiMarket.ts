@@ -98,14 +98,16 @@ export async function listOrders(token: string): Promise<MarketOrder[]> {
 export async function updateOrderStatus(
   token: string,
   id: string,
-  status: OrderStatus
+  status: OrderStatus,
+  /** Required when confirming — the date the seller promises the buyer. */
+  extra?: { expectedDeliveryAt?: string; note?: string }
 ): Promise<MarketOrder> {
   const res = await request<{ data: { order: MarketOrder } }>(
     `/api/marketplace/orders/${id}/status`,
     {
       method: "PATCH",
       headers: { Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({ status, ...extra }),
     }
   );
   return res.data.order;

@@ -241,6 +241,8 @@ export enum ProductCategory {
 export enum OrderStatus {
   PLACED = "PLACED",
   CONFIRMED = "CONFIRMED",
+  /** Loaded and on the way — the state a buyer actually watches for. */
+  DISPATCHED = "DISPATCHED",
   DELIVERED = "DELIVERED",
   CANCELLED = "CANCELLED",
 }

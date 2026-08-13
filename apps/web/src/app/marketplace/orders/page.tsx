@@ -9,11 +9,19 @@ import { useSession } from "@/store/useSession";
 import { Navbar } from "@/components/landing/Navbar";
 import { formatDate } from "@/components/app/projectStatus";
 import { formatBdt, statusLabels, statusStyles } from "@/components/market/market";
+import { OrderTracker } from "@/components/market/OrderTracker";
 import { GatewayPayButton } from "@/components/app/GatewayPayButton";
 import { readPaymentNotice } from "@/lib/apiPayments";
 
 const cardClass =
   "rounded-2xl border border-white/50 bg-white/55 p-5 shadow-xl shadow-black/5 backdrop-blur-xl sm:p-6 dark:border-white/10 dark:bg-white/5";
+
+/** Tomorrow — the usual answer, and one tap away from anything else. */
+function defaultDeliveryDate(): string {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  return d.toISOString().slice(0, 10);
+}
 
 /** Marketplace orders — buyers track what they ordered; sellers fulfil. */
 export default function MarketOrdersPage() {
@@ -55,8 +63,20 @@ export default function MarketOrdersPage() {
     })();
   }, [mounted, user, token, isBuyer, isSeller, router]);
 
+  // Which order is mid-confirmation, and the promise being typed for it.
+  const [confirming, setConfirming] = useState<string | null>(null);
+  const [confirmForm, setConfirmForm] = useState({ date: defaultDeliveryDate(), note: "" });
+
+  /**
+   * Confirming is the one move that carries a promise, so it opens the date
+   * form instead of firing straight away. Everything else moves immediately.
+   */
   async function move(order: MarketOrder, status: OrderStatus) {
     if (!token) return;
+    if (status === OrderStatus.CONFIRMED) {
+      setConfirming(order.id);
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -64,6 +84,26 @@ export default function MarketOrdersPage() {
       setOrders((list) => list.map((o) => (o.id === order.id ? updated : o)));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't update the order");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /** Confirms with the delivery date the seller just promised. */
+  async function confirmWithDate(order: MarketOrder) {
+    if (!token) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const updated = await updateOrderStatus(token, order.id, OrderStatus.CONFIRMED, {
+        expectedDeliveryAt: new Date(`${confirmForm.date}T12:00:00`).toISOString(),
+        note: confirmForm.note || undefined,
+      });
+      setOrders((list) => list.map((o) => (o.id === order.id ? updated : o)));
+      setConfirming(null);
+      setConfirmForm({ date: defaultDeliveryDate(), note: "" });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't confirm the order");
     } finally {
       setBusy(false);
     }
@@ -79,9 +119,13 @@ export default function MarketOrdersPage() {
         ];
       if (order.status === OrderStatus.CONFIRMED)
         return [
+          { label: "Dispatch", to: OrderStatus.DISPATCHED },
           { label: "Mark delivered", to: OrderStatus.DELIVERED },
           { label: "Cancel", to: OrderStatus.CANCELLED, danger: true },
         ];
+      // Once it's on the road the only honest move left is delivered.
+      if (order.status === OrderStatus.DISPATCHED)
+        return [{ label: "Mark delivered", to: OrderStatus.DELIVERED }];
       return [];
     }
     // Buyers can back out while the order is still just placed.
@@ -218,6 +262,73 @@ export default function MarketOrdersPage() {
                     <p className="sm:col-span-2">Deliver to: {o.deliveryAddress}</p>
                     {o.note && <p className="sm:col-span-2">Note: {o.note}</p>}
                   </div>
+
+                  {/* Where the order actually is, for both sides. */}
+                  <div className="mt-4">
+                    <OrderTracker order={o} />
+                  </div>
+
+                  {/* Confirming asks for the date before it fires, because that
+                      date is a promise the buyer will hold them to. */}
+                  {confirming === o.id && (
+                    <div className="mt-4 flex flex-col gap-3 rounded-xl border border-amber-400/40 bg-amber-400/10 p-4">
+                      <p className="text-sm font-bold">When will you deliver?</p>
+                      <div className="flex flex-wrap items-end gap-3">
+                        <label className="text-sm">
+                          <span className="mb-1 block font-semibold">Delivery date</span>
+                          <input
+                            type="date"
+                            value={confirmForm.date}
+                            min={new Date().toISOString().slice(0, 10)}
+                            onChange={(e) =>
+                              setConfirmForm((f) => ({ ...f, date: e.target.value }))
+                            }
+                            className="rounded-xl border border-stone-300/80 bg-white/70 px-4 py-2.5 text-sm outline-none focus:border-amber-500 dark:border-white/15 dark:bg-white/5 dark:text-slate-100"
+                          />
+                        </label>
+                        <label className="min-w-48 flex-1 text-sm">
+                          <span className="mb-1 block font-semibold">
+                            Note{" "}
+                            <span className="font-medium text-stone-500 dark:text-slate-400">
+                              (optional)
+                            </span>
+                          </span>
+                          <input
+                            type="text"
+                            placeholder="e.g. Truck leaves at 7am"
+                            value={confirmForm.note}
+                            onChange={(e) =>
+                              setConfirmForm((f) => ({ ...f, note: e.target.value }))
+                            }
+                            className="w-full rounded-xl border border-stone-300/80 bg-white/70 px-4 py-2.5 text-sm outline-none focus:border-amber-500 dark:border-white/15 dark:bg-white/5 dark:text-slate-100"
+                          />
+                        </label>
+                      </div>
+                      {o.deliveryDurationMin != null && (
+                        <p className="text-xs text-stone-600 dark:text-slate-400">
+                          It&apos;s a {o.deliveryDistanceKm} km run — about{" "}
+                          {o.deliveryDurationMin} minutes each way.
+                        </p>
+                      )}
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          disabled={busy || !confirmForm.date}
+                          onClick={() => confirmWithDate(o)}
+                          className="rounded-full bg-amber-400 px-6 py-2.5 text-sm font-bold text-stone-950 transition hover:bg-amber-300 disabled:opacity-60"
+                        >
+                          {busy ? "Confirming…" : "Confirm order"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setConfirming(null)}
+                          className="rounded-full border border-stone-300 px-6 py-2.5 text-sm font-bold text-stone-700 transition hover:bg-stone-100 dark:border-white/20 dark:text-slate-200"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Buyers pay for an order that hasn't been settled yet. */}
                   {isBuyer && !o.paidAt && o.status !== OrderStatus.CANCELLED && token && (
