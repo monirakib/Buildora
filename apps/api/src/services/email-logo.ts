@@ -20,8 +20,9 @@
 
 /**
  * The name the attachment travels under, and the Content-ID the template's
- * <img src="cid:…"> points at — deliberately the same string, because Brevo
- * addresses an inline attachment by its filename rather than by a separate id.
+ * <img src="cid:…"> points at — deliberately the same string, because some
+ * mail APIs address an inline attachment by its filename rather than by a
+ * separate id, and keeping the two identical satisfies either kind.
  */
 export const LOGO_CID = "buildora.png";
 

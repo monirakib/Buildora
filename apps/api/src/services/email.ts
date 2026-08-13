@@ -5,33 +5,33 @@ import { LOGO_CID, LOGO_PNG } from "./email-logo";
 import { renderEmail } from "./email-template";
 
 /**
- * Transactional email: one message, three ways out.
+ * Transactional email: one message, two ways out.
  *
  * This is the platform's first contact that reaches someone who isn't on the
  * site: a supervisor's verification decision, an escrow release, a booked
- * meeting. How it leaves the building is a deployment detail, so every route
- * sits behind one `sendEmail`, and the first one configured wins:
+ * meeting. How it leaves the building is a deployment detail, so both routes
+ * sit behind one `sendEmail`, and the first one configured wins:
  *
- *   Mailjet  Their REST API over HTTPS. The production route, because Render's
+ *   Resend   Their REST API over HTTPS. The production route, because Render's
  *            free tier blocks outbound SMTP (ports 25, 465 and 587) outright —
  *            a deployed API can never open a mail connection at all, and only
- *            something on port 443 gets out. Free tier is 200 a day, and it
- *            needs no domain: one sender address, verified by clicking a link.
- *   Brevo    Same idea, 300 a day. Kept because we hold a key, but a new Brevo
- *            account can't send until they activate it by hand.
+ *            something on port 443 gets out. Free tier is 3,000 a month, and
+ *            the price of entry is a domain they can verify by DNS rather than
+ *            an account review: buildora.software, which also means the mail
+ *            is DKIM-signed as us instead of as a stranger.
  *   SMTP     Gmail with an app password, straight from a mailbox we already
- *            own. No third-party account and nothing to activate, so it's the
- *            local path — and useless on Render, hence last. The app password
- *            is *not* the Google account password; Google stopped accepting
- *            that for SMTP in 2022.
+ *            own. No third-party account and nothing to configure elsewhere,
+ *            so it's the local path — and useless on Render, hence last. The
+ *            app password is *not* the Google account password; Google stopped
+ *            accepting that for SMTP in 2022.
  *
- * All three are called with plain fetch or nodemailer rather than a vendor
- * SDK. Each is one request with a JSON body, and a dependency we don't add is
- * one nobody has to explain.
+ * Both are called with plain fetch or nodemailer rather than a vendor SDK.
+ * Each is one request with a JSON body, and a dependency we don't add is one
+ * nobody has to explain.
  *
- * Whichever route runs, the mail comes from EMAIL_FROM_ADDRESS — which the two
- * APIs require to be a verified sender, and Gmail requires to be the account
- * that authenticated.
+ * Whichever route runs, the mail comes from EMAIL_FROM_ADDRESS — which Resend
+ * requires to sit at a domain it has verified, and Gmail requires to be the
+ * account that authenticated.
  *
  * Only the events in EMAIL_WORTHY (see packages/shared/src/delivery.ts) are
  * sent at all, and only to confirmed addresses (see emailVerification.ts).
@@ -41,23 +41,15 @@ import { renderEmail } from "./email-template";
  * What the message actually looks like lives in email-template.ts.
  */
 
-const MAILJET_ENDPOINT = "https://api.mailjet.com/v3.1/send";
-const BREVO_ENDPOINT = "https://api.brevo.com/v3/smtp/email";
+const RESEND_ENDPOINT = "https://api.resend.com/emails";
 const REQUEST_TIMEOUT_MS = 10000;
 
-const mailjetConfigured = Boolean(env.MAILJET_API_KEY && env.MAILJET_API_SECRET);
-const brevoConfigured = Boolean(env.BREVO_API_KEY);
+const resendConfigured = Boolean(env.RESEND_API_KEY);
 const smtpConfigured = Boolean(env.SMTP_USER && env.SMTP_PASSWORD);
-const configured = mailjetConfigured || brevoConfigured || smtpConfigured;
+const configured = resendConfigured || smtpConfigured;
 
 /** Names the live route, for the boot log and for the error messages. */
-const route = mailjetConfigured
-  ? "Mailjet"
-  : brevoConfigured
-    ? "Brevo"
-    : smtpConfigured
-      ? "Gmail SMTP"
-      : "none";
+const route = resendConfigured ? "Resend" : smtpConfigured ? "Gmail SMTP" : "none";
 
 if (!configured) {
   console.warn("[email] no mail route configured — transactional email is disabled");
@@ -152,74 +144,10 @@ export async function sendEmailOrThrow(input: EmailInput): Promise<void> {
   // honouring it is simply correct.
   const headers = { "List-Unsubscribe": `<${env.WEB_BASE_URL}/account>` };
 
-  if (mailjetConfigured) {
-    await sendViaMailjet(input, html, text, headers);
-  } else if (brevoConfigured) {
-    await sendViaBrevo(input, html, text, headers);
+  if (resendConfigured) {
+    await sendViaResend(input, html, text, headers);
   } else {
     await sendViaSmtp(input, html, text, headers);
-  }
-}
-
-/**
- * Posts the message to Mailjet's Send API.
- *
- * Two things to know about their responses. Authentication is HTTP Basic with
- * the key as username and the secret as password — not a bearer token or a
- * custom header. And a 200 does not mean it was accepted: Mailjet answers with
- * a per-message Status, so a refusal for this one message arrives inside a
- * successful HTTP response and has to be read out of the body.
- */
-async function sendViaMailjet(
-  input: EmailInput,
-  html: string,
-  text: string,
-  headers: Record<string, string>
-): Promise<void> {
-  const credentials = Buffer.from(`${env.MAILJET_API_KEY}:${env.MAILJET_API_SECRET}`).toString(
-    "base64"
-  );
-
-  const payload = {
-    Messages: [
-      {
-        From: { Email: env.EMAIL_FROM_ADDRESS, Name: env.EMAIL_FROM_NAME },
-        To: [{ Email: input.to, ...(input.toName ? { Name: input.toName } : {}) }],
-        Subject: input.subject,
-        TextPart: text,
-        HTMLPart: html,
-        Headers: headers,
-        // "Inlined" is Mailjet's word for an attachment the HTML refers to by
-        // Content-ID rather than one the reader downloads. ContentID matches
-        // the template's <img src="cid:buildora.png">.
-        InlinedAttachments: [
-          {
-            ContentType: "image/png",
-            Filename: LOGO_CID,
-            ContentID: LOGO_CID,
-            Base64Content: LOGO_PNG.toString("base64"),
-          },
-        ],
-      },
-    ],
-  };
-
-  const res = await postJson(MAILJET_ENDPOINT, payload, {
-    authorization: `Basic ${credentials}`,
-  });
-
-  if (!res.ok) {
-    const detail = await res.text().catch(() => "");
-    throw new Error(`Mailjet refused the message (${res.status}) ${detail}`.trim());
-  }
-
-  const body = (await res.json().catch(() => null)) as {
-    Messages?: { Status?: string; Errors?: { ErrorMessage?: string }[] }[];
-  } | null;
-  const message = body?.Messages?.[0];
-  if (message?.Status !== "success") {
-    const why = message?.Errors?.map((e) => e.ErrorMessage).join("; ");
-    throw new Error(`Mailjet rejected the message: ${why || JSON.stringify(body)}`);
   }
 }
 
@@ -244,34 +172,46 @@ async function postJson(
   }).finally(() => clearTimeout(timer));
 }
 
-/** Posts the message to Brevo's REST API. */
-async function sendViaBrevo(
+/** Posts the message to Resend's REST API. */
+async function sendViaResend(
   input: EmailInput,
   html: string,
   text: string,
   headers: Record<string, string>
 ): Promise<void> {
   const payload = {
-    sender: { name: env.EMAIL_FROM_NAME, email: env.EMAIL_FROM_ADDRESS },
-    to: [{ email: input.to, ...(input.toName ? { name: input.toName } : {}) }],
+    // Resend takes the sender as one RFC 5322 string rather than a name/email
+    // pair, so the display name is spliced in here.
+    from: `${env.EMAIL_FROM_NAME} <${env.EMAIL_FROM_ADDRESS}>`,
+    to: [input.toName ? `${input.toName} <${input.to}>` : input.to],
     subject: input.subject,
-    textContent: text,
-    htmlContent: html,
+    text,
+    html,
     headers,
-    // Brevo addresses an inline attachment by its filename, so this name and
-    // the template's <img src="cid:buildora.png"> have to stay identical —
-    // that pairing is exactly what LOGO_CID holds.
-    attachment: [{ name: LOGO_CID, content: LOGO_PNG.toString("base64") }],
+    // content_id is what makes this inline rather than a download: it's the
+    // other half of the template's <img src="cid:buildora.png">. Resend wants
+    // the bytes base64-encoded in the JSON body.
+    attachments: [
+      {
+        filename: LOGO_CID,
+        content: LOGO_PNG.toString("base64"),
+        content_id: LOGO_CID,
+      },
+    ],
   };
 
-  const res = await postJson(BREVO_ENDPOINT, payload, { "api-key": env.BREVO_API_KEY! });
+  const res = await postJson(RESEND_ENDPOINT, payload, {
+    authorization: `Bearer ${env.RESEND_API_KEY}`,
+  });
 
   if (!res.ok) {
-    // Brevo explains refusals in the body — worth passing on, since the causes
-    // are all things a person has to go and fix in their dashboard: an
-    // unverified sender, an unlisted IP, an account not yet activated.
+    // Resend names the actual problem in the body, and the causes are all
+    // things a person has to go and fix outside this code: a domain whose DNS
+    // records haven't propagated, a From address at some other domain, a key
+    // that was created read-only. Passing the text through is what makes the
+    // "send a test email" button worth pressing.
     const detail = await res.text().catch(() => "");
-    throw new Error(`Brevo refused the message (${res.status}) ${detail}`.trim());
+    throw new Error(`Resend refused the message (${res.status}) ${detail}`.trim());
   }
 }
 
