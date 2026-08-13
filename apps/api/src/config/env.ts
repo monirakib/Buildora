@@ -49,30 +49,36 @@ const envSchema = z.object({
   VAPID_PUBLIC_KEY: z.string().optional(),
   VAPID_PRIVATE_KEY: z.string().optional(),
   VAPID_SUBJECT: z.string().default("mailto:support@buildora.local"),
-  // Outgoing email has two routes; services/email.ts prefers Brevo and falls
-  // back to SMTP, and is simply off when neither is configured.
+  // Outgoing email has three routes. services/email.ts takes the first one
+  // configured, in the order below, and is simply off when none is.
   //
-  // 1. Brevo's REST API — free key from https://app.brevo.com under SMTP &
-  //    API (300/day). The only route that survives deployment: Render's free
-  //    tier blocks outbound SMTP ports (25, 465, 587) outright, so a deployed
-  //    API can never open a mail connection. Three things in the Brevo
-  //    dashboard have to line up or it refuses: the key, an authorised IP
-  //    (turn that restriction off for a host with a changing IP), and an
-  //    activated account — a new one can't send until Brevo switches it on.
+  // 1. Mailjet's REST API — free key + secret from https://app.mailjet.com
+  //    (200/day). The route meant for production: Render's free tier blocks
+  //    outbound SMTP ports (25, 465, 587) outright, so a deployed API can only
+  //    reach a mail service over HTTPS. Mailjet needs no domain — it verifies
+  //    one sender address by mailing a link to it.
+  MAILJET_API_KEY: z.string().optional(),
+  MAILJET_API_SECRET: z.string().optional(),
+  //
+  // 2. Brevo's REST API — also HTTPS, also free (300/day), but a new account
+  //    can't send until Brevo activates it by hand, and they generally want a
+  //    verified domain first. Kept because the key exists; delete this and
+  //    sendViaBrevo together if it never gets activated.
   BREVO_API_KEY: z.string().optional(),
   //
-  // 2. Gmail over SMTP — no third-party account, so it works the moment an app
-  //    password exists (Google Account → Security → 2-Step Verification → App
-  //    passwords; the normal account password is refused). Port 465 is TLS
-  //    from the first byte, 587 upgrades with STARTTLS.
+  // 3. Gmail over SMTP — no third-party account at all, so it works the moment
+  //    an app password exists (Google Account → Security → 2-Step Verification
+  //    → App passwords; the normal account password is refused). Unusable on
+  //    Render, which is why it's last and why it's the local path. Port 465 is
+  //    TLS from the first byte, 587 upgrades with STARTTLS.
   SMTP_HOST: z.string().default("smtp.gmail.com"),
   SMTP_PORT: z.coerce.number().default(465),
   SMTP_USER: z.string().optional(),
   SMTP_PASSWORD: z.string().optional(),
   //
-  // The From address, which both routes police: Brevo requires a sender it has
-  // verified, Gmail requires the account that authenticated (it silently
-  // rewrites anything else).
+  // The From address, which every route polices: Mailjet and Brevo each
+  // require a sender they have verified, and Gmail requires the account that
+  // authenticated (it silently rewrites anything else).
   EMAIL_FROM_NAME: z.string().default("Buildora"),
   EMAIL_FROM_ADDRESS: z.string().optional(),
   // OpenRouteService — driving distance and ETA from a supplier's warehouse to
