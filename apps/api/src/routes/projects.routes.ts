@@ -37,7 +37,19 @@ import {
   listSiteDiary,
   updateSiteDiaryEntry,
 } from "../controllers/sitediary.controller";
+import {
+  checkIn,
+  checkOut,
+  deleteCheckIn,
+  listAttendance,
+} from "../controllers/attendance.controller";
 import { listProjectDisputes } from "../controllers/disputes.controller";
+import { estimateProject } from "../controllers/estimator.controller";
+import {
+  disableProjectShare,
+  enableProjectShare,
+  getProjectShare,
+} from "../controllers/publicshare.controller";
 import { acceptHandover, getHandover, saveHandover } from "../controllers/handover.controller";
 import { requireAuth } from "../middleware/auth";
 import { requireRole } from "../middleware/roles";
@@ -68,6 +80,14 @@ projectsRouter.get("/:id/contract", getProjectContract);
 projectsRouter.get("/:id/ecps", getEcpsApplication);
 projectsRouter.post("/:id/ecps", startEcpsApplication);
 projectsRouter.get("/:id/disputes", listProjectDisputes);
+projectsRouter.post("/:id/estimate", estimateProject);
+projectsRouter.get("/:id/attendance", listAttendance);
+projectsRouter.post("/:id/attendance", checkIn);
+projectsRouter.post("/:id/attendance/:checkInId/out", checkOut);
+projectsRouter.delete("/:id/attendance/:checkInId", deleteCheckIn);
+projectsRouter.get("/:id/share", getProjectShare);
+projectsRouter.post("/:id/share", enableProjectShare);
+projectsRouter.delete("/:id/share", disableProjectShare);
 projectsRouter.get("/:id/handover", getHandover);
 projectsRouter.put("/:id/handover", saveHandover);
 projectsRouter.post("/:id/handover/accept", acceptHandover);
