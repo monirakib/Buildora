@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { BD_DISTRICTS, BD_DIVISIONS, type BdDivision } from "@buildora/shared";
 import { ChipGroup, Field, StepHeader, input } from "../ui";
+import { PlotMapPicker } from "@/components/project/PlotMapPicker";
 import type { StepProps } from "../form";
 
 /**
@@ -57,6 +58,28 @@ export function CoverageStep({ form, patch }: StepProps) {
             value={form.warehouseAddress}
             onChange={(e) => patch({ warehouseAddress: e.target.value })}
             className={input}
+          />
+        </Field>
+
+        {/* The warehouse pin. Delivery routing works in coordinates, and
+            Bangladeshi street addresses geocode badly enough that guessing from
+            the text above would hand buyers confidently wrong ETAs. */}
+        <Field
+          id="warehouseLocation"
+          title="Pin the warehouse on the map"
+          hint="Buyers see the driving distance and ETA from this pin to their build site."
+        >
+          <PlotMapPicker
+            value={
+              form.warehouseLocation
+                ? { lat: form.warehouseLocation.lat, lng: form.warehouseLocation.lng }
+                : null
+            }
+            onChange={(picked) =>
+              patch({
+                warehouseLocation: picked ? { lat: picked.lat, lng: picked.lng } : null,
+              })
+            }
           />
         </Field>
 

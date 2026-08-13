@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { Lock } from "lucide-react";
+import Link from "next/link";
+import { FileText, Lock } from "lucide-react";
 import {
   DisputeScope,
   MilestoneStatus,
@@ -45,6 +46,9 @@ import { BuildSection } from "@/components/project/BuildSection";
 import { ChangeOrderSection } from "@/components/project/ChangeOrderSection";
 import { DisputeSection } from "@/components/project/DisputeSection";
 import { HandoverSection } from "@/components/project/HandoverSection";
+import { AttendanceSection } from "@/components/project/AttendanceSection";
+import { EstimateSection } from "@/components/project/EstimateSection";
+import { ShareSection } from "@/components/project/ShareSection";
 import { ProjectProgress } from "@/components/project/hub/ProjectProgress";
 import { ProjectTabs, type TabDescriptor } from "@/components/project/hub/ProjectTabs";
 import { OverviewTab } from "@/components/project/hub/OverviewTab";
@@ -456,6 +460,8 @@ export default function ProjectDetailPage() {
                     {/* Disputes live on Overview because they cut across every
                         phase — the money in question may be design, structural
                         or construction. */}
+                    {isOwner && <EstimateSection projectId={project.id} token={token} />}
+                    {isOwner && <ShareSection projectId={project.id} token={token} />}
                     <DisputeSection
                       projectId={project.id}
                       token={token}
@@ -535,6 +541,16 @@ export default function ProjectDetailPage() {
                       onChanged={load}
                     />
                     {build && (
+                      <div>
+                        <Link
+                          href={`/projects/${project.id}/report`}
+                          className="inline-flex items-center gap-2 rounded-full border border-stone-300 px-5 py-2.5 text-sm font-bold text-stone-700 transition hover:bg-stone-100 dark:border-white/20 dark:text-slate-200 dark:hover:bg-white/10"
+                        >
+                          <FileText className="h-4 w-4" /> Printable inspection report
+                        </Link>
+                      </div>
+                    )}
+                    {build && (
                       <ChangeOrderSection
                         buildContractId={build.id}
                         token={token}
@@ -553,12 +569,19 @@ export default function ProjectDetailPage() {
                 )}
 
                 {tab === "diary" && (
-                  <SiteDiarySection
+                  <>
+                    <AttendanceSection
+                      projectId={project.id}
+                      token={token}
+                      hasPlotPin={!!project.location}
+                    />
+                    <SiteDiarySection
                     project={project}
                     token={token}
                     userId={user.id}
                     canWrite={isOwner || isAssignedArchitect || isAssignedEngineer}
-                  />
+                    />
+                  </>
                 )}
 
                 {tab === "documents" && (
