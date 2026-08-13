@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ProductCategory, UserRole, type Product } from "@buildora/shared";
 import { listProducts, placeOrder } from "@/lib/apiMarket";
+import { DeliveryEstimatePanel } from "@/components/market/DeliveryEstimatePanel";
 import { useSession } from "@/store/useSession";
 import { Navbar } from "@/components/landing/Navbar";
 import { Stagger } from "@/components/Stagger";
@@ -107,6 +108,23 @@ function OrderModal({
                   className={inputClass}
                 />
               </div>
+              {/* Distance and ETA before they commit. Picking a project also
+                  fills the address in, since the plot already has one. */}
+              <DeliveryEstimatePanel
+                productId={product.id}
+                token={token}
+                onProjectPicked={(project) =>
+                  setForm((f) => ({
+                    ...f,
+                    // Never overwrite something they've already typed.
+                    deliveryAddress:
+                      f.deliveryAddress.trim() === ""
+                        ? `${project.address}, ${project.areaName}`
+                        : f.deliveryAddress,
+                  }))
+                }
+              />
+
               <div>
                 <label htmlFor="address" className="mb-1.5 block text-sm font-semibold">
                   Delivery address
