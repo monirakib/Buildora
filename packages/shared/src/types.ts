@@ -465,6 +465,12 @@ export interface SessionUser {
   username: string;
   /** Primary email: the login identifier. Changing it requires the password. */
   email: string;
+  /**
+   * Whether that address has been proved reachable by clicking a mailed link.
+   * Unverified accounts receive no notification email at all, so the UI nags
+   * until this is true. Changing the email address resets it.
+   */
+  emailVerified: boolean;
   /** Optional second address for receipts and account recovery. */
   recoveryEmail?: string;
   phone?: string;

@@ -19,6 +19,13 @@ export interface UserDoc {
   name: string;
   username: string;
   email: string;
+  /**
+   * When the address was proved reachable by clicking a link we mailed to it.
+   * Absent means unverified, which is the state every account starts in — and
+   * an unverified address is never sent notification mail (see
+   * services/notifications.ts).
+   */
+  emailVerifiedAt?: Date;
   recoveryEmail?: string;
   phone?: string;
   altPhone?: string;
@@ -368,6 +375,10 @@ const userSchema = new Schema<UserDoc>(
       immutable: true,
     },
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
+    // Absent until the confirmation link is clicked. Every account that existed
+    // before this feature is therefore unverified, which is correct — nobody
+    // ever proved those addresses.
+    emailVerifiedAt: { type: Date },
     // Secondary contact address. Not unique and never usable to log in — it
     // only receives receipts and recovery mail.
     recoveryEmail: { type: String, lowercase: true, trim: true },

@@ -1,87 +1,109 @@
+import nodemailer, { type Transporter } from "nodemailer";
+import type { NotificationType } from "@buildora/shared";
 import { env } from "../config/env";
+import { LOGO_CID, LOGO_PNG } from "./email-logo";
+import { renderEmail } from "./email-template";
 
 /**
- * Transactional email through Brevo.
+ * Transactional email over SMTP.
  *
  * This is the platform's first contact that reaches someone who isn't on the
  * site: a supervisor's verification decision, an escrow release, a booked
- * meeting. It goes through Brevo's REST API directly rather than their SDK —
- * one POST with a JSON body needs no dependency, and a dependency we don't add
- * is one nobody has to explain.
+ * meeting. It goes out through an ordinary mailbox — Gmail by default — using
+ * SMTP, the same protocol any mail client speaks. No email provider account,
+ * no API key, nothing to sign up for beyond the address we already own.
  *
- * Free tier is 300 emails a day, which is why only the events in EMAIL_WORTHY
- * (see packages/shared/src/delivery.ts) are sent at all. Without an API key
- * every send is a logged no-op, so local development never tries to mail
- * anyone and never fails because it couldn't.
+ * Authentication is an **app password**, not the account password: Google
+ * stopped accepting the real one for SMTP in 2022. Generate a 16-character app
+ * password under Google Account → Security → 2-Step Verification → App
+ * passwords, and put it in SMTP_PASSWORD.
+ *
+ * Only the events in EMAIL_WORTHY (see packages/shared/src/delivery.ts) are
+ * sent at all — see the note there on why not everything deserves a mailbox.
+ * Without SMTP_USER and SMTP_PASSWORD every send is a logged no-op, so local
+ * development never tries to mail anyone and never fails because it couldn't.
+ *
+ * What the message actually looks like lives in email-template.ts.
  */
 
-const BREVO_ENDPOINT = "https://api.brevo.com/v3/smtp/email";
-const REQUEST_TIMEOUT_MS = 10000;
-
-const configured = Boolean(env.BREVO_API_KEY);
+const configured = Boolean(env.SMTP_USER && env.SMTP_PASSWORD);
 
 if (!configured) {
-  console.warn("[email] BREVO_API_KEY not set — transactional email is disabled");
+  console.warn("[email] SMTP_USER / SMTP_PASSWORD not set — transactional email is disabled");
 }
 
 export function isEmailConfigured(): boolean {
   return configured;
 }
 
+/**
+ * The address in the From line.
+ *
+ * With Gmail this has to be the account that authenticated (or one of its
+ * verified aliases). Anything else and Gmail quietly rewrites the header to the
+ * real account, which looks broken to the recipient — so defaulting to
+ * SMTP_USER is both the safe choice and the one that needs no configuration.
+ */
+const fromAddress = env.EMAIL_FROM_ADDRESS || env.SMTP_USER || "";
+
+/**
+ * One connection pool for the whole process, built on first use.
+ *
+ * Built lazily rather than at import time so that a server with no mail
+ * configured never opens a socket, and so a bad password fails on the send
+ * (where the error is visible and swallowed safely) instead of at boot.
+ */
+let transporter: Transporter | null = null;
+
+function getTransporter(): Transporter {
+  if (!transporter) {
+    transporter = nodemailer.createTransport({
+      host: env.SMTP_HOST,
+      // Port 465 is TLS from the first byte; 587 starts plain and upgrades with
+      // STARTTLS. Both are encrypted — they just negotiate it at different
+      // moments, and `secure` is what tells nodemailer which one this is.
+      port: env.SMTP_PORT,
+      secure: env.SMTP_PORT === 465,
+      auth: {
+        user: env.SMTP_USER!,
+        // Google shows app passwords as four groups of four ("abcd efgh ijkl
+        // mnop") and people paste them exactly like that, spaces included. The
+        // spaces are display only; leaving them in is a guaranteed 535.
+        pass: env.SMTP_PASSWORD!.replace(/\s+/g, ""),
+      },
+      // A mail server that stops answering must not hold a request open.
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 20000,
+    });
+  }
+  return transporter;
+}
+
 export interface EmailInput {
   to: string;
   toName?: string;
   subject: string;
-  /** Plain-text body. The HTML version is generated from it. */
+  /** Plain-text body. The HTML version is built from it. */
   text: string;
-  /** Optional in-app path — rendered as a button and appended to the text. */
+  /** In-app path or absolute URL — rendered as the button. */
   link?: string;
   linkLabel?: string;
-}
-
-/** Escapes the four characters that would otherwise break out of the markup. */
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+  /** The kind of event, which colours the category pill in the template. */
+  category?: NotificationType;
 }
 
 /**
- * Wraps the message in a plain, table-free layout.
+ * Sends one email and throws if it didn't go.
  *
- * Deliberately minimal: inline styles only, no external CSS or images, since
- * mail clients strip stylesheets and block remote images by default. Anything
- * fancier would look worse in more inboxes than it improves.
+ * Used by the "send a test email" button, where the actual SMTP error ("Invalid
+ * login: 535…") is exactly what the person setting this up needs to see. Every
+ * other caller wants sendEmail below, which swallows the failure.
  */
-function renderHtml(input: EmailInput): string {
-  const safeText = escapeHtml(input.text).replace(/\n/g, "<br />");
-  const button =
-    input.link &&
-    `<p style="margin:24px 0 0"><a href="${escapeHtml(input.link)}" style="background:#F5B400;border-radius:999px;color:#0c0a09;display:inline-block;font-weight:700;padding:12px 28px;text-decoration:none">${escapeHtml(input.linkLabel ?? "Open Buildora")}</a></p>`;
-
-  return `<div style="background:#f5f5f4;padding:32px 16px">
-  <div style="background:#ffffff;border-radius:16px;margin:0 auto;max-width:520px;padding:32px;font-family:system-ui,-apple-system,'Segoe UI',sans-serif;color:#1c1917">
-    <p style="color:#a8a29e;font-size:12px;font-weight:700;letter-spacing:2px;margin:0 0 20px;text-transform:uppercase">Buildora</p>
-    <h1 style="font-size:20px;margin:0 0 16px">${escapeHtml(input.subject)}</h1>
-    <p style="color:#44403c;font-size:15px;line-height:1.6;margin:0">${safeText}</p>
-    ${button ?? ""}
-    <p style="border-top:1px solid #e7e5e4;color:#a8a29e;font-size:12px;line-height:1.6;margin:28px 0 0;padding-top:16px">
-      You're receiving this because of activity on your Buildora account.
-      Turn these off any time in Account settings &rsaquo; Notifications.
-    </p>
-  </div>
-</div>`;
-}
-
-/**
- * Sends one email. Never throws — mail is a side effect of work that already
- * succeeded, exactly like the notification bell it rides along with.
- * Returns whether it actually went out, which the tests use.
- */
-export async function sendEmail(input: EmailInput): Promise<boolean> {
-  if (!configured) return false;
+export async function sendEmailOrThrow(input: EmailInput): Promise<void> {
+  if (!configured) {
+    throw new Error("Email isn't configured on this server");
+  }
 
   // An absolute URL is required in mail — a relative path has nothing to
   // resolve against once it's out of the browser.
@@ -91,36 +113,55 @@ export async function sendEmail(input: EmailInput): Promise<boolean> {
       ? `${env.WEB_BASE_URL}${input.link}`
       : undefined;
 
-  const payload = {
-    sender: { name: env.EMAIL_FROM_NAME, email: env.EMAIL_FROM_ADDRESS },
-    to: [{ email: input.to, ...(input.toName ? { name: input.toName } : {}) }],
+  const { html, text } = renderEmail({
     subject: input.subject,
-    textContent: absoluteLink ? `${input.text}\n\n${absoluteLink}` : input.text,
-    htmlContent: renderHtml({ ...input, link: absoluteLink }),
-  };
+    text: input.text,
+    recipientName: input.toName,
+    link: absoluteLink,
+    linkLabel: input.linkLabel,
+    category: input.category,
+    settingsUrl: `${env.WEB_BASE_URL}/account`,
+  });
 
-  try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-    const res = await fetch(BREVO_ENDPOINT, {
-      method: "POST",
-      headers: {
-        "api-key": env.BREVO_API_KEY!,
-        "content-type": "application/json",
-        accept: "application/json",
+  await getTransporter().sendMail({
+    from: { name: env.EMAIL_FROM_NAME, address: fromAddress },
+    to: input.toName ? { name: input.toName, address: input.to } : input.to,
+    subject: input.subject,
+    text,
+    html,
+    attachments: [
+      {
+        // `cid` is what makes this an *inline* part rather than a download:
+        // the template's <img src="cid:buildora-mark"> resolves to these bytes
+        // inside the message, so the logo shows with no server to fetch from.
+        filename: "buildora.png",
+        content: LOGO_PNG,
+        cid: LOGO_CID,
+        contentType: "image/png",
       },
-      body: JSON.stringify(payload),
-      signal: controller.signal,
-    }).finally(() => clearTimeout(timer));
+    ],
+    headers: {
+      // Standard header that puts a one-click "unsubscribe" control in Gmail's
+      // own UI, pointed at our notification settings. Spam filters look for it
+      // on bulk-ish mail, and honouring it is simply correct.
+      "List-Unsubscribe": `<${env.WEB_BASE_URL}/account>`,
+    },
+  });
+}
 
-    if (!res.ok) {
-      // Brevo explains refusals in the body — worth logging, since the usual
-      // cause is an unverified sender address rather than a bad key.
-      console.error(`[email] Brevo refused (${res.status}):`, await res.text().catch(() => ""));
-      return false;
-    }
+/**
+ * Sends one email. Never throws — mail is a side effect of work that already
+ * succeeded, exactly like the notification bell it rides along with.
+ * Returns whether it actually went out, which the tests use.
+ */
+export async function sendEmail(input: EmailInput): Promise<boolean> {
+  if (!configured) return false;
+  try {
+    await sendEmailOrThrow(input);
     return true;
   } catch (err) {
+    // Worth logging in full: the usual causes are a stale app password or
+    // Gmail's daily send cap, and both say so plainly in the SMTP reply.
     console.error("[email] send failed:", err instanceof Error ? err.message : err);
     return false;
   }

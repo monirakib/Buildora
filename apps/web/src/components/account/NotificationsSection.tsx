@@ -17,6 +17,7 @@ import {
   listPushDevices,
   pushPermission,
   removePushDevice,
+  sendTestEmail,
   sendTestPush,
   updateNotificationPreferences,
   type PushConfig,
@@ -34,12 +35,19 @@ import { Card, EmptyState, FieldRow, List, ghostButtonClass } from "./ui";
  */
 export function NotificationsSection({
   token,
+  email,
+  emailVerified,
   onToast,
 }: {
   token: string;
+  /** The account's own address — where every email below actually lands. */
+  email: string;
+  /** Unconfirmed addresses are sent nothing, whatever the preference says. */
+  emailVerified: boolean;
   onToast: (message: string, tone?: "success" | "error") => void;
 }) {
   const [config, setConfig] = useState<PushConfig | null>(null);
+  const [emailBusy, setEmailBusy] = useState(false);
   const [prefs, setPrefs] = useState<NotificationPreferences>(DEFAULT_NOTIFICATION_PREFERENCES);
   const [devices, setDevices] = useState<PushDevice[]>([]);
   const [subscribedHere, setSubscribedHere] = useState(false);
@@ -138,7 +146,9 @@ export function NotificationsSection({
             hint={
               config && !config.emailEnabled
                 ? "Not configured on this server yet."
-                : "Only the things that matter: decisions, money, and booked meetings."
+                : !emailVerified
+                  ? "Confirm your address first — nothing is sent to an unconfirmed inbox."
+                  : "Only the things that matter: decisions, money, and booked meetings."
             }
           >
             <label className="flex items-center gap-2.5 text-sm font-semibold">
@@ -200,6 +210,63 @@ export function NotificationsSection({
           >
             {busy ? "Working…" : subscribedHere ? "Turn off" : "Turn on"}
           </button>
+        </div>
+      </Card>
+
+      <Card
+        title="Email"
+        description="One message per significant event — never a digest, never marketing."
+        bodyClassName=""
+        action={
+          <button
+            type="button"
+            className={ghostButtonClass}
+            disabled={emailBusy || !config?.emailEnabled || !emailVerified}
+            onClick={async () => {
+              setEmailBusy(true);
+              try {
+                const sentTo = await sendTestEmail(token);
+                onToast(`Test email sent to ${sentTo}`, "success");
+              } catch (err) {
+                // The server passes the mail provider's own refusal through, so
+                // a wrong app password says so instead of "couldn't send".
+                onToast(err instanceof Error ? err.message : "Couldn't send", "error");
+              } finally {
+                setEmailBusy(false);
+              }
+            }}
+          >
+            {emailBusy ? "Sending…" : "Send a test"}
+          </button>
+        }
+      >
+        <div className="flex flex-wrap items-center gap-3 px-4 py-3.5 sm:px-5">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400">
+            <Mail className="h-4.5 w-4.5" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="flex flex-wrap items-center gap-2 text-sm font-semibold">
+              <span className="truncate">{email}</span>
+              <span
+                className={
+                  emailVerified
+                    ? "rounded-full bg-emerald-500/15 px-2 py-0.5 text-[0.7rem] font-bold text-emerald-700 dark:text-emerald-300"
+                    : "rounded-full bg-amber-500/20 px-2 py-0.5 text-[0.7rem] font-bold text-amber-800 dark:text-amber-300"
+                }
+              >
+                {emailVerified ? "Confirmed" : "Not confirmed"}
+              </span>
+            </p>
+            <p className="text-xs text-stone-500 dark:text-slate-400">
+              {!config?.emailEnabled
+                ? "Sending isn't configured on this server yet."
+                : !emailVerified
+                  ? "Use the banner at the top of this page to send yourself a confirmation link."
+                  : prefs.email
+                    ? "Change it under Security if this address is out of date."
+                    : "Turned off above — only the test button will reach you."}
+            </p>
+          </div>
         </div>
       </Card>
 

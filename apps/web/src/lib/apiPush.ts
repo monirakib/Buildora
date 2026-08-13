@@ -191,3 +191,12 @@ export async function sendTestPush(token: string): Promise<number> {
   });
   return res.data.sent;
 }
+
+/** POST /api/push/test-email — sends a real email to this account's address. */
+export async function sendTestEmail(token: string): Promise<string> {
+  const res = await request<{ data: { sentTo: string } }>("/api/push/test-email", {
+    method: "POST",
+    headers: authed(token),
+  });
+  return res.data.sentTo;
+}

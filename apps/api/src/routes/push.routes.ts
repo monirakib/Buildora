@@ -4,6 +4,7 @@ import {
   getPushConfig,
   listPushDevices,
   removePushDevice,
+  sendTestEmail,
   sendTestPush,
   subscribeToPush,
   unsubscribeFromPush,
@@ -28,3 +29,4 @@ pushRouter.delete("/devices/:id", removePushDevice);
 pushRouter.get("/preferences", getNotificationPreferences);
 pushRouter.patch("/preferences", updateNotificationPreferences);
 pushRouter.post("/test", sendTestPush);
+pushRouter.post("/test-email", sendTestEmail);

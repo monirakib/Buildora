@@ -159,6 +159,33 @@ export async function changeEmail(
   return res.data.user;
 }
 
+/** POST /api/auth/verify-email/send — mail myself a fresh confirmation link. */
+export async function sendVerificationEmail(
+  token: string
+): Promise<{ sentTo: string; expiresInHours: number }> {
+  const res = await request<{ data: { sentTo: string; expiresInHours: number } }>(
+    "/api/auth/verify-email/send",
+    { method: "POST", headers: { Authorization: `Bearer ${token}` } }
+  );
+  return res.data;
+}
+
+/**
+ * POST /api/auth/verify-email — hand back a token from a mailed link.
+ *
+ * No Authorization header: the link is often opened on a device that isn't
+ * signed in, and the token is the proof by itself.
+ */
+export async function verifyEmail(
+  verificationToken: string
+): Promise<{ email: string; alreadyVerified: boolean }> {
+  const res = await request<{ data: { email: string; alreadyVerified: boolean } }>(
+    "/api/auth/verify-email",
+    { method: "POST", body: JSON.stringify({ token: verificationToken }) }
+  );
+  return res.data;
+}
+
 /**
  * POST /api/auth/change-password — set a new password. Signs out every other
  * session server-side; this one stays alive.

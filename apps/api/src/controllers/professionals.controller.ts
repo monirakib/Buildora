@@ -347,6 +347,7 @@ function toSessionUser(user: HydratedDocument<UserDoc>): SessionUser {
     name: plain.name,
     username: plain.username,
     email: plain.email,
+    emailVerified: Boolean(plain.emailVerifiedAt),
     phone: plain.phone,
     role: plain.role,
     verificationStatus: plain.verificationStatus,

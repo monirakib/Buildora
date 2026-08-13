@@ -49,12 +49,22 @@ const envSchema = z.object({
   VAPID_PUBLIC_KEY: z.string().optional(),
   VAPID_PRIVATE_KEY: z.string().optional(),
   VAPID_SUBJECT: z.string().default("mailto:support@buildora.local"),
-  // Brevo transactional email — free key from https://app.brevo.com (300/day).
-  // EMAIL_FROM_ADDRESS must be a sender Brevo has verified, or it refuses the
-  // send with a 400. Email is off until the key is set.
-  BREVO_API_KEY: z.string().optional(),
+  // Outgoing email over plain SMTP, from a mailbox we already own — no email
+  // provider account, no API key. The defaults are Gmail's servers: put the
+  // sending address in SMTP_USER and a 16-character **app password** in
+  // SMTP_PASSWORD (Google Account → Security → 2-Step Verification → App
+  // passwords). The normal account password will not work; Google stopped
+  // accepting it for SMTP in 2022. Use port 465 (TLS) or 587 (STARTTLS).
+  // Email is off until both SMTP_USER and SMTP_PASSWORD are set.
+  //
+  // EMAIL_FROM_ADDRESS defaults to SMTP_USER, and with Gmail it has to *be*
+  // SMTP_USER or one of its verified aliases — Gmail rewrites any other From.
+  SMTP_HOST: z.string().default("smtp.gmail.com"),
+  SMTP_PORT: z.coerce.number().default(465),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASSWORD: z.string().optional(),
   EMAIL_FROM_NAME: z.string().default("Buildora"),
-  EMAIL_FROM_ADDRESS: z.string().default("no-reply@buildora.local"),
+  EMAIL_FROM_ADDRESS: z.string().optional(),
   // OpenRouteService — driving distance and ETA from a supplier's warehouse to
   // the build site. Free key from https://openrouteservice.org; delivery
   // estimates are hidden until it's set. Note ORS takes coordinates lng-first.

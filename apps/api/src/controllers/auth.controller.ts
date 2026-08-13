@@ -16,6 +16,12 @@ import {
 import { env } from "../config/env";
 import { User, type UserDoc } from "../models/User";
 import { Session, liveSessionFilter } from "../models/Session";
+import {
+  LINK_TTL_HOURS,
+  consumeVerification,
+  issueVerification,
+  nudgeIfUnverified,
+} from "../services/emailVerification";
 import { lookupIabMember } from "../services/iab";
 
 /**
@@ -192,6 +198,9 @@ function toSessionUser(user: HydratedDocument<UserDoc>): SessionUser {
     name: plain.name,
     username: plain.username,
     email: plain.email,
+    // A date on the server, a plain yes/no in the UI — nothing on screen cares
+    // when it happened, only whether it did.
+    emailVerified: Boolean(plain.emailVerifiedAt),
     recoveryEmail: plain.recoveryEmail,
     phone: plain.phone,
     altPhone: plain.altPhone,
@@ -261,6 +270,11 @@ export async function register(req: Request, res: Response) {
     passwordHash,
     role: UserRole.LAND_OWNER,
   });
+
+  // Fire-and-forget: an SMTP round trip must not sit between someone pressing
+  // "Create account" and being let in. If it fails they can resend it from
+  // their account page, which is where the reminder points them anyway.
+  void issueVerification(user);
 
   const token = await startSession(user, req);
   return res.status(201).json({ data: { user: toSessionUser(user), token } });
@@ -337,6 +351,8 @@ export async function registerProfessional(req: Request, res: Response) {
     profile: credentials,
   });
 
+  void issueVerification(user);
+
   const token = await startSession(user, req);
   return res.status(201).json({ data: { user: toSessionUser(user), token } });
 }
@@ -363,6 +379,11 @@ export async function login(req: Request, res: Response) {
   if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
     return res.status(401).json({ error: { message: "Invalid credentials" } });
   }
+
+  // Signing in is the one moment we know they're here to read it, so this is
+  // where an unconfirmed address gets its reminder in the bell. Awaited only
+  // because it's a single indexed lookup on the common (verified) path.
+  await nudgeIfUnverified(user);
 
   const token = await startSession(user, req);
   return res.json({ data: { user: toSessionUser(user), token } });
@@ -510,8 +531,72 @@ export async function changeEmail(req: Request, res: Response) {
   }
 
   user.email = next;
+  // A new address is an unproved address, whatever the old one's standing was.
+  // Until they click the fresh link, notification mail stops.
+  user.emailVerifiedAt = undefined;
   await user.save();
+  void issueVerification(user);
   return res.json({ data: { user: toSessionUser(user) } });
+}
+
+/**
+ * POST /api/auth/verify-email/send — mails the caller a fresh confirmation link.
+ *
+ * Behind requireAuth, so the address is always the caller's own; nobody can
+ * aim this at somebody else's inbox. The per-account cooldown lives in the
+ * service, and the route adds an IP limit on top.
+ */
+export async function sendVerificationEmail(req: Request, res: Response) {
+  const user = await User.findById(req.auth!.sub);
+  if (!user) {
+    return res.status(401).json({ error: { message: "Account no longer exists" } });
+  }
+
+  const result = await issueVerification(user);
+  if (result.sent) {
+    return res.json({ data: { sentTo: user.email, expiresInHours: LINK_TTL_HOURS } });
+  }
+
+  // Each refusal gets its own status and words — "couldn't send" would leave
+  // the person guessing which of four quite different things went wrong.
+  const refusal = {
+    "already-verified": [409, "That address is already confirmed"],
+    cooldown: [429, "A link just went out — check your inbox, then try again in a minute"],
+    "not-configured": [503, "Email isn't configured on this server yet"],
+    "send-failed": [502, "The mail server wouldn't take it — try again shortly"],
+  } as const;
+  const [status, message] = refusal[result.reason ?? "send-failed"];
+  return res.status(status).json({ error: { message } });
+}
+
+const verifyEmailSchema = z.object({
+  token: z.string().min(1, "That link is missing its token"),
+});
+
+/**
+ * POST /api/auth/verify-email — confirms an address from a mailed link.
+ *
+ * Unauthenticated on purpose: the token is the proof, and links get opened on
+ * whichever device is holding the mail, which often isn't the one that's
+ * signed in.
+ */
+export async function verifyEmail(req: Request, res: Response) {
+  const parsed = verifyEmailSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: { message: parsed.error.issues[0]!.message } });
+  }
+
+  const result = await consumeVerification(parsed.data.token);
+  if (result.ok) {
+    return res.json({ data: { email: result.email, alreadyVerified: result.alreadyVerified } });
+  }
+
+  const refusal = {
+    invalid: "This link isn't valid. It may have been used already.",
+    expired: `This link has expired — they last ${LINK_TTL_HOURS} hours. Send yourself a new one from your account page.`,
+    stale: "Your email address changed after this link was sent, so it no longer applies.",
+  } as const;
+  return res.status(400).json({ error: { message: refusal[result.reason] } });
 }
 
 /**

@@ -29,8 +29,9 @@ import { pushToUser } from "./webpush";
  *          reaches someone with a tab open.
  *   push   Web Push — reaches the browser with every tab closed. Everything
  *          except promotions and missed calls (see isPushWorthy).
- *   email  Brevo — reaches someone away from a computer. Only the significant
- *          events (see isEmailWorthy): money, decisions, commitments.
+ *   email  SMTP from the platform mailbox — reaches someone away from a
+ *          computer. Only the significant events (see isEmailWorthy): money,
+ *          decisions, commitments.
  *
  * Because every feature in the platform already funnels through here, adding
  * those two channels gave push and email to all of them at once. Nothing
@@ -92,7 +93,9 @@ function deliverOutOfApp(userId: string, input: NotifyInput): void {
       // One lookup covers both channels and tells us whether the user opted out.
       // `.lean()` matters: readPreferences explains why a subdocument must never
       // be spread, and lean data sidesteps the problem entirely.
-      const user = await User.findById(userId).select("name email notificationPrefs").lean();
+      const user = await User.findById(userId)
+        .select("name email emailVerifiedAt notificationPrefs")
+        .lean();
       if (!user) return;
       const prefs = readPreferences(user.notificationPrefs);
 
@@ -107,13 +110,19 @@ function deliverOutOfApp(userId: string, input: NotifyInput): void {
         });
       }
 
-      if (wantsEmail && prefs.email && user.email) {
+      // `emailVerifiedAt` is the hard gate — see services/emailVerification.ts.
+      // An address nobody has proved could be a typo or somebody else's inbox,
+      // and these messages carry decisions and money.
+      if (wantsEmail && prefs.email && user.email && user.emailVerifiedAt) {
         await sendEmail({
           to: user.email,
           toName: user.name,
           subject: input.title,
           text: input.body,
           link: input.link,
+          // Colours the pill at the top of the message, so the reader can tell
+          // a payment from a meeting before reading a word.
+          category: input.type,
         });
       }
     } catch {
@@ -173,12 +182,13 @@ export async function notifyNewMessage(
 /**
  * How many recipients still counts as transactional mail.
  *
- * Brevo's transactional API is for messages caused by one person's action — a
+ * Mail from this server is meant for messages caused by one person's action — a
  * decision, a payment, a booking. A platform-wide announcement is a *campaign*,
- * a different product with different rules, and pushing one through this
- * endpoint would both misuse it and empty the 300/day free quota in a single
- * send. Above this size the announcement still reaches everyone by bell and by
- * push, which cost nothing; it just doesn't go out as mail.
+ * and pushing one through an ordinary mailbox would both burn the provider's
+ * daily send limit (Gmail cuts a free account off around 500) and get the
+ * address flagged as a bulk sender. Above this size the announcement still
+ * reaches everyone by bell and by push, which cost nothing; it just doesn't go
+ * out as mail.
  *
  * Fifty comfortably covers the real transactional fan-outs, like telling every
  * supervisor that a verification request came in.
@@ -275,8 +285,10 @@ async function pushToManyRespectingPrefs(userIds: string[], input: NotifyInput):
 /** Emails one recipient of a fan-out, if they still want email. */
 async function emailOneRespectingPrefs(userId: string, input: NotifyInput): Promise<void> {
   try {
-    const user = await User.findById(userId).select("name email notificationPrefs").lean();
-    if (!user?.email) return;
+    const user = await User.findById(userId)
+      .select("name email emailVerifiedAt notificationPrefs")
+      .lean();
+    if (!user?.email || !user.emailVerifiedAt) return;
     if (!readPreferences(user.notificationPrefs).email) return;
     await sendEmail({
       to: user.email,
@@ -284,6 +296,7 @@ async function emailOneRespectingPrefs(userId: string, input: NotifyInput): Prom
       subject: input.title,
       text: input.body,
       link: input.link,
+      category: input.type,
     });
   } catch {
     // Best-effort.

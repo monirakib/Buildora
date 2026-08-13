@@ -51,6 +51,7 @@ import { useSession } from "@/store/useSession";
 import { useTheme } from "@/store/useTheme";
 import { NidCheckPanel } from "@/components/app/NidCheckPanel";
 import { AccountShell, initialsOf, type NavGroup } from "@/components/account/AccountShell";
+import { EmailVerifyBanner } from "@/components/account/EmailVerifyBanner";
 import { NotificationsSection } from "@/components/account/NotificationsSection";
 import {
   ActionRow,
@@ -614,6 +615,17 @@ export default function AccountPage() {
       subtitle={sectionTitles[section].subtitle}
       notice={notice}
     >
+      {/* Above everything, and in every section: an unconfirmed address means
+          no email reaches this account at all. Renders nothing once confirmed. */}
+      {token && (
+        <EmailVerifyBanner
+          token={token}
+          email={user.email}
+          verified={user.emailVerified}
+          onToast={pushToast}
+        />
+      )}
+
       {/* ============ What matters most, across the top ============ */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <StatTile
@@ -1238,7 +1250,12 @@ export default function AccountPage() {
         )}
 
         {section === "notifications" && token && (
-          <NotificationsSection token={token} onToast={pushToast} />
+          <NotificationsSection
+            token={token}
+            email={user.email}
+            emailVerified={user.emailVerified}
+            onToast={pushToast}
+          />
         )}
 
         {section === "appearance" && (

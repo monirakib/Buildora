@@ -8,7 +8,7 @@ import {
 import { PushSubscription } from "../models/PushSubscription";
 import { User } from "../models/User";
 import { getPublicKey, isPushConfigured, pushToUser } from "../services/webpush";
-import { isEmailConfigured } from "../services/email";
+import { isEmailConfigured, sendEmailOrThrow } from "../services/email";
 import { readPreferences } from "../services/preferences";
 
 /**
@@ -209,4 +209,51 @@ export async function sendTestPush(req: Request, res: Response) {
   });
 
   return res.json({ data: { sent: count } });
+}
+
+/**
+ * POST /api/push/test-email — mails the caller's own address.
+ *
+ * The counterpart of the test push, and useful for the same reason: mail either
+ * arrives somewhere else entirely or doesn't arrive at all, and neither answer
+ * shows up on screen. This one deliberately reports the SMTP error verbatim —
+ * "Invalid login: 535…" is precisely what tells you the app password is wrong,
+ * and hiding it behind "couldn't send" would waste an afternoon.
+ */
+export async function sendTestEmail(req: Request, res: Response) {
+  if (!isEmailConfigured()) {
+    return res.status(503).json({
+      error: { message: "Email isn't configured on this server yet" },
+    });
+  }
+
+  const user = await User.findById(req.auth!.sub).select("name email emailVerifiedAt").lean();
+  if (!user?.email) {
+    return res.status(400).json({ error: { message: "Your account has no email address" } });
+  }
+  // Same rule as every other message: an unproved address gets nothing but the
+  // confirmation link itself.
+  if (!user.emailVerifiedAt) {
+    return res.status(403).json({
+      error: { message: "Confirm your email address first — check your account information" },
+    });
+  }
+
+  try {
+    await sendEmailOrThrow({
+      to: user.email,
+      toName: user.name,
+      subject: "Your Buildora emails are working",
+      text: "This is a test, sent because you asked for one in your notification settings.\n\nReal ones only go out for the things that matter: a verification decision, money moving in or out of escrow, a booked meeting, a tender or bid, a milestone signed off.",
+      link: "/account",
+      linkLabel: "Back to settings",
+      category: NotificationType.SYSTEM,
+    });
+  } catch (err) {
+    return res.status(502).json({
+      error: { message: err instanceof Error ? err.message : "The mail server refused it" },
+    });
+  }
+
+  return res.json({ data: { sentTo: user.email } });
 }
