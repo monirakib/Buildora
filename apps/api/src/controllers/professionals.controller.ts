@@ -316,6 +316,9 @@ const professionalProfileSchema = z.object({
     .max(20, "At most 20 brand authorisations")
     .default([]),
   warehouseAddress: optionalText(300),
+  warehouseLocation: z
+    .object({ lat: z.coerce.number().min(-90).max(90), lng: z.coerce.number().min(-180).max(180) })
+    .optional(),
   deliveryDistricts: z
     .array(z.string().trim().min(1).max(40))
     .max(64, "Too many districts")

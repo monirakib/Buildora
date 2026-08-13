@@ -55,6 +55,10 @@ const envSchema = z.object({
   BREVO_API_KEY: z.string().optional(),
   EMAIL_FROM_NAME: z.string().default("Buildora"),
   EMAIL_FROM_ADDRESS: z.string().default("no-reply@buildora.local"),
+  // OpenRouteService — driving distance and ETA from a supplier's warehouse to
+  // the build site. Free key from https://openrouteservice.org; delivery
+  // estimates are hidden until it's set. Note ORS takes coordinates lng-first.
+  ORS_API_KEY: z.string().optional(),
   // OpenStreetMap's Nominatim geocoder — powers the plot map picker's search
   // box and the address lookup for a dropped pin. Free and keyless, but its
   // usage policy wants an identifying User-Agent with a contact address and at

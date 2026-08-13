@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { UserRole } from "@buildora/shared";
+import { estimateDelivery } from "../controllers/delivery.controller";
 import { requireAuth } from "../middleware/auth";
 import { requireRole } from "../middleware/roles";
 import {
@@ -23,6 +24,8 @@ marketplaceRouter.get("/products", listProducts);
 
 // Seller listing management.
 marketplaceRouter.get("/products/mine", requireAuth, seller, listMyProducts);
+// Buyer-side: how far the stock has to travel to their plot, and how long.
+marketplaceRouter.get("/products/:id/delivery", requireAuth, estimateDelivery);
 marketplaceRouter.post("/products", requireAuth, seller, createProduct);
 marketplaceRouter.patch("/products/:id", requireAuth, seller, updateProduct);
 marketplaceRouter.delete("/products/:id", requireAuth, seller, deleteProduct);
