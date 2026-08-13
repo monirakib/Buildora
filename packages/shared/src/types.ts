@@ -978,6 +978,13 @@ export interface Product {
  * A land owner's order for one product. The name/unit/price are snapshotted
  * at order time so later listing edits don't rewrite history.
  */
+export interface OrderEvent {
+  status: OrderStatus;
+  at: string;
+  /** The seller's own words, e.g. "Truck leaves at 7am". */
+  note?: string;
+}
+
 export interface MarketOrder {
   id: string;
   buyer: { id: string; name: string; phone?: string };
@@ -989,6 +996,23 @@ export interface MarketOrder {
   phone: string;
   note?: string;
   status: OrderStatus;
+  /**
+   * Every status this order has been through, with when. This is what the
+   * buyer actually watches — a single  field says where an order is
+   * but never how long it sat there.
+   */
+  timeline: OrderEvent[];
+  /**
+   * When the seller expects to deliver, promised when they confirm. A date
+   * rather than a live position: a supplier with one pickup truck can commit
+   * to a day, not to a moving marker.
+   */
+  expectedDeliveryAt?: string;
+  /** The build this is for, when the buyer picked one at checkout. */
+  projectId?: string;
+  /** Road distance and drive time, snapshotted at order time. */
+  deliveryDistanceKm?: number;
+  deliveryDurationMin?: number;
   /** Set once the buyer's gateway payment clears; unpaid orders show a Pay button. */
   paidAt?: string;
   createdAt: string;
