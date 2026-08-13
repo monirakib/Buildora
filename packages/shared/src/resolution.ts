@@ -146,3 +146,32 @@ export function isWarrantyExpired(entry: WarrantyEntry, now = new Date()): boole
   const end = new Date(`${entry.expiresAt.slice(0, 10)}T23:59:59Z`);
   return !Number.isNaN(end.getTime()) && end.getTime() < now.getTime();
 }
+
+/* ---------- Public progress link ---------- */
+
+/**
+ * What a shared link exposes.
+ *
+ * Deliberately thin. The link has no login behind it, so this carries only what
+ * a relative or investor legitimately wants — which stage the build is at and
+ * how far it has got — and none of what they don't need: no money, no contracts,
+ * no professional names, no street address, no documents.
+ */
+export interface PublicProgress {
+  title: string;
+  /** Locality only, never the street address. */
+  areaName: string;
+  buildingType: string;
+  floors: number;
+  status: string;
+  designApproved: boolean;
+  structuralApproved: boolean;
+  permitIssued: boolean;
+  constructionStarted: boolean;
+  /** 0–100, weighted by each milestone's share of the contract sum. */
+  constructionPercent: number;
+  milestones: { order: number; title: string; done: boolean }[];
+  handedOver: boolean;
+  handedOverAt?: string;
+  updatedAt: string;
+}
