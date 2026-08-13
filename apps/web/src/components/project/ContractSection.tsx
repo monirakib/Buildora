@@ -84,7 +84,7 @@ function PaymentForm({
         {label}: {formatBdt(amountBdt)}
       </p>
       <p className="mt-1 text-xs text-stone-600 dark:text-slate-400">
-        Sandbox payment — pick a channel and enter the transaction reference.
+        Sandbox payment, pick a channel and enter the transaction reference.
       </p>
       <div className="mt-3 grid gap-3 sm:grid-cols-3">
         <select
@@ -226,7 +226,7 @@ export function ContractSection({
                 purpose={PaymentPurpose.CONTRACT_CONCEPT_FEE}
                 refId={contract.id}
                 amountBdt={contract.conceptFeeBdt}
-                label={`Pay the concept fee — ${formatBdt(contract.conceptFeeBdt)}`}
+                label={`Pay the concept fee, ${formatBdt(contract.conceptFeeBdt)}`}
                 onUnavailable={setGatewayDown}
               />
             </div>
@@ -245,8 +245,8 @@ export function ContractSection({
 
         {isArchitect && contract.status === ContractStatus.AWAITING_CONCEPT_FEE && (
           <p className="mt-4 text-sm text-stone-600 dark:text-slate-400">
-            Waiting for the client to pay the concept fee — you&apos;ll be able to submit the
-            concept once it&apos;s paid.
+            Waiting for the client to pay the concept fee, you&apos;ll be able to submit the concept
+            once it&apos;s paid.
           </p>
         )}
 
@@ -277,7 +277,7 @@ export function ContractSection({
 
         {isArchitect && contract.status === ContractStatus.AWAITING_ESCROW && (
           <p className="mt-4 text-sm text-stone-600 dark:text-slate-400">
-            Concept approved 🎉 — waiting for the client to fund the escrow before full design
+            Concept approved 🎉, waiting for the client to fund the escrow before full design
             begins.
           </p>
         )}
@@ -285,7 +285,7 @@ export function ContractSection({
         {contract.status === ContractStatus.COMPLETED && (
           <div className="mt-4 rounded-2xl border border-emerald-400/40 bg-emerald-400/10 p-4 text-sm">
             <p className="font-bold text-emerald-700 dark:text-emerald-300">
-              Design approved — escrow released
+              Design approved, escrow released
             </p>
             <p className="mt-1 text-stone-700 dark:text-slate-300">
               {formatBdt(contract.releasedToArchitectBdt ?? 0)} went to the architect;{" "}
@@ -435,7 +435,7 @@ export function ContractSection({
                 type="url"
                 value={sub.fileUrl}
                 onChange={(e) => setSub((s) => ({ ...s, fileUrl: e.target.value }))}
-                placeholder="Link to the file — Drive/Dropbox/uploaded image URL (optional)"
+                placeholder="Link to the file. Drive/Dropbox/uploaded image URL (optional)"
                 className={inputClass}
               />
               <button

@@ -342,7 +342,7 @@ export function PlotMapPicker({ value, onChange, onAddress, onAreaKatha }: PlotM
         mapRef.current?.setView([point.lat, point.lng], PICKED_ZOOM);
         placePin(point);
       },
-      () => setError("Couldn't get your location — pick the plot on the map instead")
+      () => setError("Couldn't get your location, pick the plot on the map instead")
     );
   }
 
@@ -368,7 +368,7 @@ export function PlotMapPicker({ value, onChange, onAddress, onAreaKatha }: PlotM
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search a place — “Dhanmondi Road 5”, “Bashundhara Block C”…"
+          placeholder="Search a place, “Dhanmondi Road 5”, “Bashundhara Block C”…"
           className="block w-full rounded-xl border border-stone-300/80 bg-white/70 px-4 py-2.5 text-sm text-stone-900 placeholder-stone-400 backdrop-blur transition outline-none focus:border-amber-500 focus:bg-white/90 focus:ring-2 focus:ring-amber-400/30 dark:border-white/15 dark:bg-white/5 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:bg-white/10"
         />
         {(suggestions.length > 0 || searching) && (
@@ -436,7 +436,8 @@ export function PlotMapPicker({ value, onChange, onAddress, onAreaKatha }: PlotM
         {drawing ? (
           <p className="font-semibold text-amber-600 dark:text-amber-400">
             Tracing: tap each corner of the plot, then press “Done tracing”.
-            {boundary.length > 0 && ` ${boundary.length} corner${boundary.length === 1 ? "" : "s"} so far.`}
+            {boundary.length > 0 &&
+              ` ${boundary.length} corner${boundary.length === 1 ? "" : "s"} so far.`}
             {boundary.length >= 3 && ` About ${areaKatha.toFixed(2)} katha.`}
           </p>
         ) : pin ? (
@@ -459,7 +460,7 @@ export function PlotMapPicker({ value, onChange, onAddress, onAreaKatha }: PlotM
           <p className="mt-1.5 text-xs font-semibold text-rose-600 dark:text-rose-400">
             {/* One template literal, so the spacing can't be eaten by JSX's
                 whitespace trimming the way plain multi-line text is. */}
-            {`That outline covers ${Math.round(areaKatha).toLocaleString("en-IN")} katha — far larger than a plot, so the land size hasn't been filled in. Zoom in and trace the corners again.`}
+            {`That outline covers ${Math.round(areaKatha).toLocaleString("en-IN")} katha, far larger than a plot, so the land size hasn't been filled in. Zoom in and trace the corners again.`}
           </p>
         )}
         {error && (

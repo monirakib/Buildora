@@ -49,7 +49,12 @@ export async function hasLiveDispute(targetId: string | Types.ObjectId): Promise
 type PopulatedDispute = HydratedDocument<DisputeDoc>;
 
 const refOf = (value: unknown) => {
-  const u = value as { _id?: unknown; name?: string; username?: string; profile?: { company?: string } };
+  const u = value as {
+    _id?: unknown;
+    name?: string;
+    username?: string;
+    profile?: { company?: string };
+  };
   return {
     id: String(u?._id ?? value),
     name: u?.name ?? "",
@@ -165,7 +170,7 @@ async function resolveTarget(
   return {
     projectId: contract.project,
     against: callerId === client ? contract.contractor : contract.client,
-    label: `Milestone ${milestone.order} — ${milestone.title}`,
+    label: `Milestone ${milestone.order}, ${milestone.title}`,
     // A milestone's escrow is funded as a single tranche, so what's held is
     // simply its own amount until it's released.
     heldBdt: milestone.status === "RELEASED" ? 0 : milestone.amountBdt,
@@ -245,7 +250,7 @@ export async function raiseDispute(req: Request, res: Response) {
     {
       type: NotificationType.SYSTEM,
       title: "Dispute needs a decision",
-      body: `${target.label} — ৳${(target.heldBdt || 0).toLocaleString("en-BD")} is frozen pending review.`,
+      body: `${target.label}, ৳${(target.heldBdt || 0).toLocaleString("en-BD")} is frozen pending review.`,
       link: "/admin/disputes",
       actorId: callerId,
     }
@@ -273,7 +278,9 @@ export async function listMyDisputes(req: Request, res: Response) {
 /** GET /api/disputes?status= — the supervisor's queue. */
 export async function listDisputes(req: Request, res: Response) {
   const statusParam = String(req.query.status ?? "");
-  const filter: Record<string, unknown> = Object.values(DisputeStatus).includes(statusParam as DisputeStatus)
+  const filter: Record<string, unknown> = Object.values(DisputeStatus).includes(
+    statusParam as DisputeStatus
+  )
     ? { status: statusParam }
     : { status: { $in: [...LIVE_DISPUTE_STATUSES] } };
 
@@ -323,7 +330,9 @@ export async function withdrawDispute(req: Request, res: Response) {
   const doc = await Dispute.findById(req.params.id);
   if (!doc) return res.status(404).json({ error: { message: "Dispute not found" } });
   if (String(doc.raisedBy) !== req.auth!.sub) {
-    return res.status(403).json({ error: { message: "Only the person who raised it can withdraw it" } });
+    return res
+      .status(403)
+      .json({ error: { message: "Only the person who raised it can withdraw it" } });
   }
   if (!LIVE_DISPUTE_STATUSES.includes(doc.status)) {
     return res.status(409).json({ error: { message: "This dispute is already closed" } });
@@ -335,7 +344,7 @@ export async function withdrawDispute(req: Request, res: Response) {
   notify(String(doc.against), {
     type: NotificationType.CONTRACT,
     title: "Dispute withdrawn",
-    body: `${doc.targetLabel} — the hold on this money has been lifted.`,
+    body: `${doc.targetLabel}. The hold on this money has been lifted.`,
     link: `/projects/${String(doc.project)}`,
     actorId: req.auth!.sub,
   });
@@ -434,7 +443,7 @@ export async function resolveDispute(req: Request, res: Response) {
     notify(party, {
       type: NotificationType.PAYMENT,
       title: "Dispute resolved",
-      body: `${doc.targetLabel} — ${money} ${preview(note, 90)}`,
+      body: `${doc.targetLabel}, ${money} ${preview(note, 90)}`,
       link: `/projects/${String(doc.project)}`,
       actorId: req.auth!.sub,
     });

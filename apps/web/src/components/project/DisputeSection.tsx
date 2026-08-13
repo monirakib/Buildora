@@ -2,12 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { ShieldAlert } from "lucide-react";
-import {
-  DisputeScope,
-  DisputeStatus,
-  isDisputeLive,
-  type Dispute,
-} from "@buildora/shared";
+import { DisputeScope, DisputeStatus, isDisputeLive, type Dispute } from "@buildora/shared";
 import { listProjectDisputes, raiseDispute, withdrawDispute } from "@/lib/apiResolution";
 import { formatBdt, formatDate } from "@/components/app/projectStatus";
 
@@ -91,15 +86,15 @@ export function DisputeSection({
         {live.length > 0 && (
           <p className="mb-4 rounded-xl bg-amber-100 px-4 py-3 text-sm text-amber-900 dark:bg-amber-400/15 dark:text-amber-200">
             <ShieldAlert className="mr-1.5 inline h-4 w-4" />
-            Money under dispute is frozen — it can&apos;t be released or refunded until a Buildora
+            Money under dispute is frozen, it can&apos;t be released or refunded until a Buildora
             supervisor decides.
           </p>
         )}
 
         {disputes.length === 0 ? (
           <p className="text-sm text-stone-600 dark:text-slate-400">
-            If work is paid for but not delivered — or delivered but not paid — raise a dispute and
-            a supervisor will review the evidence and decide where the escrowed money goes.
+            If work is paid for but not delivered, or delivered but not paid, raise a dispute and a
+            supervisor will review the evidence and decide where the escrowed money goes.
           </p>
         ) : (
           <ul className="flex flex-col gap-3">
@@ -116,7 +111,9 @@ export function DisputeSection({
                       {formatDate(d.createdAt)}
                     </p>
                   </div>
-                  <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${statusStyles[d.status]}`}>
+                  <span
+                    className={`rounded-full px-2.5 py-1 text-xs font-bold ${statusStyles[d.status]}`}
+                  >
                     {d.status.replace(/_/g, " ").toLowerCase()}
                   </span>
                 </div>

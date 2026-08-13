@@ -92,7 +92,7 @@ export default function AdminUsersPage() {
       setRows((rs) =>
         rs.map((r) => (r.id === row.id ? { ...r, role: next, activeSessions: 0 } : r))
       );
-      showToast(`${row.name} is now ${ROLE_LABELS[next]} — signed out everywhere`);
+      showToast(`${row.name} is now ${ROLE_LABELS[next]}, signed out everywhere`);
     } catch (e) {
       showToast((e as Error).message);
     }

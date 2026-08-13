@@ -130,11 +130,11 @@ async function callNominatim<T>(path: string, params: Record<string, string>): P
     // blocks placeholder contacts outright — "example.com" in NOMINATIM_CONTACT
     // is rejected — so name the setting rather than shrug at the developer.
     if (res.status === 403) {
-      throw new Error("The map service refused the request — check NOMINATIM_CONTACT in .env");
+      throw new Error("The map service refused the request, check NOMINATIM_CONTACT in .env");
     }
     throw new Error(
       res.status === 429
-        ? "The map search is busy — try again in a moment"
+        ? "The map search is busy, try again in a moment"
         : "Couldn't reach the map service"
     );
   }

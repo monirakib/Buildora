@@ -44,7 +44,7 @@ export function StatusBadge({ status }: { status: VerificationStatus }) {
   if (status === VerificationStatus.REJECTED) {
     return (
       <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-500/15 px-3 py-1.5 text-xs font-bold text-rose-700 dark:text-rose-300">
-        <ShieldAlert className="h-3.5 w-3.5" /> Rejected — update and resubmit
+        <ShieldAlert className="h-3.5 w-3.5" /> Rejected, update and resubmit
       </span>
     );
   }

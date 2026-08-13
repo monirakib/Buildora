@@ -101,7 +101,7 @@ export async function enablePush(token: string): Promise<void> {
   if (permission !== "granted") {
     throw new Error(
       permission === "denied"
-        ? "Notifications are blocked for this site — allow them in your browser's site settings"
+        ? "Notifications are blocked for this site, allow them in your browser's site settings"
         : "Notifications weren't allowed"
     );
   }
@@ -161,9 +161,7 @@ export async function removePushDevice(token: string, id: string): Promise<void>
 }
 
 /** GET /api/push/preferences */
-export async function getNotificationPreferences(
-  token: string
-): Promise<NotificationPreferences> {
+export async function getNotificationPreferences(token: string): Promise<NotificationPreferences> {
   const res = await request<{ data: { preferences: NotificationPreferences } }>(
     "/api/push/preferences",
     { headers: authed(token) }

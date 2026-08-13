@@ -27,7 +27,7 @@ async function main() {
 
   const connected = await connectDb();
   if (!connected) {
-    console.error("[seed] MONGODB_URI is not set — can't seed without a database.");
+    console.error("[seed] MONGODB_URI is not set, can't seed without a database.");
     process.exit(1);
   }
 
@@ -38,7 +38,7 @@ async function main() {
   const existing = await User.findOne({ $or: [{ email }, { username }] });
   if (existing && existing.role !== UserRole.ADMIN) {
     console.error(
-      `[seed] ${existing.email === email ? email : username} belongs to a non-admin account — pick different ADMIN_EMAIL/ADMIN_USERNAME.`
+      `[seed] ${existing.email === email ? email : username} belongs to a non-admin account, pick different ADMIN_EMAIL/ADMIN_USERNAME.`
     );
     process.exit(1);
   }

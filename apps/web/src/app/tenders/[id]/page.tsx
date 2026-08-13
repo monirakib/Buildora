@@ -132,7 +132,7 @@ export default function TenderDetailPage() {
                   Bid sealed and submitted
                 </p>
                 <p className="mt-2 text-sm text-stone-600 dark:text-slate-400">
-                  {formatBdt(total)} over {meta.timelineWeeks} weeks. Nobody — including the owner —
+                  {formatBdt(total)} over {meta.timelineWeeks} weeks. Nobody, including the owner,
                   can read it until bidding closes on {formatDate(tender.deadlineAt)}. You can
                   revise it any time before then.
                 </p>
@@ -155,8 +155,8 @@ export default function TenderDetailPage() {
               <form onSubmit={send} className={`mt-6 ${cardClass}`}>
                 <p className="text-sm font-bold">Bill of Quantities</p>
                 <p className="mt-1 text-xs text-stone-500 dark:text-slate-500">
-                  Put a rate against every line. Every line must be priced — a partial bid
-                  can&apos;t be compared fairly against a complete one.
+                  Put a rate against every line. Every line must be priced, a partial bid can&apos;t
+                  be compared fairly against a complete one.
                 </p>
 
                 <div className="mt-4 overflow-x-auto">
@@ -196,7 +196,7 @@ export default function TenderDetailPage() {
                               />
                             </td>
                             <td className="py-2 text-right font-semibold">
-                              {rate > 0 ? formatBdt(Math.round(rate * item.quantity)) : "—"}
+                              {rate > 0 ? formatBdt(Math.round(rate * item.quantity)) : "-"}
                             </td>
                           </tr>
                         );

@@ -164,33 +164,33 @@ export function stepCopy(key: StepKey, role: UserRole): { title: string; subtitl
       if (contractor) {
         return {
           title: "Firm Information",
-          subtitle: "Your construction firm — how it trades, where it works, and who it is.",
+          subtitle: "Your construction firm, how it trades, where it works, and who it is.",
         };
       }
       if (supplier) {
         return {
           title: "Business Information",
-          subtitle: "Your supply business — how it trades and where it operates from.",
+          subtitle: "Your supply business, how it trades and where it operates from.",
         };
       }
       return {
         title: "Professional Information",
-        subtitle: "How you practise — your title, firm, and professional presence.",
+        subtitle: "How you practise, your title, firm, and professional presence.",
       };
 
     case "education":
       return {
         title: "Education",
         subtitle: engineer
-          ? "Your engineering degrees — at least one with its certificate is required."
-          : "Your architecture degrees — at least one with its certificate is required.",
+          ? "Your engineering degrees, at least one with its certificate is required."
+          : "Your architecture degrees, at least one with its certificate is required.",
       };
 
     case "experience":
       return {
         title: "Work Experience",
         subtitle: engineer
-          ? "Where you've practised. Required — a supervisor checks it against your IEB grade."
+          ? "Where you've practised. Required, a supervisor checks it against your IEB grade."
           : "Firms you've worked with and the roles you held.",
       };
 
@@ -204,7 +204,7 @@ export function stepCopy(key: StepKey, role: UserRole): { title: string; subtitl
       return {
         title: engineer ? "Structural Expertise" : "Areas of Expertise",
         subtitle: engineer
-          ? "The structural work you take on — pick only what you've actually designed."
+          ? "The structural work you take on, pick only what you've actually designed."
           : "Pick every building type you have real project experience with.",
       };
 
@@ -227,7 +227,7 @@ export function stepCopy(key: StepKey, role: UserRole): { title: string; subtitl
         return {
           title: "Completed Builds",
           subtitle:
-            "Projects your firm has finished, with photos — this is what land owners compare when awarding a tender.",
+            "Projects your firm has finished, with photos, this is what land owners compare when awarding a tender.",
         };
       }
       if (supplier) {
@@ -240,8 +240,8 @@ export function stepCopy(key: StepKey, role: UserRole): { title: string; subtitl
       return {
         title: engineer ? "Projects" : "Portfolio",
         subtitle: engineer
-          ? "Structures you've designed or checked — the first photo of each becomes its cover."
-          : "Your best built work — the first photo of each project becomes its cover.",
+          ? "Structures you've designed or checked, the first photo of each becomes its cover."
+          : "Your best built work, the first photo of each project becomes its cover.",
       };
 
     case "achievements":

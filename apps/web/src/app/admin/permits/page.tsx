@@ -29,7 +29,6 @@ const cardClass =
 const smallButton =
   "rounded-full border border-stone-300 px-3 py-1 text-xs font-bold text-stone-700 transition hover:bg-stone-100 disabled:opacity-60 dark:border-white/20 dark:text-slate-200 dark:hover:bg-white/10";
 
-
 type Tab = "dap" | "fees" | "ecps";
 
 /**
@@ -211,7 +210,7 @@ function DapZonesAdmin({ token }: { token: string }) {
           ))}
           {zones.length === 0 && (
             <li className="py-2.5 text-stone-500 dark:text-slate-500">
-              No zones yet — add the first one below (or run `pnpm seed:permits`).
+              No zones yet, add the first one below (or run `pnpm seed:permits`).
             </li>
           )}
         </ul>
@@ -424,7 +423,7 @@ function FeeRulesAdmin({ token }: { token: string }) {
           ))}
           {rules.length === 0 && (
             <li className="py-2.5 text-stone-500 dark:text-slate-500">
-              No rates yet — add the first one below (or run `pnpm seed:permits`).
+              No rates yet, add the first one below (or run `pnpm seed:permits`).
             </li>
           )}
         </ul>
@@ -628,7 +627,7 @@ function EcpsStepsAdmin({ token }: { token: string }) {
           ))}
           {steps.length === 0 && (
             <li className="py-2.5 text-stone-500 dark:text-slate-500">
-              No steps yet — add the first one below (or run `pnpm seed:permits`).
+              No steps yet, add the first one below (or run `pnpm seed:permits`).
             </li>
           )}
         </ul>

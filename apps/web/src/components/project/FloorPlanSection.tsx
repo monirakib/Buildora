@@ -31,7 +31,7 @@ const emptyFloor: PlanGeometry = { walls: [], rooms: [], openings: [], gridStepF
 
 const tools: { id: PlanTool; label: string; hint: string }[] = [
   { id: "select", label: "Select", hint: "Click a wall, room, or opening to select it" },
-  { id: "wall", label: "Wall", hint: "Click to start, click again to end — walls chain on" },
+  { id: "wall", label: "Wall", hint: "Click to start, click again to end, walls chain on" },
   { id: "room", label: "Room", hint: "Click two opposite corners to box a room" },
   { id: "door", label: "Door", hint: "Click on a wall to cut a door into it" },
   { id: "window", label: "Window", hint: "Click on a wall to cut a window into it" },
@@ -61,13 +61,7 @@ const PRINT_PALETTE = [
  * never blocks on the network; switching floors keeps unsaved work in state and
  * flags the tab with a dot.
  */
-export function FloorPlanSection({
-  project,
-  token,
-}: {
-  project: Project;
-  token: string;
-}) {
+export function FloorPlanSection({ project, token }: { project: Project; token: string }) {
   // Geometry per level, so switching tabs does not lose unsaved work.
   const [floors, setFloors] = useState<Record<number, PlanGeometry>>({});
   const [dirty, setDirty] = useState<Record<number, boolean>>({});
@@ -332,9 +326,7 @@ export function FloorPlanSection({
 
                 <select
                   value={plan.gridStepFt}
-                  onChange={(e) =>
-                    editFloor((f) => ({ ...f, gridStepFt: Number(e.target.value) }))
-                  }
+                  onChange={(e) => editFloor((f) => ({ ...f, gridStepFt: Number(e.target.value) }))}
                   className={selectClass}
                   aria-label="Grid step"
                 >
@@ -469,7 +461,7 @@ export function FloorPlanSection({
 
             {!canEdit && (
               <p className="mt-3 text-xs text-stone-500 dark:text-slate-500">
-                Your architect draws the plan — you can view it here and raise anything you want
+                Your architect draws the plan, you can view it here and raise anything you want
                 changed in the project chat.
               </p>
             )}
@@ -523,9 +515,7 @@ function CompliancePanel({
       <dl className="mt-4 grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
         <div>
           <dt className="text-xs text-stone-500 dark:text-slate-500">Plot</dt>
-          <dd className="mt-0.5 font-semibold">
-            {compliance.plotAreaSqft.toLocaleString()} sq ft
-          </dd>
+          <dd className="mt-0.5 font-semibold">{compliance.plotAreaSqft.toLocaleString()} sq ft</dd>
         </div>
         <div>
           <dt className="text-xs text-stone-500 dark:text-slate-500">Built area</dt>
@@ -577,7 +567,7 @@ function CompliancePanel({
         <ul className="mt-4 space-y-1.5">
           {compliance.issues.map((issue) => (
             <li key={issue} className="text-xs text-stone-600 dark:text-slate-400">
-              — {issue}
+              , {issue}
             </li>
           ))}
         </ul>
@@ -599,7 +589,13 @@ function LimitBar({ label, value, limit }: { label: string; value: number; limit
     <div>
       <div className="flex items-center justify-between text-xs">
         <span className="font-semibold text-stone-600 dark:text-slate-300">{label}</span>
-        <span className={over ? "font-bold text-rose-600 dark:text-rose-400" : "text-stone-500 dark:text-slate-500"}>
+        <span
+          className={
+            over
+              ? "font-bold text-rose-600 dark:text-rose-400"
+              : "text-stone-500 dark:text-slate-500"
+          }
+        >
           {Math.round(used)}% of allowance
         </span>
       </div>

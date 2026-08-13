@@ -218,7 +218,7 @@ export default function ProjectDetailPage() {
         targets.push({
           scope: DisputeScope.BUILD_MILESTONE,
           id: m.id,
-          label: `Milestone ${m.order} — ${m.title}`,
+          label: `Milestone ${m.order}, ${m.title}`,
         });
       }
     }
@@ -576,10 +576,10 @@ export default function ProjectDetailPage() {
                       hasPlotPin={!!project.location}
                     />
                     <SiteDiarySection
-                    project={project}
-                    token={token}
-                    userId={user.id}
-                    canWrite={isOwner || isAssignedArchitect || isAssignedEngineer}
+                      project={project}
+                      token={token}
+                      userId={user.id}
+                      canWrite={isOwner || isAssignedArchitect || isAssignedEngineer}
                     />
                   </>
                 )}

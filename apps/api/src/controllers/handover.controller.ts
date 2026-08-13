@@ -84,7 +84,10 @@ const warrantySchema = z.object({
   item: z.string().trim().min(2, "What does this warranty cover?").max(160),
   provider: z.string().trim().min(2, "Who honours it?").max(160),
   months: z.coerce.number().int().min(1, "At least one month").max(600),
-  startsAt: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/, "Use a YYYY-MM-DD date"),
+  startsAt: z
+    .string()
+    .trim()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Use a YYYY-MM-DD date"),
   documentUrl: z.preprocess(
     (v) => (v === "" || v == null ? undefined : v),
     z.url("Enter a valid link").optional()
@@ -102,7 +105,11 @@ const handoverSchema = z.object({
   ),
   handedOverAt: z.preprocess(
     (v) => (v === "" || v == null ? undefined : v),
-    z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/, "Use a YYYY-MM-DD date").optional()
+    z
+      .string()
+      .trim()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "Use a YYYY-MM-DD date")
+      .optional()
   ),
   notes: z.preprocess(
     (v) => (v === "" || v == null ? undefined : v),
@@ -188,9 +195,7 @@ export async function acceptHandover(req: Request, res: Response) {
 
   // Tell everyone who worked on it — this is the moment their warranty clock
   // starts, and the last thing that happens on the project.
-  const audience = [loaded.project.architect, loaded.project.engineer]
-    .filter(Boolean)
-    .map(String);
+  const audience = [loaded.project.architect, loaded.project.engineer].filter(Boolean).map(String);
   for (const userId of new Set(audience)) {
     notify(userId, {
       type: NotificationType.CONTRACT,

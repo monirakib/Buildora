@@ -23,13 +23,9 @@ const configured = Boolean(env.VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY);
 if (configured) {
   // The subject must be a mailto: or https: URL identifying the sender; push
   // services reject the request outright without it.
-  webpush.setVapidDetails(
-    env.VAPID_SUBJECT,
-    env.VAPID_PUBLIC_KEY!,
-    env.VAPID_PRIVATE_KEY!
-  );
+  webpush.setVapidDetails(env.VAPID_SUBJECT, env.VAPID_PUBLIC_KEY!, env.VAPID_PRIVATE_KEY!);
 } else {
-  console.warn("[webpush] VAPID keys not set — browser push is disabled");
+  console.warn("[webpush] VAPID keys not set, browser push is disabled");
 }
 
 /** Whether push can be sent at all. The client reads this before offering it. */
@@ -83,10 +79,9 @@ export async function pushToUser(userId: string, payload: PushPayload): Promise<
           );
           // Cheap enough to fire and not wait for — it only feeds a timestamp
           // in the device list.
-          void PushSubscription.updateOne(
-            { _id: sub._id },
-            { lastUsedAt: new Date() }
-          ).catch(() => null);
+          void PushSubscription.updateOne({ _id: sub._id }, { lastUsedAt: new Date() }).catch(
+            () => null
+          );
         } catch (err) {
           const status = (err as { statusCode?: number }).statusCode;
           if (status === 404 || status === 410) {

@@ -49,7 +49,7 @@ async function buildSystemPrompt(role?: UserRole) {
             `- ${z.areaName} (${z.zoneCode}): ${z.landUse}, max FAR ${z.maxFar}, max ground coverage ${z.maxGroundCoveragePct}%${z.maxFloors ? `, max ${z.maxFloors} floors` : ""}`
         )
         .join("\n")
-    : "(no zones loaded yet — tell users the zone checker data is being added)";
+    : "(no zones loaded yet, tell users the zone checker data is being added)";
 
   const feeLines = fees.length
     ? fees
@@ -58,14 +58,14 @@ async function buildSystemPrompt(role?: UserRole) {
             `- ${f.label} (${f.category}): base ৳${f.baseFeeBdt} + ৳${f.ratePerSqmBdt} per sqm of floor area`
         )
         .join("\n")
-    : "(no fee rules loaded yet — tell users the fee calculator data is being added)";
+    : "(no fee rules loaded yet, tell users the fee calculator data is being added)";
 
-  return `You are the Buildora Guide — the assistant for Buildora, a construction platform for Bangladesh that connects land owners with verified architects, structural engineers, contractors, and material suppliers.
+  return `You are the Buildora Guide, the assistant for Buildora, a construction platform for Bangladesh that connects land owners with verified architects, structural engineers, contractors, and material suppliers.
 
 How Buildora works:
 - A land owner posts a project brief (location, land size, floors, budget) at /projects/new.
 - Verified architects browse briefs at /briefs and send proposals; the owner can also browse portfolios at /architects.
-- When both sides agree, a contract is made and the fee goes into escrow (bKash, Nagad, or bank). Money releases only at approved milestones — up to 3 design revision rounds are included.
+- When both sides agree, a contract is made and the fee goes into escrow (bKash, Nagad, or bank). Money releases only at approved milestones, up to 3 design revision rounds are included.
 - The platform guides the RAJUK building-permit process: DAP zone checks and fee estimates at /permits, plus an ECPS submission tracker. Buildora guides and tracks ECPS but does not replace it.
 - Professionals sign up at /auth (Professional tab), complete their profile at /profile/professional, and request verification. A human supervisor reviews NID, IAB/IEB membership, and RAJUK enlistment before awarding the "Platform Verified" badge.
 
@@ -80,11 +80,11 @@ ${role ? `The person you're talking to is signed in as: ${role}.` : "The person 
 
 Rules:
 - Only answer questions about Buildora, building/construction in Bangladesh, RAJUK/DAP/ECPS permits, or choosing professionals. For anything else, say you only help with Buildora and building topics.
-- Be concise — a short paragraph or a few bullet points. Plain text only, no markdown headings or bold.
+- Be concise, a short paragraph or a few bullet points. Plain text only, no markdown headings or bold.
 - When a page helps, mention its path (e.g. "post a brief at /projects/new").
 - Quote fees and zone limits only from the data above; if the data says it's not loaded, say so instead of inventing numbers.
 - Reply in Bangla if the user writes in Bangla.
-- Never promise approval outcomes or legal results — Buildora guides the process, RAJUK decides.`;
+- Never promise approval outcomes or legal results. Buildora guides the process, RAJUK decides.`;
 }
 
 /** Calls Gemini's generateContent REST endpoint with plain fetch. */
@@ -111,7 +111,11 @@ async function askGemini(
   if (!res.ok) {
     const detail = await res.text().catch(() => "");
     console.error(`[assistant] Gemini ${res.status}: ${detail.slice(0, 300)}`);
-    throw new Error(res.status === 429 ? "The assistant is busy — try again in a minute" : "The assistant couldn't answer just now");
+    throw new Error(
+      res.status === 429
+        ? "The assistant is busy, try again in a minute"
+        : "The assistant couldn't answer just now"
+    );
   }
 
   const body = (await res.json()) as {
@@ -123,7 +127,7 @@ async function askGemini(
 }
 
 /**
- * POST /api/assistant/chat — one question in, one answer out. Guests send
+ * POST /api/assistant/chat, one question in, one answer out. Guests send
  * their own history; signed-in users' conversation is loaded from and saved
  * back to MongoDB.
  */
@@ -182,7 +186,7 @@ export async function chat(req: Request, res: Response) {
   return res.json({ data: { reply } });
 }
 
-/** GET /api/assistant/chat — the signed-in user's stored conversation. */
+/** GET /api/assistant/chat, the signed-in user's stored conversation. */
 export async function getChat(req: Request, res: Response) {
   const stored = await AssistantChat.findOne({ user: req.auth!.sub });
   return res.json({

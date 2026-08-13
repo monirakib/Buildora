@@ -121,7 +121,12 @@ export function ModelViewerModal({
   }, [url]);
 
   return (
-    <div role="dialog" aria-modal="true" aria-label={`3D view of ${title}`} className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={`3D view of ${title}`}
+      className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm"
+    >
       {/* The WebGL canvas mounts into this box */}
       <div ref={mountRef} className="absolute inset-0" />
 
@@ -129,7 +134,9 @@ export function ModelViewerModal({
       <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between p-5">
         <div className="rounded-2xl bg-black/50 px-4 py-2.5 backdrop-blur">
           <p className="text-sm font-extrabold text-white">{title}</p>
-          <p className="text-xs text-white/60">Drag to orbit · scroll to zoom · right-drag to pan</p>
+          <p className="text-xs text-white/60">
+            Drag to orbit · scroll to zoom · right-drag to pan
+          </p>
         </div>
         <button
           type="button"
@@ -160,7 +167,7 @@ export function ModelViewerModal({
             </p>
           ) : (
             <p className="rounded-full bg-rose-500/20 px-5 py-2.5 text-sm font-bold text-rose-200 backdrop-blur">
-              Couldn&apos;t load this model — is it a valid .glb file?
+              Couldn&apos;t load this model, is it a valid .glb file?
             </p>
           )}
         </div>

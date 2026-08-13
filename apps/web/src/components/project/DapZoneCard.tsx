@@ -95,8 +95,8 @@ export function DapZoneCard({
   if (!zone) {
     return checked ? (
       <p className="rounded-xl bg-stone-500/5 px-4 py-3 text-sm text-stone-600 dark:bg-white/5 dark:text-slate-400">
-        No DAP zone record covers “{area}” yet, so we can&apos;t show its limits. You can still
-        post the brief —{" "}
+        No DAP zone record covers “{area}” yet, so we can&apos;t show its limits. You can still post
+        the brief,{" "}
         <a href="/permits" className="font-bold text-amber-600 hover:underline dark:text-amber-400">
           check the zone tools
         </a>{" "}
@@ -130,7 +130,9 @@ export function DapZoneCard({
           <span className="rounded bg-black/10 px-1.5 py-0.5 text-xs font-extrabold dark:bg-white/15">
             {zone.zoneCode}
           </span>{" "}
-          <span className="font-semibold text-stone-600 dark:text-slate-300">({zone.areaName})</span>
+          <span className="font-semibold text-stone-600 dark:text-slate-300">
+            ({zone.areaName})
+          </span>
         </p>
         <span className="rounded-full bg-amber-500/20 px-3 py-1 text-xs font-bold text-amber-700 dark:text-amber-300">
           {landUseLabels[zone.landUse] ?? zone.landUse}
@@ -148,7 +150,7 @@ export function DapZoneCard({
         </div>
         <div>
           <dt className="text-xs text-stone-500 dark:text-slate-400">Max floors</dt>
-          <dd className="mt-0.5 font-bold">{zone.maxFloors ?? "—"}</dd>
+          <dd className="mt-0.5 font-bold">{zone.maxFloors ?? "-"}</dd>
         </div>
       </dl>
 
@@ -172,7 +174,7 @@ export function DapZoneCard({
 
       {useMismatch && (
         <p className="mt-2.5 text-xs font-semibold text-stone-600 dark:text-slate-300">
-          {`This zone is marked ${(landUseLabels[zone.landUse] ?? zone.landUse).toLowerCase()}, but you've chosen a ${(buildingTypeLabels[buildingType] ?? buildingType).toLowerCase()} building — that needs a change-of-use approval.`}
+          {`This zone is marked ${(landUseLabels[zone.landUse] ?? zone.landUse).toLowerCase()}, but you've chosen a ${(buildingTypeLabels[buildingType] ?? buildingType).toLowerCase()} building, that needs a change-of-use approval.`}
         </p>
       )}
 
@@ -181,7 +183,7 @@ export function DapZoneCard({
       )}
 
       <p className="mt-2.5 text-xs text-stone-500 dark:text-slate-400">
-        Guidance only — RAJUK decides. See the{" "}
+        Guidance only. RAJUK decides. See the{" "}
         <a href="/permits" className="font-bold text-amber-600 hover:underline dark:text-amber-400">
           permit tools
         </a>{" "}

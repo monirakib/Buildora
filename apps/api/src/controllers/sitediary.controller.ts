@@ -207,7 +207,7 @@ function notifyParticipants(
   for (const userId of new Set(audience)) {
     void notify(userId, {
       type: NotificationType.SITE_DIARY,
-      title: `Site diary — ${entry.date}`,
+      title: `Site diary, ${entry.date}`,
       body: preview(entry.workDone),
       link: `/projects/${project._id.toString()}`,
       actorId: authorId,
@@ -316,7 +316,7 @@ export async function createSiteDiaryEntry(req: Request, res: Response) {
     if (err && typeof err === "object" && "code" in err && err.code === 11000) {
       return res
         .status(409)
-        .json({ error: { message: `${date} is already logged — edit that entry instead` } });
+        .json({ error: { message: `${date} is already logged. Edit that entry instead` } });
     }
     throw err;
   }

@@ -267,7 +267,7 @@ export default function MarketplacePage() {
                 Materials, straight from the source
               </h1>
               <p className="mt-2 max-w-xl text-stone-600 dark:text-slate-400">
-                Cement, steel, bricks, and everything else — listed by suppliers and contractors,
+                Cement, steel, bricks, and everything else, listed by suppliers and contractors,
                 delivered to your site. Order anything, any time.
               </p>
             </div>
@@ -334,7 +334,7 @@ export default function MarketplacePage() {
               <p className="mt-1 text-sm text-stone-600 dark:text-slate-400">
                 {search || category
                   ? "Try a different search or category."
-                  : "Suppliers haven't listed anything yet — check back soon."}
+                  : "Suppliers haven't listed anything yet, check back soon."}
               </p>
             </div>
           ) : (

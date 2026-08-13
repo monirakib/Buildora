@@ -128,7 +128,7 @@ export function DocumentsSection({
           <p className="text-sm text-stone-500 dark:text-slate-500">Loading…</p>
         ) : documents.length === 0 ? (
           <p className="text-sm text-stone-600 dark:text-slate-400">
-            Nothing filed yet. Designs, permits, receipts, and site photos all live here — the
+            Nothing filed yet. Designs, permits, receipts, and site photos all live here, the
             project&apos;s permanent record.
           </p>
         ) : (

@@ -554,19 +554,47 @@ export async function sendVerificationEmail(req: Request, res: Response) {
 
   const result = await issueVerification(user);
   if (result.sent) {
-    return res.json({ data: { sentTo: user.email, expiresInHours: LINK_TTL_HOURS } });
+    return res.json({
+      data: {
+        sentTo: user.email,
+        expiresInHours: LINK_TTL_HOURS,
+        // How long until another is allowed. Each send pushes the next one
+        // further out, so the button needs telling rather than guessing.
+        nextRetryAfterSeconds: Math.ceil((result.nextRetryAfterMs ?? 0) / 1000),
+      },
+    });
   }
 
-  // Each refusal gets its own status and words — "couldn't send" would leave
-  // the person guessing which of four quite different things went wrong.
+  // The cooldown grows with each send, so the refusal has to say how long this
+  // one is rather than repeat a fixed "in a minute" that stops being true.
+  if (result.reason === "cooldown") {
+    const seconds = Math.ceil((result.retryAfterMs ?? 0) / 1000);
+    // The standard header for this status. The browser client reads it to run
+    // a countdown, and it means something to anything else that speaks HTTP.
+    res.set("Retry-After", String(seconds));
+    return res.status(429).json({
+      error: {
+        message: `A link already went out. Check your inbox, then try again in ${describeWait(seconds)}.`,
+      },
+    });
+  }
+
+  // Each remaining refusal gets its own status and words — "couldn't send"
+  // would leave the person guessing which of three different things went wrong.
   const refusal = {
     "already-verified": [409, "That address is already confirmed"],
-    cooldown: [429, "A link just went out — check your inbox, then try again in a minute"],
     "not-configured": [503, "Email isn't configured on this server yet"],
-    "send-failed": [502, "The mail server wouldn't take it — try again shortly"],
+    "send-failed": [502, "The mail server wouldn't take it, try again shortly"],
   } as const;
   const [status, message] = refusal[result.reason ?? "send-failed"];
   return res.status(status).json({ error: { message } });
+}
+
+/** "45 seconds", "2 minutes" — the wait as a person would say it. */
+function describeWait(seconds: number): string {
+  if (seconds < 60) return `${seconds} second${seconds === 1 ? "" : "s"}`;
+  const minutes = Math.ceil(seconds / 60);
+  return `${minutes} minute${minutes === 1 ? "" : "s"}`;
 }
 
 const verifyEmailSchema = z.object({
@@ -593,7 +621,7 @@ export async function verifyEmail(req: Request, res: Response) {
 
   const refusal = {
     invalid: "This link isn't valid. It may have been used already.",
-    expired: `This link has expired — they last ${LINK_TTL_HOURS} hours. Send yourself a new one from your account page.`,
+    expired: `This link has expired. They last ${LINK_TTL_HOURS} hours. Send yourself a new one from your account page.`,
     stale: "Your email address changed after this link was sent, so it no longer applies.",
   } as const;
   return res.status(400).json({ error: { message: refusal[result.reason] } });

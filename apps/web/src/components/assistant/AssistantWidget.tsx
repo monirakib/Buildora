@@ -130,7 +130,7 @@ export function AssistantWidget() {
             <div>
               <p className="text-sm font-extrabold tracking-tight">Buildora Guide</p>
               <p className="text-xs text-stone-500 dark:text-slate-400">
-                Escrow, permits, architects — ask away
+                Escrow, permits, architects, ask away
               </p>
             </div>
             {messages.length > 0 && (
@@ -149,7 +149,7 @@ export function AssistantWidget() {
             {messages.length === 0 && !sending ? (
               <div className="flex h-full flex-col justify-end gap-2">
                 <p className="mb-2 text-sm text-stone-600 dark:text-slate-400">
-                  Hi! I can explain how Buildora works — try one of these:
+                  Hi! I can explain how Buildora works, try one of these:
                 </p>
                 {suggestions.map((s) => (
                   <button

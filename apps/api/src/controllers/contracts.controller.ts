@@ -211,7 +211,7 @@ export async function payConceptFee(req: Request, res: Response) {
   const parties = contractParties(populated);
   notify(parties.architectId, {
     type: NotificationType.PAYMENT,
-    title: `Concept fee paid — ${bdt(doc.conceptFeeBdt)}`,
+    title: `Concept fee paid, ${bdt(doc.conceptFeeBdt)}`,
     body: `${parties.clientName} paid the concept fee for "${parties.projectTitle}". You can start the concept brief.`,
     link: parties.link,
     actorId: parties.clientId,
@@ -263,7 +263,7 @@ export async function fundEscrow(req: Request, res: Response) {
   const parties = contractParties(populated);
   notify(parties.architectId, {
     type: NotificationType.PAYMENT,
-    title: `Escrow funded — ${bdt(doc.designFeeBdt)}`,
+    title: `Escrow funded, ${bdt(doc.designFeeBdt)}`,
     body: `${parties.clientName} deposited the design fee for "${parties.projectTitle}". Design work can begin.`,
     link: parties.link,
     actorId: parties.clientId,
@@ -372,7 +372,7 @@ export async function decideDeliverable(req: Request, res: Response) {
     if (deliverable.kind === DeliverableKind.DESIGN && doc.revisionsUsed >= doc.maxRevisions) {
       return res.status(400).json({
         error: {
-          message: `All ${doc.maxRevisions} included revision rounds are used — approve the design or settle changes off-platform`,
+          message: `All ${doc.maxRevisions} included revision rounds are used, approve the design or settle changes off-platform`,
         },
       });
     }
@@ -435,7 +435,7 @@ export async function decideDeliverable(req: Request, res: Response) {
     notify(parties.architectId, {
       type: NotificationType.CONTRACT,
       title: "Your concept was approved",
-      body: `${parties.clientName} approved the concept for "${parties.projectTitle}" — the escrow deposit is next.`,
+      body: `${parties.clientName} approved the concept for "${parties.projectTitle}". The escrow deposit is next.`,
       link: parties.link,
       actorId: parties.clientId,
     });
@@ -444,7 +444,7 @@ export async function decideDeliverable(req: Request, res: Response) {
       type: NotificationType.PAYMENT,
       // Set just above, when the design was approved — the fallback only keeps
       // the type checker happy about the field being optional on the schema.
-      title: `Escrow released — ${bdt(doc.releasedToArchitectBdt ?? 0)}`,
+      title: `Escrow released, ${bdt(doc.releasedToArchitectBdt ?? 0)}`,
       body: `${parties.clientName} approved the design for "${parties.projectTitle}". Your fee has been released (after the ${Math.round(doc.commissionRate * 100)}% platform commission).`,
       link: parties.link,
       actorId: parties.clientId,

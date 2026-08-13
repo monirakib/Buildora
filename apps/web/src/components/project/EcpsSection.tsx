@@ -187,7 +187,7 @@ export function EcpsSection({
                     {historyEntry && (
                       <p className="mt-2 text-xs text-stone-500 dark:text-slate-500">
                         Done {formatDate(historyEntry.at)}
-                        {historyEntry.note ? ` — ${historyEntry.note}` : ""}
+                        {historyEntry.note ? `, ${historyEntry.note}` : ""}
                       </p>
                     )}
                   </li>

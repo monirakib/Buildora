@@ -79,7 +79,7 @@ export function currentPosition(timeoutMs = 15000): Promise<{ lat: number; lng: 
         reject(
           new Error(
             err.code === err.PERMISSION_DENIED
-              ? "Location is blocked — allow it in your browser to check in"
+              ? "Location is blocked, allow it in your browser to check in"
               : "Couldn't get a location fix. Try again outside."
           )
         ),

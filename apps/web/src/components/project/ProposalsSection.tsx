@@ -130,7 +130,7 @@ export function ProposalsSection({
         <div className="mt-4 flex flex-col gap-4">
           {proposals.length === 0 && isOwner && (
             <p className="text-sm text-stone-600 dark:text-slate-400">
-              No proposals yet — architects browsing the open briefs will find yours.
+              No proposals yet, architects browsing the open briefs will find yours.
             </p>
           )}
 

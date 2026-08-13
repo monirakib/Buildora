@@ -41,7 +41,7 @@ export function DeclarationStep({ form, patch, role }: StepProps) {
     <div>
       <StepHeader
         title="Final Declaration"
-        subtitle="Read carefully — a supervisor verifies everything you've submitted."
+        subtitle="Read carefully, a supervisor verifies everything you've submitted."
       />
 
       <div className="flex flex-col gap-4">

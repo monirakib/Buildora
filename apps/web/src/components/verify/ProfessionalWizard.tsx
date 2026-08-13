@@ -250,7 +250,7 @@ export function ProfessionalWizard({ user }: { user: SessionUser }) {
         {locked && (
           <div className="mb-6 rounded-2xl border border-amber-400/25 bg-amber-400/15 px-5 py-4 text-sm font-medium text-amber-800 backdrop-blur-xl dark:text-amber-100">
             {user.verificationStatus === VerificationStatus.APPROVED
-              ? `You're a ${config.verifiedLabel} — your credentials are locked. Contact support to change them.`
+              ? `You're a ${config.verifiedLabel}, your credentials are locked. Contact support to change them.`
               : "Your profile is locked while a supervisor reviews it. You'll see the outcome here."}
           </div>
         )}

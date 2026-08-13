@@ -137,7 +137,8 @@ export function HandoverSection({
         {locked && (
           <p className="mb-4 inline-flex items-center gap-2 rounded-xl bg-emerald-100 px-4 py-3 text-sm font-medium text-emerald-900 dark:bg-emerald-400/15 dark:text-emerald-200">
             <BadgeCheck className="h-4 w-4" />
-            Handed over and accepted{handover?.acceptedAt ? ` on ${formatDate(handover.acceptedAt)}` : ""}.
+            Handed over and accepted
+            {handover?.acceptedAt ? ` on ${formatDate(handover.acceptedAt)}` : ""}.
           </p>
         )}
 
@@ -145,8 +146,8 @@ export function HandoverSection({
           <div>
             <p className="text-sm text-stone-600 dark:text-slate-400">
               Record the occupancy certificate and every warranty the build carries. This is what
-              turns a finished project into a documented one — and the warranty dates stay here
-              long after everyone has moved on.
+              turns a finished project into a documented one, and the warranty dates stay here long
+              after everyone has moved on.
             </p>
             {isOwner && (
               <button
@@ -172,7 +173,7 @@ export function HandoverSection({
                   Occupancy certificate
                 </dt>
                 <dd className="mt-0.5 font-semibold">
-                  {handover.occupancyCertificateNo || "—"}
+                  {handover.occupancyCertificateNo || "-"}
                   {handover.occupancyCertificateUrl && (
                     <a
                       href={handover.occupancyCertificateUrl}
@@ -282,9 +283,7 @@ export function HandoverSection({
                 <input
                   className={inputClass}
                   value={form.occupancyCertificateNo}
-                  onChange={(e) =>
-                    setForm({ ...form, occupancyCertificateNo: e.target.value })
-                  }
+                  onChange={(e) => setForm({ ...form, occupancyCertificateNo: e.target.value })}
                 />
               </label>
               <label className="text-sm">
@@ -293,9 +292,7 @@ export function HandoverSection({
                   className={inputClass}
                   placeholder="https://…"
                   value={form.occupancyCertificateUrl}
-                  onChange={(e) =>
-                    setForm({ ...form, occupancyCertificateUrl: e.target.value })
-                  }
+                  onChange={(e) => setForm({ ...form, occupancyCertificateUrl: e.target.value })}
                 />
               </label>
               <label className="text-sm">
@@ -382,7 +379,9 @@ export function HandoverSection({
 
             <button
               type="button"
-              onClick={() => setForm({ ...form, warranties: [...form.warranties, emptyWarranty()] })}
+              onClick={() =>
+                setForm({ ...form, warranties: [...form.warranties, emptyWarranty()] })
+              }
               className="inline-flex items-center gap-1.5 self-start rounded-full border border-stone-300 px-5 py-2 text-sm font-bold text-stone-700 transition hover:bg-stone-100 dark:border-white/20 dark:text-slate-200 dark:hover:bg-white/10"
             >
               <Plus className="h-4 w-4" /> Add warranty

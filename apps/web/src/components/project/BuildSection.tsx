@@ -31,9 +31,9 @@ const cardClass =
 
 const statusLabels: Record<MilestoneStatus, string> = {
   [MilestoneStatus.PENDING]: "Not funded",
-  [MilestoneStatus.FUNDED]: "Funded — in progress",
+  [MilestoneStatus.FUNDED]: "Funded, in progress",
   [MilestoneStatus.AWAITING_INSPECTION]: "Awaiting inspection",
-  [MilestoneStatus.INSPECTION_PASSED]: "Passed — ready to release",
+  [MilestoneStatus.INSPECTION_PASSED]: "Passed, ready to release",
   [MilestoneStatus.INSPECTION_FAILED]: "Failed inspection",
   [MilestoneStatus.RELEASED]: "Paid",
 };
@@ -222,7 +222,7 @@ export function BuildSection({
                             : ins.verdict === InspectionVerdict.PASS_WITH_NOTES
                               ? "Passed with notes"
                               : "Passed"}{" "}
-                          — {ins.inspector.name}, {formatDate(ins.inspectedAt)}
+                          , {ins.inspector.name}, {formatDate(ins.inspectedAt)}
                           {ins.location && (
                             <span className="inline-flex items-center gap-1 text-stone-500 dark:text-slate-500">
                               <MapPin className="h-3 w-3" />
@@ -241,7 +241,7 @@ export function BuildSection({
                             .map((r, i) => (
                               <li key={i} className="text-rose-600 dark:text-rose-400">
                                 ✗ {r.label}
-                                {r.note ? ` — ${r.note}` : ""}
+                                {r.note ? `, ${r.note}` : ""}
                               </li>
                             ))}
                         </ul>
@@ -277,7 +277,7 @@ export function BuildSection({
                         purpose={PaymentPurpose.MILESTONE_ESCROW}
                         refId={m.id}
                         amountBdt={m.amountBdt}
-                        label={`Fund this stage — ${formatBdt(m.amountBdt)}`}
+                        label={`Fund this stage, ${formatBdt(m.amountBdt)}`}
                         onUnavailable={(down) => down && setFundingId(m.id)}
                       />
                       {fundingId === m.id && (
@@ -394,7 +394,7 @@ export function BuildSection({
                   )}
                   {m.status === MilestoneStatus.INSPECTION_PASSED && !isClient && (
                     <p className="text-xs text-stone-600 dark:text-slate-400">
-                      Passed inspection — waiting for the owner to release the tranche.
+                      Passed inspection, waiting for the owner to release the tranche.
                     </p>
                   )}
                   {latest?.verdict === InspectionVerdict.FAIL &&

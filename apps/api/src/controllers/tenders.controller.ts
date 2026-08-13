@@ -269,7 +269,7 @@ export async function updateTender(req: Request, res: Response) {
   }
   if (tender.status !== TenderStatus.DRAFT) {
     return res.status(409).json({
-      error: { message: "A published tender can't be edited — contractors are pricing it" },
+      error: { message: "A published tender can't be edited, contractors are pricing it" },
     });
   }
 
@@ -391,7 +391,7 @@ export async function cancelTender(req: Request, res: Response) {
   if (tender.status === TenderStatus.AWARDED) {
     return res
       .status(409)
-      .json({ error: { message: "This tender was awarded — cancel the build contract instead" } });
+      .json({ error: { message: "This tender was awarded, cancel the build contract instead" } });
   }
 
   tender.status = TenderStatus.CANCELLED;

@@ -551,7 +551,7 @@ function CallOverlay() {
             className="mx-auto mt-6 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-stone-500 transition hover:bg-black/5 hover:text-stone-800 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-slate-100"
           >
             <Minimize2 className="h-3.5 w-3.5" />
-            Minimize — keep using Buildora
+            Minimize, keep using Buildora
           </button>
         )}
       </div>

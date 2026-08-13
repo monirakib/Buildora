@@ -15,7 +15,7 @@ import type { NextFunction, Request, Response } from "express";
 export function rateLimit({
   windowMs,
   max,
-  message = "Too many requests — wait a moment and try again",
+  message = "Too many requests, wait a moment and try again",
 }: {
   windowMs: number;
   max: number;

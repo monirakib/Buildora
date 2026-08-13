@@ -4,7 +4,7 @@ import { env } from "../config/env";
 
 export async function connectDb(): Promise<boolean> {
   if (!env.MONGODB_URI) {
-    console.warn("[db] MONGODB_URI not set — starting without a database connection.");
+    console.warn("[db] MONGODB_URI not set, starting without a database connection.");
     console.warn("[db] Set it in apps/api/.env (local MongoDB or Atlas) to enable persistence.");
     return false;
   }

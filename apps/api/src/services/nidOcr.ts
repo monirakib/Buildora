@@ -123,7 +123,7 @@ export async function readNidCard(
     console.error(`[nid] Gemini ${res.status}: ${detail.slice(0, 300)}`);
     throw new Error(
       res.status === 429
-        ? "The document reader is busy — try again shortly"
+        ? "The document reader is busy, try again shortly"
         : "Couldn't read the NID image"
     );
   }

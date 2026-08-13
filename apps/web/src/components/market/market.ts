@@ -16,8 +16,7 @@ export const categoryLabels: Record<ProductCategory, string> = {
 
 /** Status chip styling per order state. */
 export const statusStyles: Record<OrderStatus, string> = {
-  [OrderStatus.PLACED]:
-    "bg-amber-500/15 text-amber-700 dark:bg-amber-400/15 dark:text-amber-300",
+  [OrderStatus.PLACED]: "bg-amber-500/15 text-amber-700 dark:bg-amber-400/15 dark:text-amber-300",
   [OrderStatus.CONFIRMED]: "bg-sky-500/15 text-sky-700 dark:bg-sky-400/15 dark:text-sky-300",
   [OrderStatus.DISPATCHED]:
     "bg-violet-500/15 text-violet-700 dark:bg-violet-400/15 dark:text-violet-300",

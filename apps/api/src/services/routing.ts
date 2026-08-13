@@ -20,7 +20,7 @@ const REQUEST_TIMEOUT_MS = 12000;
 const configured = Boolean(env.ORS_API_KEY);
 
 if (!configured) {
-  console.warn("[routing] ORS_API_KEY not set — delivery distance and ETA are disabled");
+  console.warn("[routing] ORS_API_KEY not set, delivery distance and ETA are disabled");
 }
 
 export function isRoutingConfigured(): boolean {
@@ -45,12 +45,19 @@ export async function routeBetween(from: LatLng, to: LatLng): Promise<RouteResul
       // ORS takes coordinates longitude-first, which is the opposite of every
       // other map API in this codebase. Getting it backwards silently routes
       // somewhere in the ocean rather than erroring, so it's worth the comment.
-      body: JSON.stringify({ coordinates: [[from.lng, from.lat], [to.lng, to.lat]] }),
+      body: JSON.stringify({
+        coordinates: [
+          [from.lng, from.lat],
+          [to.lng, to.lat],
+        ],
+      }),
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
 
     if (!res.ok) {
-      console.error(`[routing] ORS ${res.status}: ${(await res.text().catch(() => "")).slice(0, 200)}`);
+      console.error(
+        `[routing] ORS ${res.status}: ${(await res.text().catch(() => "")).slice(0, 200)}`
+      );
       return undefined;
     }
 

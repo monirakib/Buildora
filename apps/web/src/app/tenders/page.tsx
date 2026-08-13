@@ -74,7 +74,7 @@ export default function TendersPage() {
         <h1 className="text-3xl font-extrabold tracking-tight">Tenders</h1>
         <p className="mt-2 text-sm text-stone-600 dark:text-slate-400">
           Price the Bill of Quantities line by line. Your bid stays sealed until the owner closes
-          bidding — nobody else can see what you quoted.
+          bidding, nobody else can see what you quoted.
         </p>
 
         {error && (

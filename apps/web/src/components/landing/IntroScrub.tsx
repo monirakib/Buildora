@@ -5,7 +5,7 @@ import { gsap, prefersReducedMotion, useGSAP } from "@/lib/gsap";
 
 // The statement, one word at a time. Accented words render in amber.
 const words =
-  "Buildora brings land owners, architects, engineers, and contractors into one accountable place — so the home you imagine is the home that gets built.".split(
+  "Buildora brings land owners, architects, engineers, and contractors into one accountable place, so the home you imagine is the home that gets built.".split(
     " "
   );
 const accents = new Set(["accountable", "built."]);

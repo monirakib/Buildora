@@ -100,7 +100,7 @@ export function ChangeOrderSection({
 
         {orders.length === 0 && !drafting && (
           <p className="text-sm text-stone-600 dark:text-slate-400">
-            Work nobody priced at tender time — a deeper foundation, an upgraded finish. Proposing
+            Work nobody priced at tender time, a deeper foundation, an upgraded finish. Proposing
             one here keeps the change inside escrow instead of becoming a side deal.
           </p>
         )}
@@ -132,7 +132,13 @@ export function ChangeOrderSection({
                 </p>
 
                 <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm">
-                  <span className={positive ? "font-bold text-rose-600 dark:text-rose-400" : "font-bold text-emerald-600 dark:text-emerald-400"}>
+                  <span
+                    className={
+                      positive
+                        ? "font-bold text-rose-600 dark:text-rose-400"
+                        : "font-bold text-emerald-600 dark:text-emerald-400"
+                    }
+                  >
                     {positive ? "+" : "−"}
                     {formatBdt(Math.abs(order.amountDeltaBdt))}
                   </span>
@@ -203,7 +209,7 @@ export function ChangeOrderSection({
           <div className="mt-4 flex flex-col gap-3 border-t border-stone-300/60 pt-4 dark:border-white/10">
             <input
               className={inputClass}
-              placeholder="Title — e.g. Deeper piling to rock"
+              placeholder="Title, e.g. Deeper piling to rock"
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
             />

@@ -138,7 +138,7 @@ export function TenderSection({
       setBuiltArea(template.builtAreaSqft);
       setItems(template.items.map(toDraft));
       setForm({
-        title: `Construction package — ${project.title}`,
+        title: `Construction package, ${project.title}`,
         scope: "",
         // A fortnight is a normal window for a small building tender.
         deadlineAt: new Date(Date.now() + 14 * 86_400_000).toISOString().slice(0, 10),
@@ -253,7 +253,7 @@ export function TenderSection({
               <p className="mb-4 rounded-xl bg-sky-100 px-4 py-2.5 text-sm text-sky-900 dark:bg-sky-400/15 dark:text-sky-200">
                 {builtArea > 0
                   ? `Quantities pre-filled from the ${builtArea.toLocaleString()} sq ft drawn in the floor plan. Edit anything that doesn't match.`
-                  : "No floor plan drawn yet, so quantities start at zero — fill them in, or draw the plan first."}
+                  : "No floor plan drawn yet, so quantities start at zero, fill them in, or draw the plan first."}
               </p>
             )}
 
@@ -310,7 +310,7 @@ export function TenderSection({
 
             <p className="mt-5 text-sm font-bold">Bill of Quantities</p>
             <p className="mt-1 text-xs text-stone-500 dark:text-slate-500">
-              Contractors see the description, unit and quantity. Your guide rate stays private —
+              Contractors see the description, unit and quantity. Your guide rate stays private,
               it&apos;s only there to measure their bids against.
             </p>
 
@@ -495,7 +495,7 @@ export function TenderSection({
               <div className="mt-4">
                 <p className="text-sm text-stone-600 dark:text-slate-400">
                   You cancelled this tender, so no contractor is pricing it any more. Start a fresh
-                  one whenever you're ready — the BOQ is rebuilt from your floor plan.
+                  one whenever you're ready, the BOQ is rebuilt from your floor plan.
                 </p>
                 <button
                   type="button"
@@ -516,7 +516,7 @@ export function TenderSection({
                   {tender.bidCount} sealed {tender.bidCount === 1 ? "bid" : "bids"} received
                 </p>
                 <p className="mt-1 text-xs text-stone-600 dark:text-slate-400">
-                  Nobody can read a bid until bidding closes — including you. That&apos;s what stops
+                  Nobody can read a bid until bidding closes, including you. That&apos;s what stops
                   a late bidder pricing against an early one.
                 </p>
                 <div className="mt-3 flex flex-wrap gap-3">
@@ -581,14 +581,14 @@ export function TenderSection({
                                   {row.quantity} {row.unit}
                                 </td>
                                 <td className="py-2 pr-3 text-xs text-stone-500 dark:text-slate-500">
-                                  {row.guideRateBdt ?? "—"}
+                                  {row.guideRateBdt ?? "-"}
                                 </td>
                                 <td className="py-2 pr-3 text-xs text-stone-500 dark:text-slate-500">
-                                  {row.medianRateBdt ?? "—"}
+                                  {row.medianRateBdt ?? "-"}
                                 </td>
                                 {bids.map((bid) => {
                                   const rate = row.rates[bid.id];
-                                  // Flag anything meaningfully under the median —
+                                  // Flag anything meaningfully under the median,
                                   // an unusually cheap line is where corners get cut.
                                   const low =
                                     rate !== undefined &&
@@ -602,7 +602,7 @@ export function TenderSection({
                                       }`}
                                       title={low ? "Well below the median rate" : undefined}
                                     >
-                                      {rate ?? "—"}
+                                      {rate ?? "-"}
                                     </td>
                                   );
                                 })}

@@ -190,12 +190,12 @@ export async function lookupIabMember(
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
   } catch {
-    throw new Error("Couldn't reach the IAB directory — try again in a moment");
+    throw new Error("Couldn't reach the IAB directory, try again in a moment");
   }
 
   if (!res.ok) {
     console.error(`[iab] directory responded ${res.status}`);
-    throw new Error("The IAB directory isn't responding — try again in a moment");
+    throw new Error("The IAB directory isn't responding, try again in a moment");
   }
 
   const payload = (await res.json().catch(() => null)) as {

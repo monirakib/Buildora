@@ -2,7 +2,7 @@ import nodemailer, { type Transporter } from "nodemailer";
 import type { NotificationType } from "@buildora/shared";
 import { env } from "../config/env";
 import { LOGO_CID, LOGO_PNG } from "./email-logo";
-import { renderEmail } from "./email-template";
+import { renderEmail, type EmailHighlight } from "./email-template";
 
 /**
  * Transactional email: one message, two ways out.
@@ -52,7 +52,7 @@ const configured = resendConfigured || smtpConfigured;
 const route = resendConfigured ? "Resend" : smtpConfigured ? "Gmail SMTP" : "none";
 
 if (!configured) {
-  console.warn("[email] no mail route configured — transactional email is disabled");
+  console.warn("[email] no mail route configured, transactional email is disabled");
 } else {
   console.info(`[email] sending over ${route}`);
 }
@@ -99,11 +99,17 @@ export interface EmailInput {
   subject: string;
   /** Plain-text body. The HTML version is built from it. */
   text: string;
-  /** In-app path or absolute URL — rendered as the button. */
+  /** In-app path or absolute URL, rendered as the button. */
   link?: string;
   linkLabel?: string;
-  /** The kind of event, which colours the category pill in the template. */
+  /** A phrase inside the subject to pick out in amber in the headline. */
+  accent?: string;
+  /** Small print under the button, e.g. how long the link stays good. */
+  meta?: string;
+  /** The kind of event, which labels the category pill in the template. */
   category?: NotificationType;
+  /** The three feature tiles. Only welcome-shaped mail should ask for them. */
+  highlights?: EmailHighlight[];
 }
 
 /**
@@ -118,7 +124,7 @@ export async function sendEmailOrThrow(input: EmailInput): Promise<void> {
     throw new Error("Email isn't configured on this server");
   }
   if (!env.EMAIL_FROM_ADDRESS) {
-    throw new Error(`EMAIL_FROM_ADDRESS isn't set — ${route} has no address to send from`);
+    throw new Error(`EMAIL_FROM_ADDRESS isn't set, ${route} has no address to send from`);
   }
 
   // An absolute URL is required in mail — a relative path has nothing to
@@ -135,8 +141,12 @@ export async function sendEmailOrThrow(input: EmailInput): Promise<void> {
     recipientName: input.toName,
     link: absoluteLink,
     linkLabel: input.linkLabel,
+    accent: input.accent,
+    meta: input.meta,
     category: input.category,
+    highlights: input.highlights,
     settingsUrl: `${env.WEB_BASE_URL}/account`,
+    homeUrl: env.WEB_BASE_URL,
   });
 
   // The header that puts a one-click "unsubscribe" control in Gmail's own UI,

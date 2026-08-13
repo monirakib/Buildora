@@ -21,6 +21,14 @@ export interface EmailVerificationDoc {
    * tied to the address it proved — change your email and the old link dies.
    */
   email: string;
+  /**
+   * How many links this account has been sent in the current run, counting
+   * this one. Carried forward each time a link is reissued, because the wait
+   * before the next one grows with it — see RESEND_LADDER_MS. It resets when
+   * the address is confirmed (the document is deleted) or when the account
+   * leaves it alone long enough for the TTL below to sweep it away.
+   */
+  sends: number;
   expiresAt: Date;
   createdAt: Date;
 }
@@ -30,6 +38,7 @@ const emailVerificationSchema = new Schema<EmailVerificationDoc>(
     user: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
     tokenHash: { type: String, required: true, unique: true },
     email: { type: String, required: true, lowercase: true, trim: true },
+    sends: { type: Number, required: true, default: 1 },
     // `expires: 0` makes this a TTL index: MongoDB deletes the document once
     // the clock passes the stored date, so expired links clean themselves up.
     expiresAt: { type: Date, required: true, expires: 0 },

@@ -24,7 +24,7 @@ export function BusinessStep({ form, patch, onError, role }: StepProps) {
         title="Business Registration"
         subtitle={
           isSupplier
-            ? "Your trade licence and tax registration — what makes you a real, payable business."
+            ? "Your trade licence and tax registration, what makes you a real, payable business."
             : "Your firm's trade licence and tax registration. Escrow payouts are made against these."
         }
       />
@@ -58,7 +58,7 @@ export function BusinessStep({ form, patch, onError, role }: StepProps) {
           <Field
             id="tradeLicenseExpiry"
             title="Valid until"
-            hint="Trade licences are renewed every year — an expired one is flagged to the supervisor."
+            hint="Trade licences are renewed every year, an expired one is flagged to the supervisor."
           >
             <input
               id="tradeLicenseExpiry"
@@ -107,7 +107,7 @@ export function BusinessStep({ form, patch, onError, role }: StepProps) {
               id="binNumber"
               title="BIN / VAT registration"
               placeholder="13 digits"
-              hint="Optional — leave blank if you're below the VAT threshold."
+              hint="Optional, leave blank if you're below the VAT threshold."
               value={form.binNumber}
               onChange={(binNumber) => patch({ binNumber })}
               check={checkBin}

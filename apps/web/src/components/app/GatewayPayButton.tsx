@@ -72,7 +72,7 @@ export function GatewayPayButton({
   if (amountBdt > SSLCOMMERZ_MAX_BDT) {
     return (
       <p className="mt-2 text-xs text-stone-600 dark:text-slate-400">
-        This is over the {formatBdt(SSLCOMMERZ_MAX_BDT)} limit for a single online payment — settle
+        This is over the {formatBdt(SSLCOMMERZ_MAX_BDT)} limit for a single online payment, settle
         it by bank transfer and record it below.
       </p>
     );
@@ -120,7 +120,7 @@ export function GatewayPayButton({
         ))}
         {sandbox && (
           <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-bold text-amber-800 dark:bg-amber-400/15 dark:text-amber-300">
-            Test mode — no real money
+            Test mode, no real money
           </span>
         )}
       </div>

@@ -139,7 +139,7 @@ export async function submitBid(req: Request, res: Response) {
   const missing = tender.items.filter((i) => !priced.has(i.id));
   if (missing.length > 0) {
     return res.status(400).json({
-      error: { message: `Price every line — ${missing.length} still blank` },
+      error: { message: `Price every line, ${missing.length} still blank` },
     });
   }
 
@@ -314,7 +314,7 @@ export async function withdrawBid(req: Request, res: Response) {
   if (tender && tender.status !== TenderStatus.OPEN) {
     return res
       .status(409)
-      .json({ error: { message: "Bidding has closed — this bid can't be withdrawn" } });
+      .json({ error: { message: "Bidding has closed, this bid can't be withdrawn" } });
   }
 
   bid.status = BidStatus.WITHDRAWN;

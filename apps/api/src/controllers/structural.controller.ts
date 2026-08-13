@@ -70,7 +70,9 @@ function toRef(ref: PopulatedRef): UserRef {
   };
 }
 
-function toSubmissionDto(sub: StructuralEngagementDoc["submissions"][number]): StructuralSubmission {
+function toSubmissionDto(
+  sub: StructuralEngagementDoc["submissions"][number]
+): StructuralSubmission {
   return {
     title: sub.title,
     note: sub.note,
@@ -128,7 +130,11 @@ async function architectRefOf(
 }
 
 /** Sends the engagement back, with the architect resolved. */
-async function respond(res: Response, doc: HydratedDocument<StructuralEngagementDoc>, status = 200) {
+async function respond(
+  res: Response,
+  doc: HydratedDocument<StructuralEngagementDoc>,
+  status = 200
+) {
   await doc.populate(withRefs);
   const architect = await architectRefOf(doc);
   return res.status(status).json({ data: { engagement: toEngagementDto(doc, architect) } });
@@ -220,7 +226,7 @@ export async function appointEngineer(req: Request, res: Response) {
   await notify(engineerId, {
     type: NotificationType.CONTRACT,
     title: "You've been appointed as structural engineer",
-    body: `${project.title} — agreed fee ৳${feeBdt.toLocaleString("en-BD")}. The owner funds escrow next.`,
+    body: `${project.title}, agreed fee ৳${feeBdt.toLocaleString("en-BD")}. The owner funds escrow next.`,
     link: `/projects/${projectId}`,
     actorId: req.auth!.sub,
   });
@@ -484,9 +490,7 @@ export async function reviewDrawings(req: Request, res: Response) {
     await notify(idOf(doc.engineer), {
       type: NotificationType.CONTRACT,
       title: "Changes requested on your drawings",
-      body: note
-        ? preview(note, 120)
-        : `Revision ${doc.revisionsUsed} of ${doc.maxRevisions}.`,
+      body: note ? preview(note, 120) : `Revision ${doc.revisionsUsed} of ${doc.maxRevisions}.`,
       link: `/projects/${idOf(doc.project)}`,
       actorId: req.auth!.sub,
     });
@@ -567,7 +571,9 @@ export async function commentOnDrawings(req: Request, res: Response) {
 
   const pending = doc.submissions.find((s) => s.status === DeliverableStatus.PENDING_REVIEW);
   if (!pending) {
-    return res.status(400).json({ error: { message: "There's no open drawing set to comment on" } });
+    return res
+      .status(400)
+      .json({ error: { message: "There's no open drawing set to comment on" } });
   }
 
   pending.architectNote = parsed.data.note;

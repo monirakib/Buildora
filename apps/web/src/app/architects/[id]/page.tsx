@@ -189,7 +189,7 @@ export default function ArchitectDetailPage() {
                   href="#projects"
                   className="mt-7 inline-flex items-center gap-3 text-sm font-bold underline-offset-8 transition hover:text-amber-600 hover:underline dark:hover:text-amber-400"
                 >
-                  View Projects <span aria-hidden>—</span>
+                  View Projects <span aria-hidden>-</span>
                 </a>
               )}
 
@@ -296,7 +296,7 @@ export default function ArchitectDetailPage() {
                         {/* eslint-disable-next-line @next/next/no-img-element -- Cloudinary-hosted */}
                         <img
                           src={project.imageUrls[0]}
-                          alt={`${project.title} — cover photo`}
+                          alt={`${project.title}, cover photo`}
                           loading="lazy"
                           className="aspect-4/3 w-full object-cover transition duration-500 group-hover:scale-105"
                         />
@@ -323,7 +323,7 @@ export default function ArchitectDetailPage() {
                             {/* eslint-disable-next-line @next/next/no-img-element -- Cloudinary-hosted */}
                             <img
                               src={url}
-                              alt={`${project.title} — photo`}
+                              alt={`${project.title}, photo`}
                               loading="lazy"
                               className="h-10 w-14 rounded-md object-cover transition hover:opacity-80"
                             />
@@ -413,7 +413,7 @@ export default function ArchitectDetailPage() {
                         <p className="font-bold">{e.degree}</p>
                         <p className="text-sm text-stone-600 dark:text-slate-400">
                           {e.institution}
-                          {e.department ? ` — ${e.department}` : ""}
+                          {e.department ? `, ${e.department}` : ""}
                         </p>
                         {e.year && (
                           <p className="text-sm text-stone-500 dark:text-slate-500">{e.year}</p>
@@ -486,7 +486,7 @@ export default function ArchitectDetailPage() {
                 Talk it through with {firstName}
               </h2>
               <p className="mt-2 mb-6 text-sm text-stone-600 dark:text-slate-400">
-                Pick a time that suits you — online over Buildora&apos;s video call, or in person.
+                Pick a time that suits you, online over Buildora&apos;s video call, or in person.
               </p>
               <BookMeeting architectId={params.id} architectName={architect.name} />
             </section>
@@ -503,7 +503,7 @@ export default function ArchitectDetailPage() {
                     Meaningful Together
                   </h2>
                   <p className="mt-2 text-sm text-stone-600 dark:text-slate-400">
-                    Tell {firstName} about your project — location, plot size, building type, and
+                    Tell {firstName} about your project, location, plot size, building type, and
                     timeline.
                   </p>
                 </div>
@@ -511,7 +511,7 @@ export default function ArchitectDetailPage() {
 
               {sent ? (
                 <div className="mt-6 rounded-xl bg-emerald-100 px-4 py-3 text-sm font-medium text-emerald-800 dark:bg-emerald-400/15 dark:text-emerald-300">
-                  Request sent. You&apos;ll see it — and any reply — under{" "}
+                  Request sent. You&apos;ll see it, and any reply, under{" "}
                   <Link href="/inquiries" className="underline underline-offset-2">
                     Your requests
                   </Link>
@@ -539,7 +539,7 @@ export default function ArchitectDetailPage() {
                   <p className="mt-1">
                     You can look through their work, but projects can only be started with
                     architects whose IAB membership, degree and identity a Buildora supervisor has
-                    checked. Come back once they&apos;re verified — or{" "}
+                    checked. Come back once they&apos;re verified, or{" "}
                     <Link href="/architects" className="underline underline-offset-2">
                       browse verified architects
                     </Link>
@@ -555,7 +555,7 @@ export default function ArchitectDetailPage() {
                     minLength={10}
                     maxLength={1000}
                     rows={4}
-                    placeholder="Tell them about your project — location, plot size, building type, and timeline."
+                    placeholder="Tell them about your project, location, plot size, building type, and timeline."
                     className="block w-full rounded-xl border border-stone-300/80 bg-white/70 px-4 py-3 text-sm text-stone-900 placeholder-stone-400 backdrop-blur transition outline-none focus:border-amber-500 focus:bg-white/90 focus:ring-2 focus:ring-amber-400/30 dark:border-white/15 dark:bg-white/5 dark:text-slate-100 dark:placeholder-slate-500"
                   />
                   {error && (

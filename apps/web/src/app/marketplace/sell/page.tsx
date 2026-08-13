@@ -250,7 +250,7 @@ export default function SellPage() {
               <textarea
                 rows={2}
                 maxLength={1000}
-                placeholder="Description (optional) — grade, sizes, delivery area…"
+                placeholder="Description (optional), grade, sizes, delivery area…"
                 value={form.description}
                 onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
                 className={`${inputClass} sm:col-span-2`}
@@ -296,7 +296,7 @@ export default function SellPage() {
             <p className="mt-8 text-sm text-stone-500 dark:text-slate-500">Loading…</p>
           ) : products.length === 0 ? (
             <p className="mt-8 text-sm text-stone-600 dark:text-slate-400">
-              No listings yet — add your first product above.
+              No listings yet, add your first product above.
             </p>
           ) : (
             <ul className="mt-8 flex flex-col gap-4">

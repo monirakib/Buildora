@@ -297,7 +297,7 @@ function MeetingCard({
         {meeting.status === MeetingStatus.CANCELLED && (
           <p className="mt-2 text-sm text-stone-600 dark:text-slate-400">
             Cancelled by {meeting.cancelledBy === party ? "you" : other.name}
-            {meeting.cancelReason ? ` — ${meeting.cancelReason}` : ""}.
+            {meeting.cancelReason ? `, ${meeting.cancelReason}` : ""}.
           </p>
         )}
 
@@ -321,7 +321,7 @@ function MeetingCard({
               Download .ics
             </button>
             <span className="text-xs text-stone-500 dark:text-slate-500">
-              One-off copy — it won&apos;t follow changes.
+              One-off copy, it won&apos;t follow changes.
             </span>
           </div>
         )}
@@ -399,8 +399,8 @@ function MeetingCard({
                 {meeting.venue.history.map((h, i) => (
                   <li key={i}>
                     {h.by === party ? "You" : other.name} suggested {h.place}
-                    {h.outcome === "REJECTED" ? " — passed over" : ""}
-                    {h.outcome === "ACCEPTED" ? " — agreed" : ""}
+                    {h.outcome === "REJECTED" ? ", passed over" : ""}
+                    {h.outcome === "ACCEPTED" ? ", agreed" : ""}
                   </li>
                 ))}
               </ol>
@@ -445,7 +445,7 @@ function MeetingCard({
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               maxLength={500}
-              placeholder="Reason (optional) — they'll see this"
+              placeholder="Reason (optional), they'll see this"
               className={inputClass}
             />
             <button

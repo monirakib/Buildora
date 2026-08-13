@@ -20,13 +20,7 @@ const inputClass =
  * estimate and the eventual bids are speaking about the same materials. The AI
  * only writes the explanation underneath, and the figures stand without it.
  */
-export function EstimateSection({
-  projectId,
-  token,
-}: {
-  projectId: string;
-  token: string;
-}) {
+export function EstimateSection({ projectId, token }: { projectId: string; token: string }) {
   const [estimate, setEstimate] = useState<CostEstimate | null>(null);
   const [areaSqft, setAreaSqft] = useState("");
   const [busy, setBusy] = useState(false);
@@ -58,8 +52,8 @@ export function EstimateSection({
         {!estimate ? (
           <div>
             <p className="text-sm text-stone-600 dark:text-slate-400">
-              A materials-and-labour estimate priced from Buildora&apos;s rate table. Leave the
-              area blank to use your drawn floor plan, or type one to try a different size.
+              A materials-and-labour estimate priced from Buildora&apos;s rate table. Leave the area
+              blank to use your drawn floor plan, or type one to try a different size.
             </p>
             <div className="mt-4 flex flex-wrap items-end gap-3">
               <label className="text-sm">
@@ -181,9 +175,9 @@ export function EstimateSection({
             </div>
 
             <p className="text-xs text-stone-500 dark:text-slate-500">
-              Quantities and rates come from Buildora&apos;s BOQ table — the same rates your
-              contractor tender is priced from — not from the AI. Treat it as a budgeting guide,
-              not a quote.
+              Quantities and rates come from Buildora&apos;s BOQ table, the same rates your
+              contractor tender is priced from, not from the AI. Treat it as a budgeting guide, not
+              a quote.
             </p>
           </div>
         )}

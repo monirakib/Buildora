@@ -87,10 +87,7 @@ const briefSchema = z
       (v) => (v === "" ? undefined : v),
       z.string().trim().max(60).optional()
     ),
-    timeline: z.preprocess(
-      (v) => (v === "" ? undefined : v),
-      z.string().trim().max(40).optional()
-    ),
+    timeline: z.preprocess((v) => (v === "" ? undefined : v), z.string().trim().max(40).optional()),
     ownershipDocsReady: z.boolean().optional(),
     photoUrls: z.array(z.url()).max(6, "At most 6 plot photos").optional(),
   })

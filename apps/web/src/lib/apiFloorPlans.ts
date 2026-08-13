@@ -15,14 +15,10 @@ export interface FloorPlansResult {
 }
 
 /** GET /api/projects/:id/floor-plans — all drawn floors, lowest level first. */
-export async function listFloorPlans(
-  token: string,
-  projectId: string
-): Promise<FloorPlansResult> {
-  const res = await request<{ data: FloorPlansResult }>(
-    `/api/projects/${projectId}/floor-plans`,
-    { headers: authed(token) }
-  );
+export async function listFloorPlans(token: string, projectId: string): Promise<FloorPlansResult> {
+  const res = await request<{ data: FloorPlansResult }>(`/api/projects/${projectId}/floor-plans`, {
+    headers: authed(token),
+  });
   return res.data;
 }
 

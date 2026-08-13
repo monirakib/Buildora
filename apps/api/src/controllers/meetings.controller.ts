@@ -381,7 +381,7 @@ export async function bookMeeting(req: Request, res: Response) {
       if (!officeAddress) {
         return res.status(400).json({
           error: {
-            message: "This architect hasn't listed an office address — propose a place instead",
+            message: "This architect hasn't listed an office address, propose a place instead",
           },
         });
       }
@@ -396,7 +396,7 @@ export async function bookMeeting(req: Request, res: Response) {
   if (!slot) {
     return res
       .status(409)
-      .json({ error: { message: "That time isn't available any more — pick another slot" } });
+      .json({ error: { message: "That time isn't available any more, pick another slot" } });
   }
 
   // Don't let a land owner book two meetings at once, with anyone.
@@ -431,7 +431,7 @@ export async function bookMeeting(req: Request, res: Response) {
     if ((err as { code?: number }).code === 11000) {
       return res
         .status(409)
-        .json({ error: { message: "Someone just took that slot — pick another time" } });
+        .json({ error: { message: "Someone just took that slot, pick another time" } });
     }
     throw err;
   }
@@ -447,7 +447,7 @@ export async function bookMeeting(req: Request, res: Response) {
         : `${bookerName} booked a meeting`,
     body:
       status === MeetingStatus.PENDING_VENUE
-        ? `${whenLabel(doc)} — they'd like to meet at ${preview(venuePlace!, 80)}. Accept it, suggest another place, or move it to your office.`
+        ? `${whenLabel(doc)}. They'd like to meet at ${preview(venuePlace!, 80)}. Accept it, suggest another place, or move it to your office.`
         : whenLabel(doc),
     link: "/meetings",
     actorId: req.auth!.sub,
@@ -555,7 +555,7 @@ export async function proposeVenue(req: Request, res: Response) {
   await notify(idOf(doc, otherParty(party)), {
     type: NotificationType.MEETING,
     title: `${nameOf(doc, party)} suggested a different place`,
-    body: `${whenLabel(doc)} — they'd rather meet at ${preview(place, 80)}.`,
+    body: `${whenLabel(doc)}, they'd rather meet at ${preview(place, 80)}.`,
     link: "/meetings",
     actorId: req.auth!.sub,
   });
@@ -579,7 +579,7 @@ export async function acceptVenue(req: Request, res: Response) {
   await notify(idOf(doc, otherParty(party)), {
     type: NotificationType.MEETING,
     title: "Meeting confirmed",
-    body: `${nameOf(doc, party)} agreed to meet at ${preview(doc.venue!.place ?? "", 80)} — ${whenLabel(doc)}.`,
+    body: `${nameOf(doc, party)} agreed to meet at ${preview(doc.venue!.place ?? "", 80)}, ${whenLabel(doc)}.`,
     link: "/meetings",
     actorId: req.auth!.sub,
   });
@@ -618,7 +618,7 @@ export async function chooseOfficeVenue(req: Request, res: Response) {
   await notify(idOf(doc, otherParty(party)), {
     type: NotificationType.MEETING,
     title: "Meeting confirmed at the office",
-    body: `${nameOf(doc, party)} settled on ${preview(doc.officeAddress, 80)} — ${whenLabel(doc)}.`,
+    body: `${nameOf(doc, party)} settled on ${preview(doc.officeAddress, 80)}, ${whenLabel(doc)}.`,
     link: "/meetings",
     actorId: req.auth!.sub,
   });
@@ -657,7 +657,7 @@ export async function cancelMeeting(req: Request, res: Response) {
   await notify(idOf(doc, otherParty(party)), {
     type: NotificationType.MEETING,
     title: `${nameOf(doc, party)} cancelled your meeting`,
-    body: reason ? `${whenLabel(doc)} — ${preview(reason, 100)}` : whenLabel(doc),
+    body: reason ? `${whenLabel(doc)}, ${preview(reason, 100)}` : whenLabel(doc),
     link: "/meetings",
     actorId: req.auth!.sub,
   });
@@ -705,7 +705,7 @@ export async function rescheduleMeeting(req: Request, res: Response) {
   );
   const slot = isSlotAvailable(days, startAt);
   if (!slot) {
-    return res.status(409).json({ error: { message: "That time isn't available — pick another" } });
+    return res.status(409).json({ error: { message: "That time isn't available, pick another" } });
   }
 
   const previous = whenLabel(doc);
@@ -717,7 +717,7 @@ export async function rescheduleMeeting(req: Request, res: Response) {
     if ((err as { code?: number }).code === 11000) {
       return res
         .status(409)
-        .json({ error: { message: "Someone just took that slot — pick another time" } });
+        .json({ error: { message: "Someone just took that slot, pick another time" } });
     }
     throw err;
   }
@@ -725,7 +725,7 @@ export async function rescheduleMeeting(req: Request, res: Response) {
   await notify(idOf(doc, otherParty(party)), {
     type: NotificationType.MEETING,
     title: `${nameOf(doc, party)} moved your meeting`,
-    body: `Was ${previous} — now ${whenLabel(doc)}.`,
+    body: `Was ${previous}, now ${whenLabel(doc)}.`,
     link: "/meetings",
     actorId: req.auth!.sub,
   });

@@ -41,7 +41,13 @@ export class ApiError extends Error {
     message: string,
     readonly status: number,
     /** Machine-readable reason, when the API sends one (e.g. "IAB_NAME_MISMATCH"). */
-    readonly code?: string
+    readonly code?: string,
+    /**
+     * Seconds to wait before retrying, read from the `Retry-After` header on a
+     * 429. Lets a button count down to when it will work instead of failing
+     * again the moment someone presses it.
+     */
+    readonly retryAfterSeconds?: number
   ) {
     super(message);
     this.name = "ApiError";
@@ -61,10 +67,12 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
     const body = (await res.json().catch(() => null)) as {
       error?: { message?: string; code?: string };
     } | null;
+    const retryAfter = Number(res.headers.get("Retry-After"));
     throw new ApiError(
       body?.error?.message ?? `API request failed: ${res.status} ${res.statusText}`,
       res.status,
-      body?.error?.code
+      body?.error?.code,
+      Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : undefined
     );
   }
   return res.json() as Promise<T>;
@@ -162,11 +170,13 @@ export async function changeEmail(
 /** POST /api/auth/verify-email/send — mail myself a fresh confirmation link. */
 export async function sendVerificationEmail(
   token: string
-): Promise<{ sentTo: string; expiresInHours: number }> {
-  const res = await request<{ data: { sentTo: string; expiresInHours: number } }>(
-    "/api/auth/verify-email/send",
-    { method: "POST", headers: { Authorization: `Bearer ${token}` } }
-  );
+): Promise<{ sentTo: string; expiresInHours: number; nextRetryAfterSeconds: number }> {
+  const res = await request<{
+    data: { sentTo: string; expiresInHours: number; nextRetryAfterSeconds: number };
+  }>("/api/auth/verify-email/send", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  });
   return res.data;
 }
 

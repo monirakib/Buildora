@@ -216,7 +216,7 @@ export default function AdminDisputesPage() {
                   {d.status === DisputeStatus.RESOLVED && (
                     <div className="mt-3 rounded-xl bg-emerald-500/10 px-4 py-3 text-sm">
                       <p className="font-bold">
-                        {d.resolution?.replace(/_/g, " ").toLowerCase()} —{" "}
+                        {d.resolution?.replace(/_/g, " ").toLowerCase()},{" "}
                         {d.refundBdt ? `${formatBdt(d.refundBdt)} refunded` : ""}
                         {d.refundBdt && d.releasedBdt ? ", " : ""}
                         {d.releasedBdt ? `${formatBdt(d.releasedBdt)} released` : ""}

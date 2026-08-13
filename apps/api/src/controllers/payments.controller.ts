@@ -91,7 +91,7 @@ async function describe(
         : ContractStatus.AWAITING_ESCROW;
       return {
         amountBdt: isConcept ? contract.conceptFeeBdt : contract.designFeeBdt,
-        label: `${isConcept ? "Concept fee" : "Design fee (escrow)"} — ${project.title}`,
+        label: `${isConcept ? "Concept fee" : "Design fee (escrow)"}, ${project.title}`,
         category: "design-services",
         returnPath,
         blocked:
@@ -113,7 +113,7 @@ async function describe(
       const project = engagement.project as unknown as { _id: unknown; title: string };
       return {
         amountBdt: engagement.feeBdt,
-        label: `Structural engineering fee (escrow) — ${project.title}`,
+        label: `Structural engineering fee (escrow), ${project.title}`,
         category: "engineering-services",
         returnPath: `/projects/${String(project._id)}`,
         blocked:
@@ -136,7 +136,7 @@ async function describe(
       const project = contract.project as unknown as { _id: unknown; title: string };
       return {
         amountBdt: milestone.amountBdt,
-        label: `${milestone.title} (escrow) — ${project.title}`,
+        label: `${milestone.title} (escrow), ${project.title}`,
         category: "construction-services",
         returnPath: `/projects/${String(project._id)}`,
         blocked:
@@ -200,7 +200,7 @@ async function settle(session: HydratedDocument<PaymentSessionDoc>): Promise<voi
       await notify(String(contract.architect), {
         type: NotificationType.PAYMENT,
         title: "Concept fee received",
-        body: `৳${contract.conceptFeeBdt.toLocaleString("en-BD")} paid — you can start the concept brief.`,
+        body: `৳${contract.conceptFeeBdt.toLocaleString("en-BD")} paid. You can start the concept brief.`,
         link: `/projects/${String(contract.project)}`,
       });
       return;
@@ -314,7 +314,7 @@ export async function startCheckout(req: Request, res: Response) {
   if (payable.amountBdt > SSLCOMMERZ_MAX_BDT) {
     return res.status(400).json({
       error: {
-        message: `Online payment is capped at ৳${SSLCOMMERZ_MAX_BDT.toLocaleString("en-BD")} per transaction — pay this one by bank transfer and record it manually`,
+        message: `Online payment is capped at ৳${SSLCOMMERZ_MAX_BDT.toLocaleString("en-BD")} per transaction, pay this one by bank transfer and record it manually`,
       },
     });
   }
