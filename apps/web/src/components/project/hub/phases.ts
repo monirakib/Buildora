@@ -201,7 +201,12 @@ function contractorPhase(snap: ProjectSnapshot, isClient: boolean): PhaseProgres
   const { contract, tender, build, milestones } = snap;
   const designApproved = contract?.status === ContractStatus.COMPLETED;
 
-  const published = !!tender && tender.status !== TenderStatus.DRAFT;
+  // A cancelled tender earns no credit — it was called off, so bidding never
+  // really happened and the bar must fall back when the owner cancels.
+  const published =
+    tender?.status === TenderStatus.OPEN ||
+    tender?.status === TenderStatus.CLOSED ||
+    tender?.status === TenderStatus.AWARDED;
   const closed =
     tender?.status === TenderStatus.CLOSED || tender?.status === TenderStatus.AWARDED || !!build;
   const awarded = tender?.status === TenderStatus.AWARDED || !!build;

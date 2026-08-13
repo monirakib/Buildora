@@ -178,9 +178,12 @@ export function TenderSection({
     setBusy(true);
     setError(null);
     try {
-      const saved = tender
-        ? await updateTender(token, tender.id, payload())
-        : await createTender(token, project.id, payload());
+      // Only a draft can be edited in place. A cancelled tender is history, so
+      // drafting after one starts a fresh tender rather than reviving the old.
+      const saved =
+        tender && tender.status === TenderStatus.DRAFT
+          ? await updateTender(token, tender.id, payload())
+          : await createTender(token, project.id, payload());
       setTender(saved);
       setDrafting(false);
     } catch (err) {
@@ -483,6 +486,24 @@ export function TenderSection({
                   className="rounded-full border border-stone-300/80 px-5 py-2.5 text-xs font-bold transition hover:border-amber-400/60 dark:border-white/15"
                 >
                   Edit draft
+                </button>
+              </div>
+            )}
+
+            {/* Called off — the record stays, but the way forward is a new one. */}
+            {tender.status === TenderStatus.CANCELLED && (
+              <div className="mt-4">
+                <p className="text-sm text-stone-600 dark:text-slate-400">
+                  You cancelled this tender, so no contractor is pricing it any more. Start a fresh
+                  one whenever you're ready — the BOQ is rebuilt from your floor plan.
+                </p>
+                <button
+                  type="button"
+                  onClick={startDraft}
+                  disabled={busy}
+                  className="mt-4 rounded-full bg-amber-400 px-6 py-2.5 text-sm font-bold text-stone-950 transition hover:bg-amber-300 disabled:opacity-60"
+                >
+                  {busy ? "Building the BOQ…" : "Draft a new tender"}
                 </button>
               </div>
             )}
