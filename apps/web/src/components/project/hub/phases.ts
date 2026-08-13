@@ -305,11 +305,12 @@ export function computeProjectProgress(
  * be opened only to answer 404. The three limits worth knowing:
  *
  *  - the document archive is owner/architect only (`canAccessArchive` in
- *    documents.controller), so the engineer has no Documents tab;
- *  - the site diary is owner/architect/engineer (`canAccessDiary`);
- *  - a contractor can't read the project at all once the brief closes
- *    (`canViewProject`), so they never reach this page — they work from
- *    /tenders and their own build panel.
+ *    documents.controller), so neither the engineer nor the contractor has a
+ *    Documents tab;
+ *  - the site diary is owner/architect/engineer/contractor (`canAccessDiary`);
+ *  - a contractor reaches this page only once they've won the tender, because
+ *    that's when `canViewProject` starts letting them in. Before that they work
+ *    from /tenders.
  *
  * The engineer does get the Contractor tab: they're the one who signs the
  * milestone inspections that release each tranche, and `canView` on the build
@@ -327,6 +328,10 @@ export function tabsForRole(
       return ["overview", "architect", "rajuk", "diary", "documents"];
     case UserRole.STRUCTURAL_ENGINEER:
       return ["overview", "engineer", "contractor", "diary"];
+    case UserRole.CONTRACTOR:
+      // The build they're running, and the site log they keep — nothing about
+      // the design fees or the owner's document archive.
+      return ["overview", "contractor", "diary"];
     default:
       return ["overview"];
   }

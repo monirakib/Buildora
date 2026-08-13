@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import { isValidObjectId, type HydratedDocument } from "mongoose";
+import { isValidObjectId, Types, type HydratedDocument } from "mongoose";
 import { z } from "zod";
 import {
   BidStatus,
@@ -417,6 +417,10 @@ export async function awardBid(req: Request, res: Response) {
   );
 
   project.status = ProjectStatus.UNDER_CONSTRUCTION;
+  // Attach the winner to the project the same way `architect` and `engineer`
+  // are attached. Without this the contractor can't read the project they just
+  // won — including the one this very notification links them to.
+  project.contractor = new Types.ObjectId(contractorId);
   await project.save();
 
   void notify(contractorId, {

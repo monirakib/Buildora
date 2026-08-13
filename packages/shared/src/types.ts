@@ -626,6 +626,8 @@ export interface Project {
   architect?: UserRef;
   /** The structural engineer, appointed after the design contract completes. */
   engineer?: UserRef;
+  /** The contractor building it, set when their bid wins the tender. */
+  contractor?: UserRef;
   title: string;
   description: string;
   /** Plot address, e.g. "House 12, Road 5". */

@@ -91,6 +91,9 @@ function canAccessDiary(
     String(project.owner) === auth.sub ||
     (project.architect && String(project.architect) === auth.sub) ||
     (project.engineer && String(project.engineer) === auth.sub) ||
+    // The contractor is the one actually on site, so the daily log is as much
+    // theirs as anybody's.
+    (project.contractor && String(project.contractor) === auth.sub) ||
     auth.role === UserRole.ADMIN
   );
 }

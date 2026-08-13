@@ -111,6 +111,7 @@ const withRefs = [
   { path: "owner", select: "name username" },
   { path: "architect", select: "name username profile.company" },
   { path: "engineer", select: "name username profile.company" },
+  { path: "contractor", select: "name username profile.company" },
 ];
 
 /** Turns a populated ref into the UserRef the DTO carries. */
@@ -136,6 +137,7 @@ export function toProjectDto(
     owner: { id: String(owner._id), name: owner.name, username: owner.username },
     architect: toRef(doc.architect as unknown as PopulatedRef | undefined),
     engineer: toRef(doc.engineer as unknown as PopulatedRef | undefined),
+    contractor: toRef(doc.contractor as unknown as PopulatedRef | undefined),
     title: doc.title,
     description: doc.description,
     address: doc.address,
@@ -187,8 +189,8 @@ export const PROFESSIONAL_ROLES: UserRole[] = [
 
 /**
  * Who may see a project: its owner, the assigned architect, the appointed
- * structural engineer, an admin — and, while the brief is open, any
- * professional (they need to read it to propose).
+ * structural engineer, the awarded contractor, an admin — and, while the brief
+ * is open, any professional (they need to read it to propose).
  */
 export function canViewProject(
   doc: HydratedDocument<ProjectDoc>,
@@ -202,7 +204,17 @@ export function canViewProject(
   const engineerId = doc.engineer
     ? String((doc.engineer as { _id?: unknown })._id ?? doc.engineer)
     : undefined;
-  if (ownerId === auth.sub || architectId === auth.sub || engineerId === auth.sub) return true;
+  const contractorId = doc.contractor
+    ? String((doc.contractor as { _id?: unknown })._id ?? doc.contractor)
+    : undefined;
+  if (
+    ownerId === auth.sub ||
+    architectId === auth.sub ||
+    engineerId === auth.sub ||
+    contractorId === auth.sub
+  ) {
+    return true;
+  }
   if (auth.role === UserRole.ADMIN) return true;
   return doc.status === ProjectStatus.BRIEF_POSTED && PROFESSIONAL_ROLES.includes(auth.role);
 }
@@ -254,13 +266,16 @@ export async function createProject(req: Request, res: Response) {
  */
 export async function listMyProjects(req: Request, res: Response) {
   // A professional's project list is whatever they're attached to: architects
-  // by `architect`, structural engineers by `engineer`.
+  // by `architect`, structural engineers by `engineer`, contractors by
+  // `contractor` once they've won the tender.
   const filter =
     req.auth!.role === UserRole.LAND_OWNER
       ? { owner: req.auth!.sub }
       : req.auth!.role === UserRole.STRUCTURAL_ENGINEER
         ? { engineer: req.auth!.sub }
-        : { architect: req.auth!.sub };
+        : req.auth!.role === UserRole.CONTRACTOR
+          ? { contractor: req.auth!.sub }
+          : { architect: req.auth!.sub };
 
   const docs = await Project.find(filter).sort({ createdAt: -1 }).populate(withRefs);
 
