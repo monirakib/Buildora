@@ -12,6 +12,7 @@ import {
 } from "@buildora/shared";
 import { Project, type ProjectDoc } from "../models/Project";
 import { Proposal } from "../models/Proposal";
+import { refreshEstimate } from "../services/estimateLadder";
 
 const latLngSchema = z.object({
   lat: z.coerce.number().min(-90).max(90),
@@ -392,6 +393,12 @@ export async function postBrief(req: Request, res: Response) {
 
   doc.status = ProjectStatus.BRIEF_POSTED;
   await doc.save();
+
+  // Cost the brief straight away, so the owner has a figure before an architect
+  // has drawn anything. It's a rate-table read and a multiplication — no model
+  // call — so doing it here is free, and refreshEstimate never throws.
+  await refreshEstimate(doc);
+
   const populated = await doc.populate(withRefs);
   return res.json({ data: { project: toProjectDto(populated) } });
 }

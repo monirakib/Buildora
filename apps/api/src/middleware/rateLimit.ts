@@ -16,16 +16,24 @@ export function rateLimit({
   windowMs,
   max,
   message = "Too many requests, wait a moment and try again",
+  keyBy,
 }: {
   windowMs: number;
   max: number;
   message?: string;
+  /**
+   * What counts as "one caller". Defaults to the IP, which is right for the
+   * signed-out endpoints this was written for. Routes that sit behind
+   * requireAuth pass a function reading the user id instead — a university lab
+   * is one IP, and sharing a bucket across everyone on it would be wrong.
+   */
+  keyBy?: (req: Request) => string;
 }) {
   const hits = new Map<string, { count: number; resetAt: number }>();
 
   return function rateLimiter(req: Request, res: Response, next: NextFunction) {
     const now = Date.now();
-    const key = req.ip ?? "unknown";
+    const key = keyBy ? keyBy(req) : (req.ip ?? "unknown");
 
     // Drop expired windows as we go, so the map can't grow without bound.
     for (const [k, v] of hits) {

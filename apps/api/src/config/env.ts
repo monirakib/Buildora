@@ -38,16 +38,20 @@ const envSchema = z.object({
   CLOUDINARY_CLOUD_NAME: z.string().optional(),
   CLOUDINARY_API_KEY: z.string().optional(),
   CLOUDINARY_API_SECRET: z.string().optional(),
-  // Google Gemini (the Buildora Guide assistant) — key from
-  // https://aistudio.google.com; the assistant 503s until it's set.
-  GEMINI_API_KEY: z.string().optional(),
-  GEMINI_MODEL: z.string().default("gemini-flash-latest"),
-  // Groq (the floor plan's layout advisor) — free key, no card, from
-  // https://console.groq.com/keys; the advisor 503s until it's set. A second
-  // model provider alongside Gemini because it hosts Llama, which is quick and
-  // generous enough on the free tier for a chat that runs while you draw.
+  // The two model providers. services/ai.ts tries Groq first and falls back to
+  // Gemini when Groq rate limits or fails, so setting both turns two free tiers
+  // into one that survives a demo. Either alone works; with neither, every AI
+  // feature 503s with a clear reason and nothing else breaks.
+  //
+  // Groq — free key, no card, from https://console.groq.com/keys. First choice
+  // because it hosts Llama, it's fast, and it's the only one of the two that
+  // speaks the OpenAI tool-calling format the assistant's lookups need.
   GROQ_API_KEY: z.string().optional(),
   GROQ_MODEL: z.string().default("llama-3.3-70b-versatile"),
+  // Google Gemini — key from https://aistudio.google.com. The fallback for
+  // chat, and the only provider for reading NID cards, since that needs vision.
+  GEMINI_API_KEY: z.string().optional(),
+  GEMINI_MODEL: z.string().default("gemini-flash-latest"),
   // Web Push (VAPID). No account and no third party: generate the pair once
   // with `node -e "console.log(require('web-push').generateVAPIDKeys())"` and
   // paste them here. The subject identifies this server to the push service

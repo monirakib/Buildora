@@ -32,6 +32,7 @@ import {
   updateSiteDiaryEntry,
 } from "@/lib/apiSiteDiary";
 import { StatTile } from "@/components/admin/charts";
+import { DiaryDigestModal } from "@/components/project/DiaryDigestModal";
 
 const inputClass =
   "block w-full rounded-xl border border-stone-300/80 bg-white/70 px-4 py-2.5 text-sm text-stone-900 placeholder-stone-400 backdrop-blur transition outline-none focus:border-amber-500 focus:bg-white/90 focus:ring-2 focus:ring-amber-400/30 dark:border-white/15 dark:bg-white/5 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:bg-white/10";
@@ -104,6 +105,7 @@ export function SiteDiarySection({
   canWrite: boolean;
 }) {
   const [entries, setEntries] = useState<SiteDiaryEntry[]>([]);
+  const [digestOpen, setDigestOpen] = useState(false);
   const [summary, setSummary] = useState<SiteDiarySummary>(emptySummary);
   const [forecast, setForecast] = useState<WeatherForecastDay[]>([]);
   const [hasPlotPin, setHasPlotPin] = useState(true);
@@ -285,6 +287,28 @@ export function SiteDiarySection({
             sub="Every headcount added up"
           />
         </div>
+
+        {/*
+          The week read back. Opens on click rather than loading with the page,
+          because it costs a model call and most visits here are to write an
+          entry, not to review one.
+        */}
+        {summary.entryCount > 0 && (
+          <button
+            type="button"
+            onClick={() => setDigestOpen(true)}
+            className="mt-3 rounded-xl border border-amber-500/40 bg-amber-400/10 px-4 py-2 text-sm font-bold text-amber-800 transition hover:bg-amber-400/20 dark:text-amber-300"
+          >
+            This week on site
+          </button>
+        )}
+        {digestOpen && (
+          <DiaryDigestModal
+            token={token}
+            projectId={project.id}
+            onClose={() => setDigestOpen(false)}
+          />
+        )}
 
         {/* Week ahead ------------------------------------------------------ */}
         {forecast.length > 0 && (

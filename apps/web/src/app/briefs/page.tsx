@@ -9,6 +9,7 @@ import { useSession } from "@/store/useSession";
 import { Navbar } from "@/components/landing/Navbar";
 import { Stagger } from "@/components/Stagger";
 import { buildingTypeLabels, formatBdt, formatDate } from "@/components/app/projectStatus";
+import { useRegisterAiContext } from "@/lib/useRegisterAiContext";
 
 const inputClass =
   "block w-full rounded-xl border border-stone-300/80 bg-white/70 px-4 py-2.5 text-sm text-stone-900 placeholder-stone-400 backdrop-blur transition outline-none focus:border-amber-500 focus:bg-white/90 focus:ring-2 focus:ring-amber-400/30 dark:border-white/15 dark:bg-white/5 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:bg-white/10";
@@ -28,6 +29,8 @@ export default function BriefsPage() {
   const router = useRouter();
   const user = useSession((s) => s.user);
   const token = useSession((s) => s.token);
+
+  useRegisterAiContext({ page: "briefs", label: "Open briefs" });
 
   const [result, setResult] = useState<Paginated<Project> | null>(null);
   const [search, setSearch] = useState("");

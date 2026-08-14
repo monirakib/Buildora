@@ -1,3 +1,4 @@
+export * from "./assistant";
 export * from "./attendance";
 export * from "./bangladesh";
 export * from "./bidding";

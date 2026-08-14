@@ -129,7 +129,11 @@ const withParties = [
   { path: "engineer", select: "name username company" },
 ];
 
-/** Everyone with a stake in the build can read it. */
+/**
+ * Everyone with a stake in the build can read it. Exported as `canViewBuild`
+ * at the bottom of the file so the assistant's escrow lookup gates on exactly
+ * this rule rather than a second copy of it.
+ */
 function canView(
   contract: HydratedDocument<BuildContractDoc>,
   auth: { sub: string; role: UserRole }
@@ -609,4 +613,5 @@ export async function listInspectionTemplates(_req: Request, res: Response) {
   });
 }
 
+export { canView as canViewBuild };
 export type { ProjectDoc };

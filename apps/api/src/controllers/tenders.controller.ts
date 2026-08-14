@@ -9,9 +9,14 @@ import {
   UserRole,
   VerificationStatus,
   floorAreaSqft,
+  type BidOutlier,
+  type BidSanityResult,
   type Tender as TenderDto,
   type TenderItem,
 } from "@buildora/shared";
+import { askAi, isAiConfigured } from "../services/ai";
+import { bandFor, isOutlier, loadRates, matchRate, percentDiff } from "../services/bidAnalysis";
+import { refreshEstimate } from "../services/estimateLadder";
 import { BoqRate } from "../models/BoqRate";
 import { Bid } from "../models/Bid";
 import { FloorPlan } from "../models/FloorPlan";
@@ -341,6 +346,11 @@ export async function publishTender(req: Request, res: Response) {
     });
   }
 
+  // A published BOQ carries real quantities, so the estimate can stop deriving
+  // them from floor area. Free arithmetic, and it never throws.
+  const publishedProject = await Project.findById(tender.project);
+  if (publishedProject) await refreshEstimate(publishedProject);
+
   const bidCount = await Bid.countDocuments({ tender: tender._id });
   return res.json({
     data: {
@@ -374,6 +384,11 @@ export async function closeTender(req: Request, res: Response) {
       link: `/tenders/${tender._id.toString()}`,
     });
   }
+
+  // The top of the ladder: prices contractors actually committed to beat any
+  // rate table, so the estimate is re-derived from the bids themselves.
+  const closedProject = await Project.findById(tender.project);
+  if (closedProject) await refreshEstimate(closedProject);
 
   return res.json({
     data: { tender: toTenderDto(tender, { bidCount: bids.length, isOwner: true }) },
@@ -479,3 +494,161 @@ export async function getTender(req: Request, res: Response) {
 
 export { toTenderDto, settleDeadline };
 export type { ProjectDoc };
+
+/* --------------------------------------------- AI: bid sanity check ------ */
+
+const bidCheckSchema = z.object({
+  lines: z
+    .array(
+      z.object({
+        itemId: z.string().min(1),
+        ratePerUnitBdt: z.coerce.number().nonnegative(),
+      })
+    )
+    .min(1, "Price at least one line first")
+    .max(200),
+  timelineWeeks: z.coerce.number().int().min(1).max(520).optional(),
+});
+
+/**
+ * POST /api/tenders/:id/bid-check — a contractor's own sanity check before they
+ * submit, benchmarked against the platform's BOQ rate table.
+ *
+ * **What this deliberately does not return: any absolute benchmark figure.**
+ * The rate table is where the owner's guide rates come from, so an exact
+ * percentage would let a bidder divide their way back to the owner's estimate —
+ * the very thing `toTenderDto` strips the guide rates to prevent. So the answer
+ * is a direction and a coarse band, which is enough to catch a fat-fingered
+ * rate without handing over the owner's position.
+ *
+ * The numbers here are compared in TypeScript; the model only writes the note.
+ */
+export async function bidSanityCheck(req: Request, res: Response) {
+  const tender = await findTenderOr404(req.params.id, res);
+  if (!tender) return;
+
+  await settleDeadline(tender);
+
+  // Only a bidder needs this, and only while there is still time to act on it.
+  if (req.auth!.role !== UserRole.CONTRACTOR) {
+    return res.status(403).json({ error: { message: "Only contractors can check a bid" } });
+  }
+  if (tender.status !== TenderStatus.OPEN) {
+    return res
+      .status(400)
+      .json({ error: { message: "This tender isn't open for bidding any more" } });
+  }
+
+  const parsed = bidCheckSchema.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    return res.status(400).json({
+      error: {
+        message: parsed.error.issues[0]?.message ?? "Invalid input",
+        details: parsed.error.issues,
+      },
+    });
+  }
+
+  const rates = await loadRates();
+  const byItemId = new Map(tender.items.map((i) => [i.id, i]));
+
+  let yourTotalBdt = 0;
+  let linesBenchmarked = 0;
+  let linesUnmatched = 0;
+  let benchmarkTotal = 0;
+  let pricedAgainstBenchmark = 0;
+  const outliers: BidOutlier[] = [];
+
+  for (const line of parsed.data.lines) {
+    const item = byItemId.get(line.itemId);
+    if (!item) continue;
+
+    // The quantity is the tender's, never the bidder's — same rule as the real
+    // bid submission, where the server recomputes every amount.
+    yourTotalBdt += line.ratePerUnitBdt * item.quantity;
+
+    const rate = matchRate(item.description, rates);
+    if (!rate) {
+      linesUnmatched += 1;
+      continue;
+    }
+    linesBenchmarked += 1;
+    benchmarkTotal += rate.ratePerUnitBdt * item.quantity;
+    pricedAgainstBenchmark += line.ratePerUnitBdt * item.quantity;
+
+    const pct = percentDiff(line.ratePerUnitBdt, rate.ratePerUnitBdt);
+    if (isOutlier(pct)) {
+      outliers.push({
+        itemId: item.id,
+        description: item.description,
+        unit: item.unit,
+        direction: pct > 0 ? "high" : "low",
+        band: bandFor(Math.abs(pct)),
+      });
+    }
+  }
+
+  const overallPct =
+    linesBenchmarked > 0 && benchmarkTotal > 0
+      ? percentDiff(pricedAgainstBenchmark, benchmarkTotal)
+      : 0;
+  const overallBand: BidSanityResult["overallBand"] = !isOutlier(overallPct)
+    ? "within"
+    : overallPct > 0
+      ? "high"
+      : "low";
+
+  // A timeline far below what the work usually takes is its own kind of risk.
+  const timelineNote =
+    parsed.data.timelineWeeks != null && parsed.data.timelineWeeks < 8
+      ? `${parsed.data.timelineWeeks} weeks is very short for a build of this size. Make sure you can hold to it — the milestones are inspected before any money is released.`
+      : null;
+
+  const result: BidSanityResult = {
+    yourTotalBdt: Math.round(yourTotalBdt),
+    linesPriced: parsed.data.lines.length,
+    linesBenchmarked,
+    linesUnmatched,
+    overallBand,
+    outliers: outliers.slice(0, 8),
+    timelineNote,
+    narrative: null,
+  };
+
+  result.narrative = await narrateBidCheck(result);
+  return res.json({ data: { check: result } });
+}
+
+/** Writes the note. Bands only — no figure the bidder couldn't already see. */
+async function narrateBidCheck(result: BidSanityResult): Promise<string | null> {
+  if (!isAiConfigured()) return null;
+
+  const lines = result.outliers
+    .map((o) => `- ${o.description} (${o.unit}): ${o.direction} by ${o.band}`)
+    .join("\n");
+
+  const prompt = `You are advising a construction contractor in Bangladesh who is about to submit a sealed bid on Buildora.
+
+These findings are already worked out. Do NOT recalculate them and do NOT invent any benchmark figure:
+Their bid total: ${result.yourTotalBdt} BDT
+Lines priced: ${result.linesPriced}; compared against the platform rate table: ${result.linesBenchmarked}; not on the table: ${result.linesUnmatched}
+Overall, their pricing is: ${result.overallBand}
+Lines that stand out:
+${lines || "- none"}
+${result.timelineNote ?? ""}
+
+Write one short paragraph, plain text, no markdown:
+- If lines stand out, name them and say what usually causes a gap that size (a unit mix-up, a rate typed per unit instead of per hundred, or genuinely different specification).
+- If nothing stands out, say the pricing looks consistent with the platform's rates.
+- Remind them the quantities are fixed by the tender and only their rates are being compared.
+
+You do not know and must never state the benchmark rate, the owner's estimate, or any other bidder's price. Never state a percentage — only the bands given above.`;
+
+  try {
+    const answer = await askAi({ messages: [{ role: "user", content: prompt }], maxTokens: 350 });
+    return answer.text || null;
+  } catch (err) {
+    console.error("[bidcheck] narrative unavailable:", err instanceof Error ? err.message : err);
+    return null;
+  }
+}

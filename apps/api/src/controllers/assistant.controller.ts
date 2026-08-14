@@ -1,7 +1,17 @@
 import type { Request, Response } from "express";
 import { z } from "zod";
-import { UserRole, VerificationStatus } from "@buildora/shared";
-import { env } from "../config/env";
+import {
+  AI_CONTEXT_PAGES,
+  AI_DRAFT_MAX_CHARS,
+  AI_MAX_ACTIONS,
+  UserRole,
+  VerificationStatus,
+  type AiSuggestedAction,
+} from "@buildora/shared";
+import { askAi, isAiConfigured, type AiMessage } from "../services/ai";
+import { describeContext } from "../services/aiContext";
+import { runAiConversation } from "../services/aiLoop";
+import { toolsForRole } from "../services/aiTools";
 import { AssistantChat } from "../models/AssistantChat";
 import { DapZone } from "../models/DapZone";
 import { FeeRule } from "../models/FeeRule";
@@ -24,6 +34,21 @@ const chatSchema = z.object({
     )
     .max(HISTORY_LIMIT)
     .default([]),
+  /**
+   * What the user is looking at. Ids only, plus the unsaved brief draft — the
+   * server re-reads every document and re-checks permissions, so nothing here
+   * can widen what the caller sees. Ignored entirely for guests, who have no
+   * projects to describe.
+   */
+  context: z
+    .object({
+      page: z.enum(AI_CONTEXT_PAGES),
+      label: z.string().max(120).default(""),
+      projectId: z.string().max(64).optional(),
+      tenderId: z.string().max(64).optional(),
+      draft: z.string().max(AI_DRAFT_MAX_CHARS).optional(),
+    })
+    .optional(),
 });
 
 /**
@@ -32,7 +57,7 @@ const chatSchema = z.object({
  * its answers track whatever the supervisor last saved, never a hardcoded
  * copy.
  */
-async function buildSystemPrompt(role?: UserRole) {
+async function buildSystemPrompt(role?: UserRole, contextBlock = "") {
   const [architectCount, zones, fees] = await Promise.all([
     User.countDocuments({
       role: UserRole.ARCHITECT,
@@ -77,53 +102,29 @@ ${zoneLines}
 ${feeLines}
 
 ${role ? `The person you're talking to is signed in as: ${role}.` : "The person you're talking to is a guest (not signed in)."}
-
+${
+  contextBlock
+    ? `\nWhat they are looking at right now (read from the database, and they are allowed to see all of it):\n${contextBlock}\n\nWhen their question is about "this project", "my tender", "it" or similar, they mean what's above. Treat every number in it as already correct — do not recalculate it.\n`
+    : ""
+}
+${
+  role
+    ? `Looking things up:
+- You have tools that read this user's own data from the database. Use them whenever the answer depends on a real number — their projects, a project's stage, escrow and milestone amounts, zoning limits, permit fees, open tenders, material orders.
+- Never guess a figure you could look up, and never state one from memory. If a lookup comes back empty or says it isn't visible, say you couldn't find it rather than filling the gap.
+- Treat every number a tool returns as final. Do not recalculate, adjust or round it.
+- Use suggest_action at most once per reply, and only when there is an obvious next step.
+`
+    : ""
+}
 Rules:
 - Only answer questions about Buildora, building/construction in Bangladesh, RAJUK/DAP/ECPS permits, or choosing professionals. For anything else, say you only help with Buildora and building topics.
 - Be concise, a short paragraph or a few bullet points. Plain text only, no markdown headings or bold.
 - When a page helps, mention its path (e.g. "post a brief at /projects/new").
 - Quote fees and zone limits only from the data above; if the data says it's not loaded, say so instead of inventing numbers.
+- If there is no DAP record for an area, say so plainly. Never estimate a zoning limit.
 - Reply in Bangla if the user writes in Bangla.
 - Never promise approval outcomes or legal results. Buildora guides the process, RAJUK decides.`;
-}
-
-/** Calls Gemini's generateContent REST endpoint with plain fetch. */
-async function askGemini(
-  systemPrompt: string,
-  contents: { role: "user" | "model"; parts: { text: string }[] }[]
-) {
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${env.GEMINI_MODEL}:generateContent`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-goog-api-key": env.GEMINI_API_KEY!,
-      },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: systemPrompt }] },
-        contents,
-        generationConfig: { temperature: 0.4, maxOutputTokens: 2500 },
-      }),
-    }
-  );
-
-  if (!res.ok) {
-    const detail = await res.text().catch(() => "");
-    console.error(`[assistant] Gemini ${res.status}: ${detail.slice(0, 300)}`);
-    throw new Error(
-      res.status === 429
-        ? "The assistant is busy, try again in a minute"
-        : "The assistant couldn't answer just now"
-    );
-  }
-
-  const body = (await res.json()) as {
-    candidates?: { content?: { parts?: { text?: string }[] } }[];
-  };
-  const reply = body.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("");
-  if (!reply) throw new Error("The assistant couldn't answer just now");
-  return reply.trim();
 }
 
 /**
@@ -132,9 +133,9 @@ async function askGemini(
  * back to MongoDB.
  */
 export async function chat(req: Request, res: Response) {
-  if (!env.GEMINI_API_KEY) {
+  if (!isAiConfigured()) {
     return res.status(503).json({
-      error: { message: "The assistant isn't configured (missing Gemini key)" },
+      error: { message: "The assistant isn't configured (no model API key set)" },
     });
   }
 
@@ -144,20 +145,49 @@ export async function chat(req: Request, res: Response) {
       .status(400)
       .json({ error: { message: parsed.error.issues[0]?.message ?? "Invalid input" } });
   }
-  const { message, history } = parsed.data;
+  const { message, history, context } = parsed.data;
+
+  // Guests get no context: everything it can describe is behind a permission
+  // check, and a signed-out visitor passes none of them.
+  const contextBlock = req.auth && context ? await describeContext(context, req.auth) : "";
 
   // Signed-in users: history comes from their stored conversation.
   const stored = req.auth ? await AssistantChat.findOne({ user: req.auth.sub }) : null;
-  const past = (stored ? stored.messages.slice(-HISTORY_LIMIT) : history).map((m) => ({
-    role: m.role,
-    parts: [{ text: m.content }],
+  // The database stores Gemini's vocabulary ("model"); the model layer speaks
+  // OpenAI's ("assistant"). Translating here is two lines and means the stored
+  // conversations never had to be migrated.
+  const past: AiMessage[] = (stored ? stored.messages.slice(-HISTORY_LIMIT) : history).map((m) => ({
+    role: m.role === "model" ? "assistant" : "user",
+    content: m.content,
   }));
 
-  const systemPrompt = await buildSystemPrompt(req.auth?.role);
+  const systemPrompt = await buildSystemPrompt(req.auth?.role, contextBlock);
+
+  const conversation: AiMessage[] = [
+    { role: "system", content: systemPrompt },
+    ...past,
+    { role: "user", content: message },
+  ];
 
   let reply: string;
+  let actions: AiSuggestedAction[] = [];
+  let usedTools: string[] = [];
   try {
-    reply = await askGemini(systemPrompt, [...past, { role: "user", parts: [{ text: message }] }]);
+    if (req.auth) {
+      // Signed-in users get lookups: the tools read real rows, authorised
+      // against this caller. Guests get a plain answer, because every lookup is
+      // behind a permission check they don't pass.
+      const answer = await runAiConversation({
+        messages: conversation,
+        tools: toolsForRole(req.auth.role),
+        auth: req.auth,
+      });
+      reply = answer.reply;
+      actions = answer.actions.slice(0, AI_MAX_ACTIONS);
+      usedTools = answer.usedTools;
+    } else {
+      reply = (await askAi({ messages: conversation })).text;
+    }
   } catch (err) {
     return res
       .status(502)
@@ -183,7 +213,9 @@ export async function chat(req: Request, res: Response) {
     );
   }
 
-  return res.json({ data: { reply } });
+  // `usedTools` is returned so the work is visible rather than described — it
+  // shows which database lookups the answer actually rests on.
+  return res.json({ data: { reply, actions, usedTools } });
 }
 
 /** GET /api/assistant/chat, the signed-in user's stored conversation. */

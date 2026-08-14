@@ -1,6 +1,8 @@
 import type {
   AccountSession,
   AchievementEntry,
+  AiChatContext,
+  AiSuggestedAction,
   EducationEntry,
   IabCheck,
   Inquiry,
@@ -518,22 +520,48 @@ export interface AssistantMessage {
   content: string;
 }
 
+export type { AiChatContext };
+
+/**
+ * One answer. `actions` are buttons the assistant is offering — see
+ * lib/aiActions.ts, which decides what they actually do. `usedTools` names the
+ * database lookups the answer rests on.
+ */
+export interface AssistantReply {
+  reply: string;
+  actions: AiSuggestedAction[];
+  usedTools: string[];
+}
+
 /**
  * POST /api/assistant/chat — ask the Buildora Guide one question. Guests pass
  * their running history (kept in the widget's state); signed-in users send a
  * token instead and the API uses their stored conversation.
+ *
+ * `context` says which page the user is on and which project or tender they
+ * have open. It is sent on every message rather than once at the start, because
+ * the answer should describe the project as it is now, not as it was when the
+ * conversation began. Guests don't send it: everything it can describe is
+ * behind a permission check they don't pass.
  */
 export async function assistantChat(
   token: string | null,
   message: string,
-  history: AssistantMessage[]
-): Promise<string> {
-  const res = await request<{ data: { reply: string } }>("/api/assistant/chat", {
+  history: AssistantMessage[],
+  context?: AiChatContext | null
+): Promise<AssistantReply> {
+  const res = await request<{ data: AssistantReply }>("/api/assistant/chat", {
     method: "POST",
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-    body: JSON.stringify(token ? { message } : { message, history }),
+    body: JSON.stringify(
+      token ? { message, ...(context ? { context } : {}) } : { message, history }
+    ),
   });
-  return res.data.reply;
+  return {
+    reply: res.data.reply,
+    actions: res.data.actions ?? [],
+    usedTools: res.data.usedTools ?? [],
+  };
 }
 
 /** GET /api/assistant/chat — the signed-in user's stored conversation. */

@@ -6,6 +6,8 @@ import { BuildingType, UserRole, type DapZone, type PlotLocation } from "@buildo
 import { uploadImage } from "@/lib/api";
 import { createProject } from "@/lib/apiProjects";
 import { useSession } from "@/store/useSession";
+import { useRegisterAiContext } from "@/lib/useRegisterAiContext";
+import { BriefCoachPanel } from "@/components/project/BriefCoachPanel";
 import { Navbar } from "@/components/landing/Navbar";
 import { PlotMapPicker } from "@/components/project/PlotMapPicker";
 import { DapZoneCard } from "@/components/project/DapZoneCard";
@@ -85,6 +87,56 @@ const emptyForm = {
 
 type FormState = typeof emptyForm;
 
+/** Form fields are strings; an empty one means "not filled in", not zero. */
+function numberOrUndefined(value: string): number | undefined {
+  const n = Number(value);
+  return value.trim() === "" || Number.isNaN(n) ? undefined : n;
+}
+
+/**
+ * Describes the half-filled form for the assistant, so it can answer "does this
+ * brief look right?" about what the user is actually typing.
+ *
+ * The floor plan advisor does the same thing for a drawing (see describeFloor
+ * in lib/groqAdvisor.ts), and for the same reason: none of this exists in the
+ * database yet, so an id would point at nothing. Blank fields are left out
+ * rather than sent as empty strings — "Floors:" with nothing after it reads to a
+ * model like a floor count of zero.
+ */
+function describeBriefForm(form: FormState): string {
+  const lines: string[] = [];
+  const add = (label: string, value: string | number | boolean) => {
+    if (value === "" || value === false || value == null) return;
+    lines.push(`${label}: ${value === true ? "yes" : value}`);
+  };
+
+  add("Title", form.title);
+  // "Area" is the label the server looks for to attach DAP zone limits.
+  add("Area", form.areaName);
+  add("Address", form.address);
+  add("Land size (katha)", form.landAreaKatha);
+  add("Building type", form.buildingType);
+  add("Floors", form.floors);
+  add("Budget min (BDT)", form.budgetMinBdt);
+  add("Budget max (BDT)", form.budgetMaxBdt);
+  add("Road width (ft)", form.roadWidthFt);
+  add("Plot facing", form.plotFacing);
+  add("Existing structure on plot", form.existingStructure);
+  add("Soil test done", form.soilTestDone);
+  add("Units per floor", form.unitsPerFloor);
+  add("Bedrooms per unit", form.bedroomsPerUnit);
+  add("Parking spaces", form.parkingSpaces);
+  add("Lift", form.hasLift);
+  add("Basement", form.hasBasement);
+  add("Rooftop amenities", form.hasRooftopAmenities);
+  add("Design style", form.designStyle);
+  add("Timeline", form.timeline);
+  add("Ownership documents ready", form.ownershipDocsReady);
+  add("Description", form.description);
+
+  return lines.join("\n");
+}
+
 /**
  * Numbered heading for each form section, styled as the card's header strip.
  *
@@ -143,6 +195,15 @@ export default function NewProjectPage() {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+
+  // The assistant sees the draft as it stands. This re-registers as they type,
+  // which costs nothing — the description is only sent when they send a message,
+  // and no model call happens until then.
+  useRegisterAiContext({
+    page: "brief-form",
+    label: form.title.trim() || "New brief",
+    draft: describeBriefForm(form),
+  });
 
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -697,6 +758,33 @@ export default function NewProjectPage() {
                   </div>
                 </div>
               </section>
+
+              {/*
+                A last look before posting. It only runs when pressed — the
+                zone card above already updates live, and firing a model call
+                on every keystroke would burn the shared quota for nothing.
+              */}
+              {token && (
+                <BriefCoachPanel
+                  token={token}
+                  canRun={form.areaName.trim().length >= 2}
+                  input={{
+                    areaName: form.areaName,
+                    landAreaKatha: numberOrUndefined(form.landAreaKatha),
+                    buildingType: form.buildingType || undefined,
+                    floors: numberOrUndefined(form.floors),
+                    budgetMinBdt: numberOrUndefined(form.budgetMinBdt),
+                    budgetMaxBdt: numberOrUndefined(form.budgetMaxBdt),
+                    roadWidthFt: numberOrUndefined(form.roadWidthFt),
+                    unitsPerFloor: numberOrUndefined(form.unitsPerFloor),
+                    bedroomsPerUnit: numberOrUndefined(form.bedroomsPerUnit),
+                    parkingSpaces: numberOrUndefined(form.parkingSpaces),
+                    soilTestDone: form.soilTestDone,
+                    ownershipDocsReady: form.ownershipDocsReady,
+                    description: form.description || undefined,
+                  }}
+                />
+              )}
 
               {error && (
                 <p className="rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-medium text-rose-800 dark:bg-rose-400/15 dark:text-rose-300">

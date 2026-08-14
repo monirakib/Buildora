@@ -1,43 +1,67 @@
 "use client";
 
-import { useState } from "react";
-import { Calculator, Sparkles } from "lucide-react";
-import type { CostEstimate } from "@buildora/shared";
+import { useCallback, useEffect, useState } from "react";
+import { Sparkles, TrendingDown, TrendingUp } from "lucide-react";
+import { EstimateTier, type CostEstimate, type EstimateSnapshot } from "@buildora/shared";
 import { estimateProject } from "@/lib/apiEstimator";
 import { formatBdt } from "@/components/app/projectStatus";
 
 const cardClass =
   "rounded-2xl border border-white/50 bg-white/55 p-5 shadow-xl shadow-black/5 backdrop-blur-xl sm:p-6 dark:border-white/10 dark:bg-white/5";
-const inputClass =
-  "block w-full rounded-xl border border-stone-300/80 bg-white/70 px-4 py-2.5 text-sm outline-none transition focus:border-amber-500 focus:ring-2 focus:ring-amber-400/30 dark:border-white/15 dark:bg-white/5 dark:text-slate-100";
 
 /**
- * The cost and material estimate.
+ * The cost estimate.
  *
- * Worth being clear about, because it's the part people assume is magic: the
- * numbers are not written by the AI. Every quantity and rate comes from the
- * same admin-maintained BOQ table a contractor's tender is built from, so the
+ * Two things are worth being clear about, because they're the parts people
+ * assume are magic.
+ *
+ * **The numbers are not written by the AI.** Quantities and rates come from the
+ * same admin-maintained BOQ table a contractor's tender is priced from, so the
  * estimate and the eventual bids are speaking about the same materials. The AI
- * only writes the explanation underneath, and the figures stand without it.
+ * only writes the explanation, and every figure stands without it.
+ *
+ * **It is shown as a range, never as one number.** How much the figure is worth
+ * depends entirely on what it was calculated from — a guess off the plot size
+ * deserves ±30%, prices contractors actually bid deserve ±5%. Showing a bare
+ * midpoint would read as a quote, and it isn't one. The tier badge says which
+ * rung this is, so nobody mistakes a first guess for a settled price.
  */
+
+const tierStyles: Record<EstimateTier, string> = {
+  [EstimateTier.PLOT_ONLY]: "bg-stone-500/15 text-stone-700 dark:text-slate-300",
+  [EstimateTier.FLOOR_PLAN]: "bg-sky-500/15 text-sky-800 dark:text-sky-300",
+  [EstimateTier.BOQ]: "bg-amber-500/20 text-amber-800 dark:text-amber-300",
+  [EstimateTier.BID_BACKED]: "bg-emerald-500/15 text-emerald-800 dark:text-emerald-300",
+};
+
 export function EstimateSection({ projectId, token }: { projectId: string; token: string }) {
   const [estimate, setEstimate] = useState<CostEstimate | null>(null);
-  const [areaSqft, setAreaSqft] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [tierLabel, setTierLabel] = useState("");
+  const [history, setHistory] = useState<EstimateSnapshot[]>([]);
+  const [busy, setBusy] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showLines, setShowLines] = useState(false);
 
-  async function run() {
+  const run = useCallback(async () => {
     setBusy(true);
     setError(null);
     try {
-      setEstimate(await estimateProject(token, projectId, areaSqft ? Number(areaSqft) : undefined));
+      const res = await estimateProject(token, projectId);
+      setEstimate(res.estimate);
+      setTierLabel(res.tierLabel);
+      setHistory(res.history);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't build the estimate");
     } finally {
       setBusy(false);
     }
-  }
+  }, [token, projectId]);
+
+  // The estimate already exists — it's recalculated whenever the project gains
+  // real data — so this is a read on open, not a calculation the user triggers.
+  useEffect(() => {
+    void run();
+  }, [run]);
 
   return (
     <section>
@@ -50,52 +74,103 @@ export function EstimateSection({ projectId, token }: { projectId: string; token
         )}
 
         {!estimate ? (
-          <div>
-            <p className="text-sm text-stone-600 dark:text-slate-400">
-              A materials-and-labour estimate priced from Buildora&apos;s rate table. Leave the area
-              blank to use your drawn floor plan, or type one to try a different size.
-            </p>
-            <div className="mt-4 flex flex-wrap items-end gap-3">
-              <label className="text-sm">
-                <span className="mb-1 block font-semibold">Total floor area (sqft)</span>
-                <input
-                  className={inputClass}
-                  type="number"
-                  placeholder="From your floor plan"
-                  value={areaSqft}
-                  onChange={(e) => setAreaSqft(e.target.value)}
-                />
-              </label>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={run}
-                className="inline-flex items-center gap-2 rounded-full bg-amber-400 px-6 py-2.5 text-sm font-bold text-stone-950 transition hover:bg-amber-300 disabled:opacity-60"
-              >
-                <Calculator className="h-4 w-4" />
-                {busy ? "Working…" : "Estimate"}
-              </button>
-            </div>
-          </div>
+          <p className="text-sm text-stone-600 dark:text-slate-400">
+            {busy ? "Working out the estimate…" : "No estimate yet."}
+          </p>
         ) : (
           <div className="flex flex-col gap-5">
             <div className="flex flex-wrap items-end justify-between gap-4">
               <div>
-                <p className="text-3xl font-extrabold">{formatBdt(estimate.totalBdt)}</p>
-                <p className="mt-0.5 text-sm text-stone-600 dark:text-slate-400">
-                  {estimate.areaSqft.toLocaleString()} sqft · {formatBdt(estimate.perSqftBdt)} per
-                  sqft
+                {/* The range, not a midpoint — see the note at the top of this file. */}
+                <p className="text-3xl font-extrabold">
+                  {formatBdt(estimate.rangeLowBdt)} – {formatBdt(estimate.rangeHighBdt)}
+                </p>
+                <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-stone-600 dark:text-slate-400">
+                  <span
+                    className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${tierStyles[estimate.tier]}`}
+                  >
+                    {tierLabel}
+                  </span>
+                  <span>
+                    {estimate.areaSqft.toLocaleString()} sqft · {formatBdt(estimate.perSqftBdt)} per
+                    sqft
+                  </span>
+                </p>
+                <p className="mt-1 text-xs text-stone-500 dark:text-slate-500">
+                  Based on {estimate.areaSource}.
                 </p>
               </div>
               <button
                 type="button"
                 disabled={busy}
-                onClick={run}
+                onClick={() => void run()}
                 className="rounded-full border border-stone-300 px-5 py-2 text-sm font-bold text-stone-700 transition hover:bg-stone-100 disabled:opacity-60 dark:border-white/20 dark:text-slate-200 dark:hover:bg-white/10"
               >
-                Recalculate
+                Refresh
               </button>
             </div>
+
+            {/* How the figure has moved as the project gained real detail. */}
+            {history.length > 1 && (
+              <div className="rounded-xl border border-black/10 px-4 py-3 dark:border-white/10">
+                <p className="text-xs font-bold tracking-wider text-stone-500 uppercase dark:text-slate-400">
+                  How this estimate has tightened
+                </p>
+                <ul className="mt-2 space-y-1 text-sm">
+                  {history.map((h) => (
+                    <li key={h.id} className="flex flex-wrap justify-between gap-2">
+                      <span className="text-stone-600 dark:text-slate-400">
+                        {h.createdAt.slice(0, 10)}
+                      </span>
+                      <span className="font-semibold">
+                        {formatBdt(h.rangeLowBdt)} – {formatBdt(h.rangeHighBdt)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/*
+              Live supplier listings, reported and never applied. A marketplace
+              price is per-unit material; a BOQ rate is composite work. Nothing
+              here changes the figures above.
+            */}
+            {estimate.drift && estimate.drift.categories.some((c) => c.changePct != null) && (
+              <div className="rounded-xl bg-black/4 px-4 py-3 dark:bg-white/5">
+                <p className="text-xs font-bold tracking-wider text-stone-500 uppercase dark:text-slate-400">
+                  Supplier prices on Buildora
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {estimate.drift.categories
+                    .filter((c) => c.changePct != null && Math.abs(c.changePct) >= 1)
+                    .slice(0, 6)
+                    .map((c) => (
+                      <span
+                        key={c.category}
+                        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${
+                          c.changePct! > 0
+                            ? "bg-rose-500/12 text-rose-700 dark:text-rose-300"
+                            : "bg-emerald-500/12 text-emerald-700 dark:text-emerald-300"
+                        }`}
+                      >
+                        {c.changePct! > 0 ? (
+                          <TrendingUp className="h-3 w-3" />
+                        ) : (
+                          <TrendingDown className="h-3 w-3" />
+                        )}
+                        {c.category.toLowerCase().replace(/_/g, " ")} {c.changePct! > 0 ? "+" : ""}
+                        {c.changePct}% ({c.listings})
+                      </span>
+                    ))}
+                </div>
+                <p className="mt-2 text-xs text-stone-500 dark:text-slate-500">
+                  Median listing prices since your last estimate. Shown as a signal only, and not
+                  applied to the figures above: a bag of cement and a rate for finished concrete
+                  work are different things.
+                </p>
+              </div>
+            )}
 
             {/* Category subtotals with a proportional bar — where the money goes */}
             <div className="flex flex-col gap-2">
@@ -176,8 +251,9 @@ export function EstimateSection({ projectId, token }: { projectId: string; token
 
             <p className="text-xs text-stone-500 dark:text-slate-500">
               Quantities and rates come from Buildora&apos;s BOQ table, the same rates your
-              contractor tender is priced from, not from the AI. Treat it as a budgeting guide, not
-              a quote.
+              contractor tender is priced from, not from the AI. It is shown as a range because that
+              is what it is: a budgeting guide, not a quote. The range narrows as the project gains
+              real detail.
             </p>
           </div>
         )}

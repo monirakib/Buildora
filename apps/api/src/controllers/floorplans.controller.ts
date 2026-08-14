@@ -16,6 +16,7 @@ import { FloorPlan, type FloorPlanDoc } from "../models/FloorPlan";
 import { askGroq, isGroqConfigured } from "../services/groq";
 import { DapZone } from "../models/DapZone";
 import type { ProjectDoc } from "../models/Project";
+import { refreshEstimate } from "../services/estimateLadder";
 import { findProjectOr404 } from "./projects.controller";
 
 // The 2D floor plan a project's architect draws before any 3D model exists.
@@ -299,6 +300,11 @@ export async function saveFloorPlan(req: Request, res: Response) {
   // Re-read every floor so the returned compliance reflects this save.
   const plans = await FloorPlan.find({ project: project._id }).sort({ level: 1 });
 
+  // Now that there's a drawn area, the owner's estimate can stop guessing from
+  // the plot size. Plans are saved constantly, so refreshEstimate only writes a
+  // new snapshot when the area actually moved — see its 2% guard.
+  await refreshEstimate(project);
+
   return res.json({
     data: {
       plan: toFloorPlanDto(saved),
@@ -357,7 +363,7 @@ export async function floorPlanAdvice(req: Request, res: Response) {
 
   if (!isGroqConfigured()) {
     return res.status(503).json({
-      error: { message: "The layout advisor isn't configured (missing Groq key)" },
+      error: { message: "The layout advisor isn't configured (no model API key set)" },
     });
   }
 

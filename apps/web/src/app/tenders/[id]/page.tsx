@@ -9,6 +9,8 @@ import { formatBdt, formatDate } from "@/components/app/projectStatus";
 import { Navbar } from "@/components/landing/Navbar";
 import { getTender, submitBid } from "@/lib/apiTenders";
 import { useSession } from "@/store/useSession";
+import { useRegisterAiContext } from "@/lib/useRegisterAiContext";
+import { BidSanityPanel } from "@/components/project/BidSanityPanel";
 
 const inputClass =
   "block w-full rounded-xl border border-stone-300/80 bg-white/70 px-4 py-2.5 text-sm text-stone-900 placeholder-stone-400 backdrop-blur transition outline-none focus:border-amber-500 focus:bg-white/90 focus:ring-2 focus:ring-amber-400/30 dark:border-white/15 dark:bg-white/5 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:bg-white/10";
@@ -34,6 +36,10 @@ export default function TenderDetailPage() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useRegisterAiContext(
+    tender ? { page: "tender", label: tender.title, tenderId: tender.id } : null
+  );
   const [done, setDone] = useState(false);
 
   const [rates, setRates] = useState<Record<string, string>>({});
@@ -256,6 +262,25 @@ export default function TenderDetailPage() {
                     className={`${inputClass} mt-1`}
                   />
                 </label>
+
+                {/*
+                  A private look at their own rates before the bid is sealed.
+                  Runs only when pressed, and never reveals a benchmark figure —
+                  see BidSanityPanel for why that matters here.
+                */}
+                {token && (
+                  <div className="mt-4">
+                    <BidSanityPanel
+                      token={token}
+                      tenderId={tender.id}
+                      lines={tender.items.map((item) => ({
+                        itemId: item.id,
+                        ratePerUnitBdt: Number(rates[item.id] ?? 0),
+                      }))}
+                      timelineWeeks={Number(meta.timelineWeeks) || undefined}
+                    />
+                  </div>
+                )}
 
                 <button
                   type="submit"

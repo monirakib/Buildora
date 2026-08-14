@@ -5,11 +5,16 @@ import {
   LabourTrade,
   NotificationType,
   UserRole,
+  addDays,
   dhakaDateKey,
   isRainDay,
+  weekStartSaturday,
+  type DiaryDigest,
   type SiteDiaryEntry as SiteDiaryEntryDto,
   type SiteDiarySummary,
 } from "@buildora/shared";
+import { askAi, isAiConfigured } from "../services/ai";
+import { fenced, sanitizeForPrompt } from "../services/aiSafety";
 import {
   SiteDiaryEntry,
   type SiteDiaryEntryDoc,
@@ -417,3 +422,147 @@ export async function deleteSiteDiaryEntry(req: Request, res: Response) {
   await entry.deleteOne();
   return res.json({ data: { deleted: true, summary: await buildSummary(project._id) } });
 }
+
+/**
+ * GET /api/projects/:id/diary/digest?weekOf=YYYY-MM-DD — one week of the diary,
+ * counted.
+ *
+ * The week runs Saturday to Friday, which is the Bangladeshi working week, and
+ * defaults to the one containing today in Dhaka. Because `date` is stored as a
+ * "YYYY-MM-DD" string, "this week" is a plain string range — lexical order and
+ * chronological order are the same thing here, so there is no date arithmetic
+ * in the query and no timezone to get wrong.
+ *
+ * Every figure below is counted in code from real entries. The model is given
+ * the finished counts and asked only to describe what they add up to, in
+ * particular what the rain did to the schedule.
+ */
+export async function getDiaryDigest(req: Request, res: Response) {
+  const project = await findProjectOr404(req.params.id, res);
+  if (!project) return;
+  if (!canAccessDiary(project, req.auth!)) {
+    return res.status(404).json({ error: { message: "Project not found" } });
+  }
+
+  const requested = String(req.query.weekOf ?? "").trim();
+  const anchor = /^\d{4}-\d{2}-\d{2}$/.test(requested) ? requested : dhakaDateKey(new Date());
+  const weekStart = weekStartSaturday(anchor);
+  const weekEnd = addDays(weekStart, 6);
+  const prevStart = addDays(weekStart, -7);
+
+  const [entries, prevEntries] = await Promise.all([
+    SiteDiaryEntry.find({
+      project: project._id,
+      date: { $gte: weekStart, $lte: weekEnd },
+    }).sort({ date: 1 }),
+    SiteDiaryEntry.find({
+      project: project._id,
+      date: { $gte: prevStart, $lte: addDays(prevStart, 6) },
+    }),
+  ]);
+
+  const headcount = (e: (typeof entries)[number]) => e.labour.reduce((sum, l) => sum + l.count, 0);
+
+  // Per-trade and per-material totals, merged across the week.
+  const trades = new Map<string, number>();
+  const materials = new Map<string, { item: string; unit: string; quantity: number }>();
+  let peakLabour: { date: string; count: number } | null = null;
+  const issueDates: string[] = [];
+  let labourDays = 0;
+  let rainDays = 0;
+  let totalRainfallMm = 0;
+
+  for (const entry of entries) {
+    const count = headcount(entry);
+    labourDays += count;
+    if (!peakLabour || count > peakLabour.count) peakLabour = { date: entry.date, count };
+
+    for (const l of entry.labour) trades.set(l.trade, (trades.get(l.trade) ?? 0) + l.count);
+    for (const m of entry.materials) {
+      // Same material in different units stays separate — adding 3 bags to
+      // 3 tonnes would be worse than not summing at all.
+      const key = `${m.item.toLowerCase()}|${m.unit.toLowerCase()}`;
+      const existing = materials.get(key);
+      if (existing) existing.quantity += m.quantity;
+      else materials.set(key, { item: m.item, unit: m.unit, quantity: m.quantity });
+    }
+
+    if (entry.isRainDay) rainDays += 1;
+    totalRainfallMm += entry.weather?.rainfallMm ?? 0;
+    if (entry.issues?.trim()) issueDates.push(entry.date);
+  }
+
+  const digest: DiaryDigest = {
+    weekStart,
+    weekEnd,
+    daysLogged: entries.length,
+    rainDays,
+    totalRainfallMm: Math.round(totalRainfallMm * 10) / 10,
+    labourDays,
+    peakLabour,
+    trades: [...trades.entries()]
+      .map(([trade, count]) => ({ trade, count }))
+      .sort((a, b) => b.count - a.count),
+    materials: [...materials.values()].sort((a, b) => b.quantity - a.quantity),
+    issueCount: issueDates.length,
+    issueDates,
+    previousWeekLabourDays: prevEntries.length
+      ? prevEntries.reduce((sum, e) => sum + headcount(e), 0)
+      : null,
+    narrative: null,
+  };
+
+  digest.narrative = await narrateDigest(project.title, digest, entries);
+  return res.json({ data: { digest } });
+}
+
+/** Asks the model to read the week. Returns null when it can't — the counts stand alone. */
+async function narrateDigest(
+  projectTitle: string,
+  digest: DiaryDigest,
+  entries: HydratedDocument<SiteDiaryEntryDoc>[]
+): Promise<string | null> {
+  if (!isAiConfigured() || digest.daysLogged === 0) return null;
+
+  // What was actually written each day, trimmed and fenced — it is text other
+  // people typed, so it is data to read, not instructions to follow.
+  const log = entries
+    .map(
+      (e) =>
+        `${e.date}${e.isRainDay ? " (rain day)" : ""}: ${e.workDone}${e.issues ? ` | ISSUE: ${e.issues}` : ""}`
+    )
+    .join("\n");
+
+  const prompt = `You are a site manager in Bangladesh writing the weekly note for a construction project called "${projectTitle}".
+
+These figures are already counted and are NOT to be recalculated:
+Week: ${digest.weekStart} to ${digest.weekEnd}
+Days logged: ${digest.daysLogged} of 7
+Rain days: ${digest.rainDays}, total rainfall ${digest.totalRainfallMm} mm
+Labour-days: ${digest.labourDays}${digest.previousWeekLabourDays != null ? ` (previous week: ${digest.previousWeekLabourDays})` : ""}
+${digest.peakLabour ? `Busiest day: ${digest.peakLabour.date} with ${digest.peakLabour.count} workers` : ""}
+Trades: ${digest.trades.map((t) => `${t.trade} ${t.count}`).join(", ") || "none recorded"}
+Materials: ${digest.materials.map((m) => `${m.item} ${m.quantity} ${m.unit}`).join(", ") || "none recorded"}
+Days with issues: ${digest.issueCount}
+
+${fenced("this week's diary entries", sanitizeForPrompt(log, 1600))}
+
+Write two short paragraphs, plain text, no markdown and no headings:
+1. What got done this week, and whether it was busier or quieter than last week.
+2. What held things up — be specific about whether rain cost working days — and what to watch next week.
+
+Do not invent any number that is not above. Do not estimate a completion date.`;
+
+  try {
+    const answer = await askAi({ messages: [{ role: "user", content: prompt }], maxTokens: 400 });
+    return answer.text || null;
+  } catch (err) {
+    console.error(
+      "[sitediary] digest narrative unavailable:",
+      err instanceof Error ? err.message : err
+    );
+    return null;
+  }
+}
+
+export { canAccessDiary };

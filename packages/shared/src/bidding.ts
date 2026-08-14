@@ -1,3 +1,4 @@
+import { EstimateTier } from "./enums";
 import type { BidStatus, BuildContractStatus, TenderStatus } from "./enums";
 import type { PaymentEntry, UserRef } from "./types";
 
@@ -170,4 +171,90 @@ export interface CostEstimate {
   /** How many rate rows fed the estimate — zero means the table is unseeded. */
   ratesFrom: number;
   estimatedAt: string;
+  /** Which rung of the accuracy ladder produced this. */
+  tier: EstimateTier;
+  /** Where the floor area came from, in words, e.g. "your drawn floor plans". */
+  areaSource: string;
+  /**
+   * The range this estimate should actually be read as. A plot-only guess is
+   * ±30%; a bid-backed figure is ±5%. Always show the range, never the midpoint
+   * alone — a single number reads as a quote, and this is not one.
+   */
+  rangeLowBdt: number;
+  rangeHighBdt: number;
+  /** How live marketplace prices have moved since the previous estimate. */
+  drift?: MarketDrift;
+}
+
+/**
+ * How far each tier should be trusted, as a fraction either side of the total.
+ *
+ * Methodology rather than pricing, so it lives in code — unlike the rates
+ * themselves, which are admin-editable in the database because they move with
+ * the market.
+ */
+export const ESTIMATE_CONFIDENCE: Record<EstimateTier, number> = {
+  [EstimateTier.PLOT_ONLY]: 0.3,
+  [EstimateTier.FLOOR_PLAN]: 0.15,
+  [EstimateTier.BOQ]: 0.1,
+  [EstimateTier.BID_BACKED]: 0.05,
+};
+
+/** Plain-language labels for the tier badge. */
+export const ESTIMATE_TIER_LABELS: Record<EstimateTier, string> = {
+  [EstimateTier.PLOT_ONLY]: "Rough guess",
+  [EstimateTier.FLOOR_PLAN]: "From your floor plans",
+  [EstimateTier.BOQ]: "From your Bill of Quantities",
+  [EstimateTier.BID_BACKED]: "From real contractor bids",
+};
+
+/* ---------- Market drift ---------- */
+
+/**
+ * How one material category's real listing prices have moved.
+ *
+ * Read from actual supplier listings on the marketplace, compared against the
+ * median stored on the previous estimate. It is reported, never applied: see
+ * MarketDrift below for why nobody should multiply a rate by this.
+ */
+export interface CategoryDrift {
+  category: string;
+  /** Median listing price now, in BDT. */
+  medianBdt: number;
+  /** Median when the previous estimate was taken, or null if there wasn't one. */
+  previousMedianBdt: number | null;
+  changePct: number | null;
+  /** How many active listings the median came from. */
+  listings: number;
+}
+
+/**
+ * The market signal shown beside an estimate.
+ *
+ * **This never changes the estimate's total, and that is deliberate.**
+ * Marketplace prices are per-unit *material* prices — a bag of cement. BoqRate
+ * lines are composite: "RCC works (1:1.5:3) including shuttering" is material
+ * plus labour plus formwork. Dividing one by the other produces a number that
+ * looks authoritative and means nothing. So drift is reported as a signal for a
+ * human to weigh, and the total stays derived from the rate table alone.
+ */
+export interface MarketDrift {
+  categories: CategoryDrift[];
+  /** Categories skipped for having too few listings to read anything into. */
+  thinCategories: string[];
+  comparedTo: string | null;
+}
+
+/* ---------- Estimate snapshots ---------- */
+
+/** One stored estimate, so the owner can watch the figure tighten over time. */
+export interface EstimateSnapshot {
+  id: string;
+  tier: EstimateTier;
+  areaSqft: number;
+  totalBdt: number;
+  perSqftBdt: number;
+  rangeLowBdt: number;
+  rangeHighBdt: number;
+  createdAt: string;
 }
