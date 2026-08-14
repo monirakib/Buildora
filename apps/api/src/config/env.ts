@@ -42,6 +42,12 @@ const envSchema = z.object({
   // https://aistudio.google.com; the assistant 503s until it's set.
   GEMINI_API_KEY: z.string().optional(),
   GEMINI_MODEL: z.string().default("gemini-flash-latest"),
+  // Groq (the floor plan's layout advisor) — free key, no card, from
+  // https://console.groq.com/keys; the advisor 503s until it's set. A second
+  // model provider alongside Gemini because it hosts Llama, which is quick and
+  // generous enough on the free tier for a chat that runs while you draw.
+  GROQ_API_KEY: z.string().optional(),
+  GROQ_MODEL: z.string().default("llama-3.3-70b-versatile"),
   // Web Push (VAPID). No account and no third party: generate the pair once
   // with `node -e "console.log(require('web-push').generateVAPIDKeys())"` and
   // paste them here. The subject identifies this server to the push service

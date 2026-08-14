@@ -1,5 +1,13 @@
 import { Schema, model, Types } from "mongoose";
-import { OpeningKind, type PlanOpening, type PlanRoom, type PlanWall } from "@buildora/shared";
+import {
+  FurnitureKind,
+  OpeningKind,
+  RoomKind,
+  type PlanFurniture,
+  type PlanOpening,
+  type PlanRoom,
+  type PlanWall,
+} from "@buildora/shared";
 
 /**
  * One floor of a project's 2D plan — the layout the architect draws before any
@@ -17,6 +25,7 @@ export interface FloorPlanDoc {
   walls: PlanWall[];
   rooms: PlanRoom[];
   openings: PlanOpening[];
+  furniture: PlanFurniture[];
   gridStepFt: number;
   /** Who last saved this floor — shown under the canvas. */
   updatedBy: Types.ObjectId;
@@ -45,11 +54,29 @@ const pointSchema = new Schema(
   { _id: false }
 );
 
+// `kind` and `color` are optional: rooms drawn before room types existed have
+// neither, and the editor falls back to its default tint for those.
 const roomSchema = new Schema<PlanRoom>(
   {
     id: { type: String, required: true },
     name: { type: String, required: true, trim: true, maxlength: 40 },
     points: { type: [pointSchema], required: true },
+    kind: { type: String, enum: Object.values(RoomKind) },
+    color: { type: String },
+  },
+  { _id: false }
+);
+
+const furnitureSchema = new Schema<PlanFurniture>(
+  {
+    id: { type: String, required: true },
+    kind: { type: String, enum: Object.values(FurnitureKind), required: true },
+    x: { type: Number, required: true },
+    y: { type: Number, required: true },
+    widthFt: { type: Number, required: true, min: 0.5, max: 60 },
+    depthFt: { type: Number, required: true, min: 0.5, max: 60 },
+    rotation: { type: Number, required: true, min: 0, max: 359 },
+    label: { type: String, trim: true, maxlength: 40 },
   },
   { _id: false }
 );
@@ -72,6 +99,7 @@ const floorPlanSchema = new Schema<FloorPlanDoc>(
     walls: { type: [wallSchema], default: [] },
     rooms: { type: [roomSchema], default: [] },
     openings: { type: [openingSchema], default: [] },
+    furniture: { type: [furnitureSchema], default: [] },
     gridStepFt: { type: Number, default: 1, min: 0.25, max: 10 },
     updatedBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
   },

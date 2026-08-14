@@ -25,6 +25,7 @@ import {
 } from "../controllers/documents.controller";
 import {
   deleteFloorPlan,
+  floorPlanAdvice,
   listFloorPlans,
   saveFloorPlan,
 } from "../controllers/floorplans.controller";
@@ -95,6 +96,8 @@ projectsRouter.post("/:id/ecps/advance", advanceEcpsApplication);
 
 // 2D floor plans — one per level (participants view, architect edits).
 projectsRouter.get("/:id/floor-plans", listFloorPlans);
+// Before the /:level routes, or "advice" would be parsed as a floor number.
+projectsRouter.post("/:id/floor-plans/advice", floorPlanAdvice);
 projectsRouter.put("/:id/floor-plans/:level", saveFloorPlan);
 projectsRouter.delete("/:id/floor-plans/:level", deleteFloorPlan);
 

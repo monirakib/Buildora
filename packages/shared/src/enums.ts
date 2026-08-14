@@ -287,6 +287,48 @@ export enum OpeningKind {
   WINDOW = "WINDOW",
 }
 
+/**
+ * What a room on a 2D floor plan is used for. This is only a presentation and
+ * advice hint — it tints the room on the drawing and tells the layout advisor
+ * what it is looking at. Area, and therefore the FAR check, does not care.
+ *
+ * Optional on `PlanRoom`, so plans drawn before room types existed still load.
+ */
+export enum RoomKind {
+  BEDROOM = "BEDROOM",
+  LIVING = "LIVING",
+  KITCHEN = "KITCHEN",
+  BATHROOM = "BATHROOM",
+  DINING = "DINING",
+  BALCONY = "BALCONY",
+  CORRIDOR = "CORRIDOR",
+  STORE = "STORE",
+  OTHER = "OTHER",
+}
+
+/**
+ * A piece of furniture placed on a 2D floor plan. Each kind has a standard
+ * real-world size (see `FURNITURE_PRESETS`) so an architect can check a bed
+ * actually fits before the wall goes up.
+ *
+ * Furniture is drawn on the plan but is **not** floor area: it never enters the
+ * FAR or ground-coverage calculation.
+ */
+export enum FurnitureKind {
+  BED_DOUBLE = "BED_DOUBLE",
+  BED_SINGLE = "BED_SINGLE",
+  SOFA = "SOFA",
+  DINING_TABLE = "DINING_TABLE",
+  WARDROBE = "WARDROBE",
+  TV_UNIT = "TV_UNIT",
+  TOILET = "TOILET",
+  SINK = "SINK",
+  SHOWER = "SHOWER",
+  BATHTUB = "BATHTUB",
+  DESK = "DESK",
+  CHAIR = "CHAIR",
+}
+
 /** Filing category for the project document archive. */
 export enum DocumentCategory {
   DESIGN = "DESIGN",
