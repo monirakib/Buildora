@@ -517,3 +517,24 @@ export enum ChangeOrderStatus {
   /** Pulled by the contractor before a decision. */
   WITHDRAWN = "WITHDRAWN",
 }
+
+/**
+ * How much a cost estimate is actually worth, which depends entirely on what it
+ * was calculated from.
+ *
+ * The estimate exists from the moment a brief is posted and gets sharper as
+ * real data lands: a guess from the plot size, then the architect's drawn floor
+ * area, then the quantities in a published BOQ, then the prices contractors
+ * actually bid. Each rung narrows the range, and the owner is shown which rung
+ * they are on so a first guess is never mistaken for a quote.
+ */
+export enum EstimateTier {
+  /** Brief only — floor area inferred from plot size and floor count. */
+  PLOT_ONLY = "PLOT_ONLY",
+  /** Measured off the floor plans the architect actually drew. */
+  FLOOR_PLAN = "FLOOR_PLAN",
+  /** Priced against a published Bill of Quantities, not derived from area. */
+  BOQ = "BOQ",
+  /** What contractors really bid, once bidding has closed. */
+  BID_BACKED = "BID_BACKED",
+}
