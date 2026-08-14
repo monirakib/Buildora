@@ -2,7 +2,9 @@ import type { Request, Response } from "express";
 import type { HydratedDocument } from "mongoose";
 import { z } from "zod";
 import {
+  FurnitureKind,
   OpeningKind,
+  RoomKind,
   UserRole,
   floorAreaSqft,
   kathaToSqft,
@@ -11,6 +13,7 @@ import {
   type PlanCompliance,
 } from "@buildora/shared";
 import { FloorPlan, type FloorPlanDoc } from "../models/FloorPlan";
+import { askGroq, isGroqConfigured } from "../services/groq";
 import { DapZone } from "../models/DapZone";
 import type { ProjectDoc } from "../models/Project";
 import { findProjectOr404 } from "./projects.controller";
@@ -32,6 +35,7 @@ function toFloorPlanDto(doc: HydratedDocument<FloorPlanDoc>): FloorPlanDto {
     walls: doc.walls,
     rooms: doc.rooms,
     openings: doc.openings,
+    furniture: doc.furniture,
     gridStepFt: doc.gridStepFt,
     updatedBy:
       editor && typeof editor === "object" && "name" in editor
@@ -92,6 +96,23 @@ const roomSchema = z.object({
   id: z.string().trim().min(1).max(40),
   name: z.string().trim().min(1, "Name every room").max(40),
   points: z.array(pointSchema).min(3, "A room needs at least three corners").max(60),
+  // Optional so a plan saved before room types existed still validates.
+  kind: z.enum(RoomKind).optional(),
+  color: z
+    .string()
+    .regex(/^#[0-9a-f]{6}$/i, "A room colour must be a #rrggbb hex value")
+    .optional(),
+});
+
+const furnitureSchema = z.object({
+  id: z.string().trim().min(1).max(40),
+  kind: z.enum(FurnitureKind, { message: "Unknown furniture type" }),
+  x: z.number().finite().min(-5000).max(5000),
+  y: z.number().finite().min(-5000).max(5000),
+  widthFt: z.number().min(0.5).max(60),
+  depthFt: z.number().min(0.5).max(60),
+  rotation: z.number().int().min(0).max(359),
+  label: z.string().trim().max(40).optional(),
 });
 
 const openingSchema = z.object({
@@ -107,6 +128,10 @@ const savePlanSchema = z
     walls: z.array(wallSchema).max(400),
     rooms: z.array(roomSchema).max(120),
     openings: z.array(openingSchema).max(400),
+    // Defaulted rather than required, so a save that predates furniture (or a
+    // browser tab left open across the deploy) stores an empty list instead of
+    // failing validation.
+    furniture: z.array(furnitureSchema).max(300).default([]),
     gridStepFt: z.number().min(0.25).max(10),
   })
   .superRefine((plan, ctx) => {
@@ -144,6 +169,9 @@ const levelSchema = z.coerce.number().int().min(0).max(49);
  * in `@buildora/shared`). That is the enclosed usable area; RAJUK measures
  * gross covered area including wall thickness, so treat this as an indicative
  * check during design, not a substitute for the formal submission.
+ *
+ * Furniture is deliberately absent from this: a bed is not floor area, so
+ * furnishing a plan never moves the FAR or coverage numbers.
  */
 async function computeCompliance(
   project: HydratedDocument<ProjectDoc>,
@@ -277,6 +305,81 @@ export async function saveFloorPlan(req: Request, res: Response) {
       compliance: await computeCompliance(project, plans),
     },
   });
+}
+
+const ADVICE_SYSTEM_PROMPT = `You are a floor plan advisor for Buildora, a construction platform for Bangladesh. You advise architects and land owners on residential layouts.
+
+How to answer:
+- Give sizes in feet, written like "Master bedroom: 14x12 ft".
+- Assume Dhaka apartment norms unless told otherwise.
+- Bangladesh is hot and humid: cross-ventilation, window placement and shading matter more than they would in a temperate climate. Raise them when they are relevant.
+- Be concise and specific. A short paragraph, or a few dash-prefixed lines.
+- Plain text only. No markdown headings, no bold, no tables.
+- Reply in Bangla if the user writes in Bangla.
+
+About the numbers you are given:
+- The plan measurements and the DAP zone limits below are already calculated from the drawing and from Buildora's zone records. Treat them as correct and do not recompute them.
+- FAR and ground coverage limits come from RAJUK's DAP rules for that area. Never invent a limit for an area that has no record.
+- You advise on design only. RAJUK decides what gets approved.`;
+
+const adviceSchema = z.object({
+  /**
+   * What is on the editor's canvas right now, written out by the browser.
+   *
+   * It has to come from the client rather than be read from the database here:
+   * the whole point is advice on the drawing in progress, which by definition
+   * has not been saved yet.
+   */
+  grounding: z.string().trim().min(1).max(6000),
+  messages: z
+    .array(
+      z.object({
+        role: z.enum(["user", "assistant"]),
+        content: z.string().trim().min(1).max(2000),
+      })
+    )
+    .min(1, "Ask something first")
+    .max(20),
+});
+
+/**
+ * POST /api/projects/:id/floor-plans/advice — layout advice from Groq.
+ *
+ * A thin proxy, so the Groq key stays on the server instead of being compiled
+ * into the browser bundle. Anyone who can see the project's plans can ask.
+ */
+export async function floorPlanAdvice(req: Request, res: Response) {
+  const project = await findProjectOr404(req.params.id!, res);
+  if (!project) return;
+  if (!canViewPlans(project, req.auth!)) {
+    return res.status(404).json({ error: { message: "Project not found" } });
+  }
+
+  if (!isGroqConfigured()) {
+    return res.status(503).json({
+      error: { message: "The layout advisor isn't configured (missing Groq key)" },
+    });
+  }
+
+  const parsed = adviceSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res
+      .status(400)
+      .json({ error: { message: parsed.error.issues[0]?.message ?? "Invalid request" } });
+  }
+
+  try {
+    const reply = await askGroq([
+      { role: "system", content: ADVICE_SYSTEM_PROMPT },
+      { role: "system", content: `Current plan:\n${parsed.data.grounding}` },
+      ...parsed.data.messages,
+    ]);
+    return res.json({ data: { reply } });
+  } catch (err) {
+    return res
+      .status(502)
+      .json({ error: { message: err instanceof Error ? err.message : "Advisor error" } });
+  }
 }
 
 /** DELETE /api/projects/:id/floor-plans/:level — clear one floor entirely. */
