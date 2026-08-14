@@ -33,6 +33,7 @@ import { getProjectBuild } from "@/lib/apiBuild";
 import { openConversation } from "@/lib/apiMessages";
 import { readPaymentNotice } from "@/lib/apiPayments";
 import { useSession } from "@/store/useSession";
+import { useRegisterAiContext } from "@/lib/useRegisterAiContext";
 import { Navbar } from "@/components/landing/Navbar";
 import { ProposalsSection } from "@/components/project/ProposalsSection";
 import { ContractSection } from "@/components/project/ContractSection";
@@ -108,6 +109,13 @@ export default function ProjectDetailPage() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Tell the assistant which project is open, once it has actually loaded —
+  // the title is what the user sees on the chip, so registering earlier would
+  // just show them a blank one.
+  useRegisterAiContext(
+    project ? { page: "project", label: project.title, projectId: project.id } : null
+  );
   const [busy, setBusy] = useState(false);
 
   const [tab, setTab] = useState<TabKey>("overview");

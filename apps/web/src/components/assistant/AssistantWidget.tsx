@@ -7,7 +7,10 @@ import {
   getAssistantChat,
   type AssistantMessage,
 } from "@/lib/api";
+import type { AiSuggestedAction } from "@buildora/shared";
 import { useSession } from "@/store/useSession";
+import { useAiContext } from "@/store/useAiContext";
+import { SuggestedActions } from "./SuggestedActions";
 
 // Starter questions shown while the conversation is empty.
 const suggestions = [
@@ -23,6 +26,14 @@ const suggestions = [
  */
 export function AssistantWidget() {
   const token = useSession((s) => s.token);
+  // What the current page registered, if anything. Read here and sent inside
+  // send(), so every message describes the page as it is at that moment.
+  const context = useAiContext((s) => s.context);
+
+  // The user can switch the context off for a question they mean generally.
+  // Reset whenever the page changes, so dismissing it once doesn't stick.
+  const [useContext, setUseContext] = useState(true);
+  useEffect(() => setUseContext(true), [context?.label]);
 
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<AssistantMessage[]>([]);
@@ -30,6 +41,12 @@ export function AssistantWidget() {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
+  /**
+   * Buttons offered by the newest reply only. Kept separate from `messages`
+   * because those are persisted and replayed on reload, and an action that made
+   * sense yesterday ("post this draft") may be wrong today.
+   */
+  const [actions, setActions] = useState<AiSuggestedAction[]>([]);
 
   // Session hydrates from localStorage — mount-gate so server and first
   // client render match (same pattern as the navbar).
@@ -59,10 +76,18 @@ export function AssistantWidget() {
     // Show the user's message immediately; the reply follows.
     const history = messages;
     setMessages([...history, { role: "user", content: message }]);
+    // Last turn's buttons are stale the moment a new question is asked.
+    setActions([]);
     setSending(true);
     try {
-      const reply = await assistantChat(token ?? null, message, history);
-      setMessages((m) => [...m, { role: "model", content: reply }]);
+      const answer = await assistantChat(
+        token ?? null,
+        message,
+        history,
+        useContext ? context : null
+      );
+      setMessages((m) => [...m, { role: "model", content: answer.reply }]);
+      setActions(answer.actions);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
@@ -72,6 +97,7 @@ export function AssistantWidget() {
 
   async function clearAll() {
     setMessages([]);
+    setActions([]);
     setError(null);
     if (token) await clearAssistantChat(token).catch(() => {});
   }
@@ -187,6 +213,9 @@ export function AssistantWidget() {
                     ))}
                   </div>
                 )}
+                {!sending && actions.length > 0 && (
+                  <SuggestedActions actions={actions} token={token ?? null} onDone={setError} />
+                )}
                 {error && (
                   <p className="self-start rounded-2xl bg-rose-100 px-4 py-2.5 text-sm font-medium text-rose-800 dark:bg-rose-400/15 dark:text-rose-300">
                     {error}
@@ -195,6 +224,30 @@ export function AssistantWidget() {
               </div>
             )}
           </div>
+
+          {/*
+            What the assistant can see. Shown for two reasons: so the user
+            isn't surprised that it knows about their project, and so they can
+            turn it off for a question they mean generally.
+          */}
+          {token && useContext && context?.label && (
+            <div className="flex items-center gap-2 border-t border-stone-200/70 px-4 py-2 dark:border-white/10">
+              <span className="min-w-0 flex-1 truncate text-xs text-stone-500 dark:text-slate-400">
+                Looking at{" "}
+                <span className="font-semibold text-stone-700 dark:text-slate-200">
+                  {context.label}
+                </span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setUseContext(false)}
+                aria-label="Ask without page context"
+                className="rounded-md px-1.5 py-0.5 text-xs font-bold text-stone-400 transition hover:bg-black/5 hover:text-stone-700 dark:hover:bg-white/10 dark:hover:text-slate-200"
+              >
+                ✕
+              </button>
+            </div>
+          )}
 
           {/* Input */}
           <form
