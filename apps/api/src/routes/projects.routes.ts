@@ -34,6 +34,7 @@ import { getProjectBuild } from "../controllers/build.controller";
 import {
   createSiteDiaryEntry,
   deleteSiteDiaryEntry,
+  getDiaryDigest,
   getSiteForecast,
   listSiteDiary,
   updateSiteDiaryEntry,
@@ -46,6 +47,7 @@ import {
 } from "../controllers/attendance.controller";
 import { listProjectDisputes } from "../controllers/disputes.controller";
 import { estimateProject } from "../controllers/estimator.controller";
+import { draftProposal } from "../controllers/aiCoach.controller";
 import {
   disableProjectShare,
   enableProjectShare,
@@ -54,6 +56,7 @@ import {
 import { acceptHandover, getHandover, saveHandover } from "../controllers/handover.controller";
 import { requireAuth } from "../middleware/auth";
 import { requireRole } from "../middleware/roles";
+import { aiInlineLimit } from "../middleware/aiRateLimit";
 
 export const projectsRouter = Router();
 
@@ -70,9 +73,16 @@ projectsRouter.delete("/:id", requireRole(UserRole.LAND_OWNER), deleteProject);
 projectsRouter.post("/:id/post", requireRole(UserRole.LAND_OWNER), postBrief);
 projectsRouter.patch("/:id/status", requireRole(UserRole.LAND_OWNER), updateProjectStatus);
 
-// Proposals on a brief (architects pitch, the owner reads).
+// Proposals on a brief (architects pitch, the owner reads). The draft endpoint
+// only writes text into the form — sending the pitch is still a separate POST.
 projectsRouter.post("/:id/proposals", requireRole(UserRole.ARCHITECT), createProposal);
 projectsRouter.get("/:id/proposals", listProjectProposals);
+projectsRouter.post(
+  "/:id/proposal-draft",
+  requireRole(UserRole.ARCHITECT),
+  aiInlineLimit,
+  draftProposal
+);
 
 // The project's design contract (participants only; checked in the handler).
 projectsRouter.get("/:id/contract", getProjectContract);
@@ -97,7 +107,8 @@ projectsRouter.post("/:id/ecps/advance", advanceEcpsApplication);
 // 2D floor plans — one per level (participants view, architect edits).
 projectsRouter.get("/:id/floor-plans", listFloorPlans);
 // Before the /:level routes, or "advice" would be parsed as a floor number.
-projectsRouter.post("/:id/floor-plans/advice", floorPlanAdvice);
+// Rate limited because it spends the same free-tier quota as everything else AI.
+projectsRouter.post("/:id/floor-plans/advice", aiInlineLimit, floorPlanAdvice);
 projectsRouter.put("/:id/floor-plans/:level", saveFloorPlan);
 projectsRouter.delete("/:id/floor-plans/:level", deleteFloorPlan);
 
@@ -110,6 +121,7 @@ projectsRouter.get("/:id/build", getProjectBuild);
 // Site diary — one entry per day, weather-stamped. `/forecast` before
 // `/:entryId` so the literal path isn't swallowed by the parameter.
 projectsRouter.get("/:id/diary/forecast", getSiteForecast);
+projectsRouter.get("/:id/diary/digest", aiInlineLimit, getDiaryDigest);
 projectsRouter.get("/:id/diary", listSiteDiary);
 projectsRouter.post("/:id/diary", createSiteDiaryEntry);
 projectsRouter.patch("/:id/diary/:entryId", updateSiteDiaryEntry);

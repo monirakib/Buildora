@@ -11,6 +11,7 @@ import {
   type Tender,
 } from "@buildora/shared";
 import { formatBdt, formatDate } from "@/components/app/projectStatus";
+import { BidAnalysisPanel } from "@/components/project/BidAnalysisPanel";
 import {
   awardBid,
   cancelTender,
@@ -622,6 +623,13 @@ export function TenderSection({
                           </tbody>
                         </table>
                       </div>
+
+                      {/*
+                        The table above says what each contractor quoted; this
+                        says what it means. Opened by the owner on click, since
+                        it costs a model call.
+                      */}
+                      <BidAnalysisPanel token={token} tenderId={tender.id} />
 
                       <div className="mt-5 space-y-3">
                         {bids.map((bid) => (

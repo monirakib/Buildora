@@ -12,6 +12,7 @@ import {
 import { createProposal, decideProposal, listProjectProposals } from "@/lib/apiProjects";
 import { VerifiedBadge } from "@/components/app/VerifiedBadge";
 import { formatBdt, formatDate } from "@/components/app/projectStatus";
+import { ProposalDraftButton } from "@/components/project/ProposalDraftButton";
 
 const inputClass =
   "block w-full rounded-xl border border-stone-300/80 bg-white/70 px-4 py-2.5 text-sm text-stone-900 placeholder-stone-400 backdrop-blur transition outline-none focus:border-amber-500 focus:bg-white/90 focus:ring-2 focus:ring-amber-400/30 dark:border-white/15 dark:bg-white/5 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:bg-white/10";
@@ -243,6 +244,17 @@ export function ProposalsSection({
                 initial concept; the design fee is held in escrow once the client proceeds.
               </p>
               <div className="mt-4 flex flex-col gap-4">
+                {/*
+                  A first draft from this brief and the architect's own stored
+                  portfolio. It only fills the box — sending is still the button
+                  at the bottom of the form.
+                */}
+                <ProposalDraftButton
+                  token={token}
+                  projectId={project.id}
+                  hasExistingText={form.coverLetter.trim().length > 0}
+                  onDraft={(coverLetter) => setForm((f) => ({ ...f, coverLetter }))}
+                />
                 <textarea
                   value={form.coverLetter}
                   onChange={(e) => setForm((f) => ({ ...f, coverLetter: e.target.value }))}

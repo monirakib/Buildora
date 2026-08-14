@@ -1,4 +1,11 @@
-import type { Bid, BidComparison, Tender, TenderItem, TenderStatus } from "@buildora/shared";
+import type {
+  Bid,
+  BidAnalysis,
+  BidComparison,
+  Tender,
+  TenderItem,
+  TenderStatus,
+} from "@buildora/shared";
 import { request } from "./api";
 
 /** Small helper — every call in this module is authenticated. */
@@ -192,4 +199,19 @@ export async function awardBid(
     { method: "POST", headers: authed(token) }
   );
   return res.data;
+}
+
+/**
+ * POST /api/tenders/:id/bid-analysis — the owner's read on the bids received.
+ *
+ * Owner-only and refused while bidding is still open. Unlike the contractor's
+ * own check, this carries real figures including the owner's guide rates —
+ * measuring bids against them is what those rates are for.
+ */
+export async function analyseBids(token: string, tenderId: string): Promise<BidAnalysis> {
+  const res = await request<{ data: { analysis: BidAnalysis } }>(
+    `/api/tenders/${tenderId}/bid-analysis`,
+    { method: "POST", headers: authed(token) }
+  );
+  return res.data.analysis;
 }
