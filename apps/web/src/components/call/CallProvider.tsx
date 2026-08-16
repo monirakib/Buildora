@@ -309,16 +309,24 @@ function CallPill({
  * once in the root layout so a call can come in on any page.
  */
 export function CallProvider() {
-  const token = useSession((s) => s.token);
+  // Keyed on *who* is signed in and whether a token exists at all — never on
+  // the token's value. Access tokens rotate every few minutes now, and an
+  // effect depending on the string would run its cleanup on every rotation,
+  // hanging up a call in progress roughly every twelve minutes. `hasToken`
+  // flips false→true once, when the session is restored, and then stays true.
+  const userId = useSession((s) => s.user?.id ?? null);
+  const hasToken = useSession((s) => Boolean(s.token));
   const connect = useCall((s) => s.connect);
   const disconnect = useCall((s) => s.disconnect);
   const attachRemoteAudio = useCall((s) => s.attachRemoteAudio);
 
   useEffect(() => {
+    if (!userId || !hasToken) return;
+    const token = useSession.getState().token;
     if (!token) return;
     connect(token);
     return () => disconnect();
-  }, [token, connect, disconnect]);
+  }, [userId, hasToken, connect, disconnect]);
 
   return (
     <>

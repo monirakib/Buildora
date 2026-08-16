@@ -4,6 +4,7 @@ import { io, type Socket } from "socket.io-client";
 import { create } from "zustand";
 import { NOTIFICATION_EVENTS, type AppNotification, type NotificationType } from "@buildora/shared";
 import { API_BASE_URL } from "@/lib/api";
+import { useSession } from "@/store/useSession";
 import {
   clearNotifications as apiClear,
   deleteNotification as apiDelete,
@@ -44,20 +45,34 @@ interface NotificationState {
   disconnect: () => void;
 }
 
-// Live socket + the token it was opened with. Module variables, not store
-// state: nothing renders from them, so they'd only cause pointless re-renders.
+// Live socket + who it was opened for. Module variables, not store state:
+// nothing renders from them, so they'd only cause pointless re-renders.
+//
+// Keyed by user id rather than by token on purpose. Access tokens are rotated
+// every few minutes now, and comparing tokens would tear the socket down and
+// rebuild it on every rotation — for no reason, since the connection is already
+// authenticated and it is still the same person.
 let socket: Socket | null = null;
-let socketToken: string | null = null;
+let socketUserId: string | null = null;
 
 export const useNotifications = create<NotificationState>((set, get) => {
   /** Opens the push channel for this login (no-op if already open for it). */
   function connect(token: string) {
-    if (socket && socketToken === token) return;
+    const userId = useSession.getState().user?.id ?? null;
+    if (socket && socketUserId === userId) return;
     socket?.disconnect();
-    socketToken = token;
+    socketUserId = userId;
     // forceNew keeps this connection separate from the call signaling socket,
     // which shares the same server URL.
-    socket = io(API_BASE_URL, { auth: { token }, forceNew: true });
+    //
+    // `auth` is a callback rather than a fixed object because Socket.IO calls
+    // it again on every reconnection attempt. With a fixed object it would keep
+    // presenting the token from when the page loaded, which has since expired —
+    // so a tab that lost its network for a minute could never reconnect.
+    socket = io(API_BASE_URL, {
+      auth: (cb) => cb({ token: useSession.getState().token ?? token }),
+      forceNew: true,
+    });
 
     socket.on(
       NOTIFICATION_EVENTS.created,
@@ -146,7 +161,7 @@ export const useNotifications = create<NotificationState>((set, get) => {
     disconnect() {
       socket?.disconnect();
       socket = null;
-      socketToken = null;
+      socketUserId = null;
       set({ items: [], unreadCount: 0, filter: null });
     },
   };

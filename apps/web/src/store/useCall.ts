@@ -12,6 +12,7 @@ import {
 import { API_BASE_URL } from "@/lib/api";
 import { getIceConfig } from "@/lib/apiCalls";
 import { startRing, stopRing } from "@/lib/ringtone";
+import { useSession } from "@/store/useSession";
 
 /**
  * 1:1 voice calling over WebRTC.
@@ -96,7 +97,7 @@ interface CallState {
 
 // --- Live objects (not React state) ---
 let socket: Socket | null = null;
-let socketToken: string | null = null;
+let socketUserId: string | null = null;
 let pc: RTCPeerConnection | null = null;
 let localStream: MediaStream | null = null;
 let remoteAudio: HTMLAudioElement | null = null;
@@ -317,8 +318,11 @@ export const useCall = create<CallState>((set, get) => {
 
   /** Fetches (and caches) the STUN/TURN servers, then builds the peer connection. */
   async function buildPeer(callId: string): Promise<RTCPeerConnection> {
-    if (!iceServers && socketToken) {
-      iceServers = (await getIceConfig(socketToken)) as RTCIceServer[];
+    // Read the token live: the one this socket connected with may well have
+    // been rotated out by the time a call is placed.
+    const token = useSession.getState().token;
+    if (!iceServers && token) {
+      iceServers = (await getIceConfig(token)) as RTCIceServer[];
     }
     const connection = new RTCPeerConnection({ iceServers: iceServers ?? [] });
 
@@ -459,11 +463,18 @@ export const useCall = create<CallState>((set, get) => {
     hasRemoteVideoTrack: false,
 
     connect(token) {
-      if (socket && socketToken === token) return; // already connected as this user
+      // Compared by user, not by token: tokens rotate every few minutes and
+      // rebuilding the signaling socket on each rotation would drop live calls.
+      const userId = useSession.getState().user?.id ?? null;
+      if (socket && socketUserId === userId) return; // already connected as this user
       get().disconnect();
-      socketToken = token;
+      socketUserId = userId;
       iceServers = null;
-      socket = io(API_BASE_URL, { auth: { token } });
+      // Callback form so a reconnect after a network blip presents the current
+      // token rather than the expired one this socket first opened with.
+      socket = io(API_BASE_URL, {
+        auth: (cb) => cb({ token: useSession.getState().token ?? token }),
+      });
 
       // Prefetch the ICE servers now so building the peer connection during a
       // call never has to await the network mid-negotiation — that await is
@@ -563,7 +574,7 @@ export const useCall = create<CallState>((set, get) => {
       if (get().phase !== "idle") teardown(null);
       socket?.disconnect();
       socket = null;
-      socketToken = null;
+      socketUserId = null;
     },
 
     attachRemoteAudio(el) {
