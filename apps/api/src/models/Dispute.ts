@@ -56,14 +56,17 @@ const evidenceSchema = new Schema<DisputeEvidenceDoc>(
 
 const disputeSchema = new Schema<DisputeDoc>(
   {
-    project: { type: Schema.Types.ObjectId, ref: "Project", required: true, index: true },
+    // None of these carry `index: true`: every one of them leads a compound
+    // index at the bottom of this file, and a single-field index that is already
+    // the prefix of a compound one earns nothing.
+    project: { type: Schema.Types.ObjectId, ref: "Project", required: true },
     scope: { type: String, enum: Object.values(DisputeScope), required: true },
-    // Indexed with status because the hot query is "is anything live against
-    // this contract right now", run before every release.
-    target: { type: Schema.Types.ObjectId, required: true, index: true },
+    // Paired with status below — the hot query is "is anything live against this
+    // contract right now", run before every release.
+    target: { type: Schema.Types.ObjectId, required: true },
     targetLabel: { type: String, required: true, trim: true, maxlength: 160 },
-    raisedBy: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
-    against: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
+    raisedBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    against: { type: Schema.Types.ObjectId, ref: "User", required: true },
     reason: { type: String, required: true, trim: true, maxlength: 2000 },
     amountClaimedBdt: { type: Number, min: 0 },
     evidence: { type: [evidenceSchema], default: [] },
@@ -71,7 +74,6 @@ const disputeSchema = new Schema<DisputeDoc>(
       type: String,
       enum: Object.values(DisputeStatus),
       default: DisputeStatus.OPEN,
-      index: true,
     },
     resolution: { type: String, enum: Object.values(DisputeResolution) },
     resolutionNote: { type: String, trim: true, maxlength: 2000 },
@@ -85,5 +87,23 @@ const disputeSchema = new Schema<DisputeDoc>(
 
 // The freeze check runs on every release, so it gets its own compound index.
 disputeSchema.index({ target: 1, status: 1 });
+
+/**
+ * `/api/disputes/mine` — `{ $or: [{ raisedBy: me }, { against: me }] }`,
+ * newest-first. One index per `$or` branch, as elsewhere.
+ */
+disputeSchema.index({ raisedBy: 1, createdAt: -1 });
+disputeSchema.index({ against: 1, createdAt: -1 });
+
+/**
+ * The admin dispute queue. Note the **ascending** createdAt: unlike every other
+ * list here, that screen sorts oldest-first, because the oldest unresolved
+ * dispute is the one that most needs attention. The index direction matches the
+ * query so the sort is free.
+ */
+disputeSchema.index({ status: 1, createdAt: 1 });
+
+/** One project's disputes, newest-first, on the project page. */
+disputeSchema.index({ project: 1, createdAt: -1 });
 
 export const Dispute = model<DisputeDoc>("Dispute", disputeSchema);

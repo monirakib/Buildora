@@ -18,7 +18,8 @@ export interface ProjectDocumentDoc {
 
 const projectDocumentSchema = new Schema<ProjectDocumentDoc>(
   {
-    project: { type: Schema.Types.ObjectId, ref: "Project", required: true, index: true },
+    // Covered by the {project, createdAt} index below.
+    project: { type: Schema.Types.ObjectId, ref: "Project", required: true },
     uploader: { type: Schema.Types.ObjectId, ref: "User", required: true },
     title: { type: String, required: true, trim: true, maxlength: 160 },
     category: {
@@ -30,5 +31,12 @@ const projectDocumentSchema = new Schema<ProjectDocumentDoc>(
   },
   { timestamps: true }
 );
+
+/**
+ * One project's document archive, newest-first. This list has no natural
+ * ceiling — it grows every time anyone uploads a file — so it is one of the
+ * ones that most needs both the index and, in the next phase, a page limit.
+ */
+projectDocumentSchema.index({ project: 1, createdAt: -1 });
 
 export const ProjectDocument = model<ProjectDocumentDoc>("ProjectDocument", projectDocumentSchema);

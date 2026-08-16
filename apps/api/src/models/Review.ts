@@ -26,12 +26,18 @@ const reviewSchema = new Schema<ReviewDoc>(
   {
     contract: { type: Schema.Types.ObjectId, ref: "Contract", required: true, unique: true },
     project: { type: Schema.Types.ObjectId, ref: "Project", required: true },
-    architect: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
+    // Covered by the {architect, createdAt} index below.
+    architect: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    // Kept as a plain index: nothing lists an author's reviews in date order,
+    // it is only ever looked up directly.
     author: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
     rating: { type: Number, required: true, min: 1, max: 5 },
     comment: { type: String, trim: true, maxlength: 1000 },
   },
   { timestamps: true }
 );
+
+/** A professional's public reviews, newest-first, on their profile page. */
+reviewSchema.index({ architect: 1, createdAt: -1 });
 
 export const Review = model<ReviewDoc>("Review", reviewSchema);

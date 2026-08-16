@@ -9,11 +9,11 @@
  * changing ADMIN_PASSWORD and re-running rotates the password.
  */
 import mongoose from "mongoose";
-import bcrypt from "bcryptjs";
 import { UserRole, VerificationStatus } from "@buildora/shared";
 import { env } from "../config/env";
 import { connectDb } from "../db/mongoose";
 import { User } from "../models/User";
+import { hashPassword } from "../services/password";
 
 async function main() {
   if (!env.ADMIN_EMAIL || !env.ADMIN_PASSWORD) {
@@ -33,7 +33,7 @@ async function main() {
 
   const email = env.ADMIN_EMAIL.toLowerCase();
   const username = env.ADMIN_USERNAME.toLowerCase();
-  const passwordHash = await bcrypt.hash(env.ADMIN_PASSWORD, 10);
+  const passwordHash = await hashPassword(env.ADMIN_PASSWORD);
 
   const existing = await User.findOne({ $or: [{ email }, { username }] });
   if (existing && existing.role !== UserRole.ADMIN) {

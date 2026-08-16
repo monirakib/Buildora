@@ -1,4 +1,5 @@
 import { Schema, model, Types } from "mongoose";
+import { protectLedger, type LedgerProtected } from "../services/ledgerIntegrity";
 import {
   DEFAULT_COMMISSION_RATE,
   DESIGN_REVISION_ROUNDS,
@@ -43,7 +44,7 @@ export interface StructuralSubmissionDoc {
   decidedAt?: Date;
 }
 
-export interface StructuralEngagementDoc {
+export interface StructuralEngagementDoc extends LedgerProtected {
   project: Types.ObjectId;
   client: Types.ObjectId;
   engineer: Types.ObjectId;
@@ -141,6 +142,18 @@ structuralEngagementSchema.index(
 // "My engagements, newest first", for either side.
 structuralEngagementSchema.index({ engineer: 1, createdAt: -1 });
 structuralEngagementSchema.index({ client: 1, createdAt: -1 });
+
+/** The engineer's escrow ledger — same shape as the design contract's. */
+protectLedger(structuralEngagementSchema, (doc) => ({
+  feeBdt: doc.feeBdt,
+  commissionRate: doc.commissionRate,
+  commissionBdt: doc.commissionBdt,
+  releasedToEngineerBdt: doc.releasedToEngineerBdt,
+  status: doc.status,
+  payments: (doc.payments as { kind: string; amountBdt: number; at?: Date }[] | undefined)?.map(
+    (p) => `${p.kind}:${p.amountBdt}:${p.at ? new Date(p.at).toISOString() : ""}`
+  ),
+}));
 
 export const StructuralEngagement = model<StructuralEngagementDoc>(
   "StructuralEngagement",

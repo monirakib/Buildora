@@ -18,8 +18,9 @@ export interface InquiryDoc {
 
 const inquirySchema = new Schema<InquiryDoc>(
   {
-    landOwner: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
-    architect: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
+    // Not indexed individually — see the compound indexes at the bottom.
+    landOwner: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    architect: { type: Schema.Types.ObjectId, ref: "User", required: true },
     message: { type: String, required: true, trim: true, maxlength: 1000 },
     status: {
       type: String,
@@ -42,5 +43,17 @@ inquirySchema.index(
     },
   }
 );
+
+/**
+ * `/api/inquiries/mine`, newest-first — the land owner sees the requests they
+ * sent, the professional the ones they received.
+ *
+ * The unique index above starts with `landOwner` too, but it cannot serve this:
+ * it is partial, so it omits declined inquiries that the list must still show,
+ * and its second field is `architect` rather than `createdAt`, so the sort would
+ * still happen in memory.
+ */
+inquirySchema.index({ landOwner: 1, createdAt: -1 });
+inquirySchema.index({ architect: 1, createdAt: -1 });
 
 export const Inquiry = model<InquiryDoc>("Inquiry", inquirySchema);
