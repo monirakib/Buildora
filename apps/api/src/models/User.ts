@@ -8,6 +8,42 @@ import {
   type UserProfile,
 } from "@buildora/shared";
 
+/** Distributes over the UserProfile union, which a bare Omit would collapse. */
+type OmitSecrets<T> = T extends unknown
+  ? Omit<T, "nid" | "nidKey" | "nidCheck" | "dateOfBirth">
+  : never;
+
+/**
+ * How a profile is **stored**, which is no longer how it is sent.
+ *
+ * The plaintext secrets are absent from this type on purpose. A document loaded
+ * from MongoDB genuinely does not have them — only their encrypted twins — so
+ * anything reading `profile.nid` off a raw document is reading undefined. Left
+ * in the type that would be a silent bug; taken out, it is a compile error, and
+ * the compiler points at every place that needs to decrypt first.
+ *
+ * Use services/profileCrypto.ts to move between this and UserProfile.
+ */
+export type StoredProfile = OmitSecrets<UserProfile> & {
+  nidEnc?: string;
+  nidKeyBlind?: string;
+  nidCheckEnc?: string;
+  dateOfBirthEnc?: string;
+  /** Which data key the fields above were encrypted with. */
+  encV?: string;
+};
+
+/** How billing is stored — same idea, for the three financial identifiers. */
+export type StoredBilling = Omit<
+  BillingInfo,
+  "mobileWalletNumber" | "bankAccountNumber" | "tin"
+> & {
+  mobileWalletNumberEnc?: string;
+  bankAccountNumberEnc?: string;
+  tinEnc?: string;
+  encV?: string;
+};
+
 /**
  * A user is a land owner or a professional (architect/engineer/contractor/
  * supplier); `role` says which. `profile` holds whichever profile shape fits
@@ -40,10 +76,10 @@ export interface UserDoc {
    */
   ratingAvg?: number;
   ratingCount?: number;
-  profile?: UserProfile;
+  profile?: StoredProfile;
   /** Last time the user held a live signaling socket — powers "Active 5 mins ago". */
   lastSeenAt?: Date;
-  billing?: BillingInfo;
+  billing?: StoredBilling;
   /**
    * Which out-of-app channels this user allows. Absent means "never chose",
    * which is treated as the defaults (both on) — see DEFAULT_NOTIFICATION_PREFERENCES.
@@ -164,6 +200,11 @@ const nidCheckSchema = new Schema(
     // null means "nothing to compare against", not "didn't match".
     dobMatches: { type: Boolean, default: null },
     duplicate: { type: Boolean, required: true },
+    dummy: { type: Boolean },
+    ageOk: { type: Boolean },
+    age: { type: Number },
+    ageIssue: { type: String, trim: true },
+    postcodeMatches: { type: Boolean, default: null },
     ocr: {
       type: new Schema(
         {
@@ -171,6 +212,9 @@ const nidCheckSchema = new Schema(
           name: { type: String, trim: true },
           nid: { type: String, trim: true },
           dateOfBirth: { type: String, trim: true },
+          side: { type: String, trim: true },
+          faceCount: { type: Number, default: null },
+          hasPhotoBox: { type: Boolean, default: null },
           nameMatches: { type: Boolean, default: null },
           nidMatches: { type: Boolean, default: null },
           dobMatches: { type: Boolean, default: null },
@@ -178,6 +222,40 @@ const nidCheckSchema = new Schema(
         },
         { _id: false }
       ),
+      default: undefined,
+    },
+    // The same reader run over the reverse of the card.
+    back: {
+      type: new Schema(
+        {
+          readable: { type: Boolean, required: true },
+          address: { type: String, trim: true },
+          issueDate: { type: String, trim: true },
+          hasBarcode: { type: Boolean, default: null },
+          districtMatches: { type: Boolean, default: null },
+          note: { type: String, trim: true },
+        },
+        { _id: false }
+      ),
+      default: undefined,
+    },
+    // What the uploaded files look like — see services/nidImage.ts.
+    images: {
+      type: [
+        new Schema(
+          {
+            side: { type: String, required: true, trim: true },
+            width: { type: Number },
+            height: { type: Number },
+            aspectRatio: { type: Number },
+            aspectOk: { type: Boolean, default: null },
+            resolutionOk: { type: Boolean, default: null },
+            editorSoftware: { type: String, trim: true },
+            note: { type: String, trim: true },
+          },
+          { _id: false }
+        ),
+      ],
       default: undefined,
     },
     checkedAt: { type: String, required: true },
@@ -226,7 +304,7 @@ const credentialCheckSchema = new Schema(
 // professional credential fields both live here (only the ones relevant to the
 // user's role get populated). `_id: false` — it's part of the user, not its
 // own collection document.
-const profileSchema = new Schema<UserProfile>(
+const profileSchema = new Schema<StoredProfile>(
   {
     // Common
     avatarUrl: { type: String, trim: true },
@@ -238,10 +316,23 @@ const profileSchema = new Schema<UserProfile>(
     // Land owner. Land/build figures deliberately live on Project, not here —
     // an owner can have several plots, so one set of numbers on the account
     // would be meaningless.
-    // Indexed because every NID check looks for another account holding the
-    // same number. Not unique — land owners may not have supplied one yet.
-    nid: { type: String, trim: true, index: true },
-    nidCheck: { type: nidCheckSchema, default: undefined },
+    // The NID, encrypted (services/profileCrypto.ts). Not searchable and not
+    // indexed — an AES-GCM ciphertext differs every time it is written, so
+    // there is nothing here to match on.
+    nidEnc: { type: String },
+    // The searchable half: a keyed HMAC of the *canonical* NID. Deterministic,
+    // so uniqueness and duplicate lookups still work; keyed, so a 13-digit
+    // number can't be brute-forced back out of it by someone holding the
+    // database. Canonical because the same citizen can write their number two
+    // ways — a 17-digit NID is the 13-digit one with the birth year in front —
+    // and comparing raw strings would let one person hold two accounts.
+    nidKeyBlind: { type: String, trim: true },
+    // The pre-screen record, encrypted whole: it holds the NID plus the name,
+    // date of birth and address transcribed off the card.
+    nidCheckEnc: { type: String },
+    // Which data key the encrypted fields above were written with. Indexed so
+    // a key rotation can count what is left to convert without a table scan.
+    encV: { type: String, index: true },
     // Professional
     licenseAuthority: { type: String, trim: true },
     licenseNumber: { type: String, trim: true },
@@ -250,10 +341,20 @@ const profileSchema = new Schema<UserProfile>(
     website: { type: String, trim: true },
     // Identity (architect verification wizard) — supervisor-only fields,
     // excluded from the public projection in professionals.controller.
-    dateOfBirth: { type: String, trim: true },
+    // The date of birth is encrypted: with a name it is a direct identity-theft
+    // input, and nothing queries on it.
+    dateOfBirthEnc: { type: String },
     gender: { type: String, trim: true },
+    // Addresses: a free-text street line plus the structured division/district/
+    // postcode the NID geographic checks compare against.
     currentAddress: { type: String, trim: true },
+    currentDivision: { type: String, trim: true },
+    currentDistrict: { type: String, trim: true },
+    currentPostcode: { type: String, trim: true },
     permanentAddress: { type: String, trim: true },
+    permanentDivision: { type: String, trim: true },
+    permanentDistrict: { type: String, trim: true },
+    permanentPostcode: { type: String, trim: true },
     nidFrontUrl: { type: String, trim: true },
     nidBackUrl: { type: String, trim: true },
     // Professional details
@@ -343,7 +444,7 @@ const profileSchema = new Schema<UserProfile>(
  * Billing details from the account settings page. Applies to every role
  * identically, so it sits beside `profile` rather than inside it.
  */
-const billingSchema = new Schema<BillingInfo>(
+const billingSchema = new Schema<StoredBilling>(
   {
     billingName: { type: String, trim: true },
     addressLine1: { type: String, trim: true },
@@ -352,12 +453,16 @@ const billingSchema = new Schema<BillingInfo>(
     postcode: { type: String, trim: true },
     country: { type: String, trim: true },
     preferredMethod: { type: String, enum: Object.values(PaymentMethod) },
-    mobileWalletNumber: { type: String, trim: true },
+    // The three that identify an account someone can move money out of are
+    // encrypted; the names and branch beside them are not, because they
+    // identify an institution rather than an account.
+    mobileWalletNumberEnc: { type: String },
     bankAccountName: { type: String, trim: true },
-    bankAccountNumber: { type: String, trim: true },
+    bankAccountNumberEnc: { type: String },
     bankName: { type: String, trim: true },
     bankBranch: { type: String, trim: true },
-    tin: { type: String, trim: true },
+    tinEnc: { type: String },
+    encV: { type: String },
   },
   { _id: false }
 );
@@ -384,7 +489,13 @@ const userSchema = new Schema<UserDoc>(
     recoveryEmail: { type: String, lowercase: true, trim: true },
     phone: { type: String, trim: true },
     altPhone: { type: String, trim: true },
-    passwordHash: { type: String, required: true },
+    // select:false so the hash is left behind by default on every query in the
+    // app. Responses are already built from hand-written field lists, so
+    // nothing leaks it today — this is the backstop for the handler nobody has
+    // written yet that returns a user document straight from the database.
+    // The three places that genuinely need it (login, change email, change
+    // password) ask for it with .select("+passwordHash").
+    passwordHash: { type: String, required: true, select: false },
     role: { type: String, enum: Object.values(UserRole), required: true },
     verificationStatus: {
       type: String,
@@ -393,9 +504,12 @@ const userSchema = new Schema<UserDoc>(
     },
     profile: { type: profileSchema, default: undefined },
     // Written by the signaling server on connect/disconnect (see realtime/signaling.ts).
-    // Review summary — see services/ratings.ts. Indexed because the directory
-    // sorts by it and filters on a minimum score.
-    ratingAvg: { type: Number, min: 1, max: 5, index: true },
+    // Review summary — see services/ratings.ts. Deliberately not indexed on its
+    // own: the only query that filters or sorts on it is the professionals
+    // directory, which always constrains `role` too, so the
+    // {role, verificationStatus, ratingAvg, ratingCount} index at the bottom of
+    // this file covers it. A standalone index here would only add write cost.
+    ratingAvg: { type: Number, min: 1, max: 5 },
     ratingCount: { type: Number, default: 0 },
     lastSeenAt: { type: Date },
     billing: { type: billingSchema, default: undefined },
@@ -414,5 +528,59 @@ const userSchema = new Schema<UserDoc>(
   },
   { timestamps: true }
 );
+
+/**
+ * One NID, one account.
+ *
+ * Enforced on the blind index rather than the number itself, because the number
+ * is now encrypted and every copy of it looks different. The HMAC is
+ * deterministic, so the constraint means exactly what it used to.
+ *
+ * Partial rather than sparse: most accounts have no NID yet, and a plain unique
+ * index would treat every one of those as the same missing value and reject the
+ * second signup. The filter limits the constraint to documents that actually
+ * carry a string, so accounts without an NID never collide with each other.
+ *
+ * The index will refuse to build if duplicates already exist in the database —
+ * run `pnpm encrypt:pii` first, which reports them.
+ */
+userSchema.index(
+  { "profile.nidKeyBlind": 1 },
+  { unique: true, partialFilterExpression: { "profile.nidKeyBlind": { $type: "string" } } }
+);
+
+/**
+ * The professionals directory, which is the busiest read in the app and until
+ * now had no index at all behind it.
+ *
+ * `listProfessionals` filters on `role` and `verificationStatus` and sorts
+ * verified-first then newest. Without an index MongoDB reads every user
+ * document and then sorts the survivors in memory — two costs, not one, and the
+ * in-memory sort is the one that fails first, because the server aborts a sort
+ * over 32 MB of documents rather than finishing it.
+ *
+ * Field order follows equality-then-sort: the two fields matched exactly come
+ * first, so the index narrows to a contiguous block, and `createdAt` last means
+ * that block is already in the order the query wants and no sort runs at all.
+ *
+ * The leading `role` also means this index serves the fan-out queries that walk
+ * a whole role — `find({ role: ADMIN })` in disputes and verification, and
+ * `find({ role: CONTRACTOR, verificationStatus: APPROVED })` when a tender is
+ * published — since a query can use any prefix of an index's fields.
+ */
+userSchema.index({ role: 1, verificationStatus: 1, createdAt: -1 });
+
+/**
+ * The same directory under `?sort=rating`.
+ *
+ * A separate index rather than an extra field on the one above, because sort
+ * fields only work from an index if they follow the equality fields with no gap
+ * — `createdAt` sitting between `verificationStatus` and `ratingAvg` would stop
+ * the rating sort from using it.
+ *
+ * This also covers the `minRating` filter (`ratingAvg: { $gte }`), which is a
+ * range: ranges go last, after the equality fields, for the same reason.
+ */
+userSchema.index({ role: 1, verificationStatus: 1, ratingAvg: -1, ratingCount: -1 });
 
 export const User = model<UserDoc>("User", userSchema);

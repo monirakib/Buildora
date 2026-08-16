@@ -1,5 +1,14 @@
 import "dotenv/config";
+import { createHmac } from "node:crypto";
 import { z } from "zod";
+
+/**
+ * The signing secret used when none is configured. Fine for local development,
+ * catastrophic in production — it is published in this repository, so anyone
+ * could mint a token claiming any user id and any role. The guard below refuses
+ * to start on it outside development.
+ */
+const DEV_JWT_SECRET = "dev-secret-change-me";
 
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
@@ -8,9 +17,63 @@ const envSchema = z.object({
   // Optional override for DNS servers (comma-separated). Needed on networks where
   // Node can't resolve the mongodb+srv SRV records via the default resolver.
   DNS_SERVERS: z.string().optional(),
-  JWT_SECRET: z.string().default("dev-secret-change-me"),
-  // Keep this >= SESSION_MAX_HOURS, or the token dies before the session does.
-  JWT_EXPIRES_IN: z.string().default("7d"),
+  JWT_SECRET: z.string().default(DEV_JWT_SECRET),
+  // How long an access token is good for. Short on purpose: it travels in a
+  // header and lives in the browser's memory, so the realistic question is not
+  // "can it be stolen" but "how long is a stolen one worth anything". Fifteen
+  // minutes. The refresh cookie is what keeps someone signed in for a week.
+  ACCESS_TOKEN_TTL_MIN: z.coerce.number().int().positive().default(15),
+  // Refresh-token signing keys, as JSON: {"v1":"<base64, >=32 bytes>"}.
+  // Optional — when unset, a key is derived from JWT_SECRET with a domain
+  // separator (see refreshKeys below), so there is nothing extra to configure
+  // to get started. Phase 4 replaces this with a rotatable keyring.
+  REFRESH_HMAC_KEYRING: z.string().optional(),
+  REFRESH_KEY_ACTIVE: z.string().default("v1"),
+  // Cookie policy for the refresh token. Left unset these follow NODE_ENV:
+  // SameSite=Strict locally, SameSite=None in production.
+  //
+  // None is not a downgrade here, it is the only value that works: the web app
+  // and this API are served from different registrable domains, and a browser
+  // will not send a Strict or Lax cookie on a request to a different site. A
+  // Strict cookie would work perfectly on localhost and silently sign everyone
+  // out the moment it deployed. Because None means the cookie *is* sent
+  // cross-site, /auth/refresh and /auth/logout carry a CSRF guard —
+  // see middleware/csrf.ts.
+  SESSION_COOKIE_SAMESITE: z.enum(["strict", "lax", "none"]).optional(),
+  // Set only if the API and web app share a registrable domain and the cookie
+  // should span subdomains (e.g. ".buildora.software"). Leave unset otherwise;
+  // a wrong value means the browser drops the cookie without saying why.
+  SESSION_COOKIE_DOMAIN: z.string().optional(),
+  // Ed25519 private keys that SIGN access tokens, as JSON: {"k1":"<PKCS#8 PEM>"}.
+  // Required in production; a throwaway pair is generated in development, so
+  // restarts sign you out locally. The public halves are served at
+  // /api/auth/jwks — see services/jwt.ts for why the signing is asymmetric.
+  //   node -e "const{generateKeyPairSync}=require('crypto');const{privateKey}=generateKeyPairSync('ed25519');console.log(JSON.stringify({k1:privateKey.export({type:'pkcs8',format:'pem'})}))"
+  JWT_KEYRING: z.string().optional(),
+  // Field-encryption keys, as JSON: {"k1":"<base64, exactly 32 bytes>"}.
+  //
+  // REQUIRED IN PRODUCTION, and unlike the refresh keys it is deliberately NOT
+  // derived from JWT_SECRET. A derived key would mean rotating JWT_SECRET — an
+  // ordinary, encouraged thing to do — silently made every encrypted NID and
+  // bank number permanently unreadable. Encryption keys must outlive the
+  // secrets around them, so this one is given, not computed. Back it up: lose
+  // it and the encrypted fields are unrecoverable, by design.
+  DATA_KEYRING: z.string().optional(),
+  DATA_KEY_ACTIVE: z.string().default("k1"),
+  // Keys the blind index and the ledger integrity tags are computed with, same
+  // JSON shape. Both fall back to a value derived from the data key, so there
+  // is one thing to configure rather than three.
+  BLIND_INDEX_KEYRING: z.string().optional(),
+  LEDGER_HMAC_KEYRING: z.string().optional(),
+  LEDGER_KEY_ACTIVE: z.string().default("k1"),
+  // argon2id cost, used by services/password.ts. The defaults are OWASP's
+  // second recommended configuration (19 MiB, 2 passes, 1 lane) — chosen over
+  // the 64 MiB one because this API runs on a 512 MB Render instance. Raise
+  // ARGON2_MEMORY_KIB if it ever moves somewhere roomier; existing hashes keep
+  // working and are upgraded to the new cost as people sign in.
+  ARGON2_MEMORY_KIB: z.coerce.number().int().min(8192).default(19456),
+  ARGON2_TIME_COST: z.coerce.number().int().min(1).default(2),
+  ARGON2_PARALLELISM: z.coerce.number().int().min(1).default(1),
   // How long a login survives with no requests at all, and its hard cap
   // measured from sign-in. Both are enforced in models/Session.ts, so a token
   // that sat unused for a day stops working even though the JWT is still valid.
@@ -121,6 +184,211 @@ const envSchema = z.object({
   ADMIN_USERNAME: z.string().default("supervisor"),
   ADMIN_EMAIL: z.string().optional(),
   ADMIN_PASSWORD: z.string().optional(),
+  // Key-management account created by `pnpm seed:superadmin`. Separate from the
+  // supervisor above on purpose — see UserRole.SUPER_ADMIN.
+  SUPER_ADMIN_NAME: z.string().default("Key Custodian"),
+  SUPER_ADMIN_USERNAME: z.string().default("keycustodian"),
+  SUPER_ADMIN_EMAIL: z.string().optional(),
+  SUPER_ADMIN_PASSWORD: z.string().optional(),
 });
 
-export const env = envSchema.parse(process.env);
+const parsedEnv = envSchema.parse(process.env);
+
+/**
+ * The refresh-token signing keys, keyed by version.
+ *
+ * With no keyring configured, one key is *derived* from JWT_SECRET rather than
+ * reused from it. The domain separator in the HMAC below is what makes that
+ * safe: it produces a value that cannot be worked backwards into JWT_SECRET and
+ * shares nothing with the key used to sign access tokens, so a weakness in one
+ * use doesn't become a weakness in the other. Reusing one secret for two
+ * different jobs is the mistake this avoids, and it costs nothing to deploy.
+ */
+function refreshKeys(cfg: z.infer<typeof envSchema>): Record<string, Buffer> {
+  if (!cfg.REFRESH_HMAC_KEYRING) {
+    const derived = createHmac("sha256", cfg.JWT_SECRET)
+      .update("buildora/refresh-token/v1")
+      .digest();
+    return { v1: derived };
+  }
+
+  let raw: unknown;
+  try {
+    raw = JSON.parse(cfg.REFRESH_HMAC_KEYRING);
+  } catch {
+    throw new Error('REFRESH_HMAC_KEYRING must be JSON, e.g. {"v1":"<base64 key>"}');
+  }
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    throw new Error('REFRESH_HMAC_KEYRING must be a JSON object, e.g. {"v1":"<base64 key>"}');
+  }
+
+  const keys: Record<string, Buffer> = {};
+  for (const [version, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof value !== "string") {
+      throw new Error(`REFRESH_HMAC_KEYRING["${version}"] must be a base64 string`);
+    }
+    const key = Buffer.from(value, "base64");
+    if (key.length < 32) {
+      throw new Error(
+        `REFRESH_HMAC_KEYRING["${version}"] must decode to at least 32 bytes (got ${key.length})`
+      );
+    }
+    keys[version] = key;
+  }
+  return keys;
+}
+
+/**
+ * Parses a JSON keyring into buffers, checking every key is long enough.
+ *
+ * `exactLength` is set for AES-256, which takes a 256-bit key and nothing else;
+ * HMAC accepts any length, so those only have a floor.
+ */
+function parseKeyring(
+  name: string,
+  raw: string,
+  { exactLength }: { exactLength?: number } = {}
+): Record<string, Buffer> {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new Error(`${name} must be JSON, e.g. {"k1":"<base64 key>"}`);
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error(`${name} must be a JSON object, e.g. {"k1":"<base64 key>"}`);
+  }
+
+  const keys: Record<string, Buffer> = {};
+  for (const [version, value] of Object.entries(parsed as Record<string, unknown>)) {
+    if (typeof value !== "string") throw new Error(`${name}["${version}"] must be a base64 string`);
+    const key = Buffer.from(value, "base64");
+    if (exactLength && key.length !== exactLength) {
+      throw new Error(
+        `${name}["${version}"] must decode to exactly ${exactLength} bytes (got ${key.length}). ` +
+          `Generate one with: node -e "console.log(require('crypto').randomBytes(${exactLength}).toString('base64'))"`
+      );
+    }
+    if (!exactLength && key.length < 32) {
+      throw new Error(`${name}["${version}"] must decode to at least 32 bytes (got ${key.length})`);
+    }
+    keys[version] = key;
+  }
+  return keys;
+}
+
+/**
+ * The field-encryption keys.
+ *
+ * In production a keyring must be supplied; there is no safe default, because
+ * anything we could invent would either be guessable or tied to a secret people
+ * rotate. In development one is derived so the app runs with no setup — with
+ * the warning that matters attached, since changing JWT_SECRET locally will
+ * orphan anything already encrypted.
+ */
+function dataKeys(cfg: z.infer<typeof envSchema>): Record<string, Buffer> {
+  if (cfg.DATA_KEYRING) return parseKeyring("DATA_KEYRING", cfg.DATA_KEYRING, { exactLength: 32 });
+
+  if (cfg.NODE_ENV === "production") {
+    throw new Error(
+      "DATA_KEYRING is required in production — NID numbers and bank details are encrypted with it. " +
+        "Generate one with: node -e \"console.log(JSON.stringify({k1:require('crypto').randomBytes(32).toString('base64')}))\" " +
+        "and keep a copy somewhere safe: lose it and the encrypted fields are unrecoverable."
+    );
+  }
+
+  console.warn(
+    "[api] DATA_KEYRING is not set — deriving a development key from JWT_SECRET. " +
+      "Changing JWT_SECRET will make locally encrypted data unreadable."
+  );
+  return {
+    k1: createHmac("sha256", cfg.JWT_SECRET).update("buildora/field-encryption/k1").digest(),
+  };
+}
+
+const REFRESH_HMAC_KEYS = refreshKeys(parsedEnv);
+const DATA_KEYS = dataKeys(parsedEnv);
+if (!DATA_KEYS[parsedEnv.DATA_KEY_ACTIVE]) {
+  throw new Error(
+    `DATA_KEY_ACTIVE is "${parsedEnv.DATA_KEY_ACTIVE}" but DATA_KEYRING has no such key.`
+  );
+}
+
+/**
+ * The blind-index and ledger keys, each derived from the active data key unless
+ * given explicitly. Domain separators keep them independent: knowing one tells
+ * you nothing about the others, so the same keyring can back three jobs without
+ * one job's weakness becoming another's.
+ *
+ * Note the blind-index key is deliberately a single value rather than a
+ * versioned ring. Rotating it means recomputing every index entry from
+ * plaintext while the unique constraint must continue to hold, which is not an
+ * online operation — see the phase 4 notes before ever changing it.
+ */
+const BLIND_INDEX_KEY = parsedEnv.BLIND_INDEX_KEYRING
+  ? Object.values(parseKeyring("BLIND_INDEX_KEYRING", parsedEnv.BLIND_INDEX_KEYRING))[0]!
+  : createHmac("sha256", DATA_KEYS[parsedEnv.DATA_KEY_ACTIVE]!)
+      .update("buildora/blind-index/v1")
+      .digest();
+
+const LEDGER_KEYS = parsedEnv.LEDGER_HMAC_KEYRING
+  ? parseKeyring("LEDGER_HMAC_KEYRING", parsedEnv.LEDGER_HMAC_KEYRING)
+  : {
+      k1: createHmac("sha256", DATA_KEYS[parsedEnv.DATA_KEY_ACTIVE]!)
+        .update("buildora/ledger-integrity/k1")
+        .digest(),
+    };
+if (!LEDGER_KEYS[parsedEnv.LEDGER_KEY_ACTIVE]) {
+  throw new Error(
+    `LEDGER_KEY_ACTIVE is "${parsedEnv.LEDGER_KEY_ACTIVE}" but LEDGER_HMAC_KEYRING has no such key.`
+  );
+}
+if (!REFRESH_HMAC_KEYS[parsedEnv.REFRESH_KEY_ACTIVE]) {
+  throw new Error(
+    `REFRESH_KEY_ACTIVE is "${parsedEnv.REFRESH_KEY_ACTIVE}" but REFRESH_HMAC_KEYRING has no such key.`
+  );
+}
+
+export const env = {
+  ...parsedEnv,
+  REFRESH_HMAC_KEYS,
+  DATA_KEYS,
+  BLIND_INDEX_KEY,
+  LEDGER_KEYS,
+  /**
+   * Strict locally so development matches the textbook answer, None in
+   * production because the deployed web app is on a different site and a Strict
+   * cookie would never be sent. See the note on SESSION_COOKIE_SAMESITE above.
+   */
+  SESSION_COOKIE_SAMESITE:
+    parsedEnv.SESSION_COOKIE_SAMESITE ??
+    ((parsedEnv.NODE_ENV === "production" ? "none" : "strict") as "none" | "strict"),
+};
+
+/**
+ * Refuse to run a deployment on a forgeable token secret.
+ *
+ * This is a crash rather than a warning on purpose. An API that boots with the
+ * repo's default secret looks completely healthy — every login works, every
+ * page loads — while anyone who has read this file can sign a token claiming
+ * `role: "ADMIN"` and be believed. Failing to start is loud; running is silent.
+ *
+ * 32 characters is the floor because the tokens are signed with HMAC-SHA256,
+ * whose security tops out at the length of its key: a short secret is brute
+ * forceable offline from a single captured token.
+ */
+if (env.NODE_ENV === "production") {
+  if (env.JWT_SECRET === DEV_JWT_SECRET) {
+    throw new Error(
+      "JWT_SECRET is still the development default. Set a real one before deploying — " +
+        "generate it with: node -e \"console.log(require('crypto').randomBytes(48).toString('base64url'))\""
+    );
+  }
+  if (env.JWT_SECRET.length < 32) {
+    throw new Error(`JWT_SECRET must be at least 32 characters (got ${env.JWT_SECRET.length}).`);
+  }
+} else if (env.JWT_SECRET === DEV_JWT_SECRET) {
+  console.warn(
+    "[api] Using the default JWT_SECRET. Fine locally; this will not start in production."
+  );
+}
