@@ -8,6 +8,7 @@ import { createProject } from "@/lib/apiProjects";
 import { useSession } from "@/store/useSession";
 import { useRegisterAiContext } from "@/lib/useRegisterAiContext";
 import { BriefCoachPanel } from "@/components/project/BriefCoachPanel";
+import { VerifyGate } from "@/components/app/VerifyGate";
 import { Navbar } from "@/components/landing/Navbar";
 import { PlotMapPicker } from "@/components/project/PlotMapPicker";
 import { DapZoneCard } from "@/components/project/DapZoneCard";
@@ -792,23 +793,28 @@ export default function NewProjectPage() {
                 </p>
               )}
 
-              <div className="flex flex-wrap gap-3">
-                <button
-                  type="submit"
-                  disabled={saving || uploading}
-                  className="rounded-full bg-amber-400 px-7 py-3 text-sm font-bold text-stone-950 transition hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {saving ? "Posting…" : "Post brief to architects"}
-                </button>
-                <button
-                  type="button"
-                  disabled={saving || uploading}
-                  onClick={() => submit(false)}
-                  className="rounded-full border border-stone-300 px-7 py-3 text-sm font-bold text-stone-700 transition hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/20 dark:text-slate-200 dark:hover:bg-white/10"
-                >
-                  Save as draft
-                </button>
-              </div>
+              {/* The form itself stays open to everyone — an unverified owner
+                  can fill it in and see the preview. Only the two buttons that
+                  would hit the API are replaced. */}
+              <VerifyGate action="post a brief">
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    type="submit"
+                    disabled={saving || uploading}
+                    className="rounded-full bg-amber-400 px-7 py-3 text-sm font-bold text-stone-950 transition hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {saving ? "Posting…" : "Post brief to architects"}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={saving || uploading}
+                    onClick={() => submit(false)}
+                    className="rounded-full border border-stone-300 px-7 py-3 text-sm font-bold text-stone-700 transition hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/20 dark:text-slate-200 dark:hover:bg-white/10"
+                  >
+                    Save as draft
+                  </button>
+                </div>
+              </VerifyGate>
             </form>
 
             {/* ---------------- Live preview ---------------- */}

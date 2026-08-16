@@ -27,6 +27,7 @@ import { SidebarNav } from "./SidebarNav";
 import { BottomBar } from "./BottomBar";
 import { StatusBadge } from "./StatusBadge";
 import { IdentityStep } from "./steps/IdentityStep";
+import AddressStep from "./steps/AddressStep";
 import { ProfessionalStep } from "./steps/ProfessionalStep";
 import { LicenseStep } from "./steps/LicenseStep";
 import { EngineerLicenseStep } from "./steps/EngineerLicenseStep";
@@ -43,14 +44,16 @@ import { AchievementsStep } from "./steps/AchievementsStep";
 import { DeclarationStep } from "./steps/DeclarationStep";
 
 /**
- * The verification wizard, shared by all four professional roles.
+ * The verification wizard, shared by every role that can be verified — the four
+ * professions and land owners.
  *
  * The machinery is identical for everyone — sidebar, debounced autosave through
  * the profile PATCH, a live completion percentage, and a submit that opens a
  * supervisor request. What differs is which steps appear and what they're
- * called, and that comes entirely from wizardFor(role) in roles.ts.
+ * called, and that comes entirely from wizardFor(role) in roles.ts. A land
+ * owner simply has the shortest step list: identity, address, declaration.
  */
-export function ProfessionalWizard({ user }: { user: SessionUser }) {
+export function VerificationWizard({ user }: { user: SessionUser }) {
   const { token, setSession } = useSession();
   const config = wizardFor(user.role);
 
@@ -60,7 +63,11 @@ export function ProfessionalWizard({ user }: { user: SessionUser }) {
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [submitting, setSubmitting] = useState(false);
   const [rejectionNote, setRejectionNote] = useState<string | null>(null);
-  /** Set when the API blocked the submission because the IAB name differs. */
+  /**
+   * Set when the API blocked the submission over a disagreement a human can
+   * settle — the IAB directory's spelling of a name, or the card reader's
+   * reading of a number. Shows the "send for manual review" button.
+   */
   const [nameMismatch, setNameMismatch] = useState(false);
 
   // The profile is frozen while a supervisor has it, or once verified.
@@ -117,7 +124,7 @@ export function ProfessionalWizard({ user }: { user: SessionUser }) {
     () => computeCompletion(toProfile(form), user.role),
     [form, user.role]
   );
-  const sections = config.steps.map((s) => ({
+  const sections = (config?.steps ?? []).map((s) => ({
     label: s.label,
     complete: isStepComplete(s.key, form, user.role),
   }));
@@ -142,10 +149,18 @@ export function ProfessionalWizard({ user }: { user: SessionUser }) {
       setSession({ ...user, verificationStatus: VerificationStatus.DOCUMENTS_SUBMITTED }, token);
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err) {
-      // The name on the account doesn't match the IAB record. Offer the manual
-      // route rather than leaving them stuck — IAB spells plenty of names
-      // differently from the applicant's own documents.
-      if (err instanceof ApiError && err.code === "IAB_NAME_MISMATCH") setNameMismatch(true);
+      // Two refusals have an innocent explanation often enough that the person
+      // should get to make the case to a human instead of being stuck:
+      // - IAB spells plenty of names differently from the applicant's documents;
+      // - the card reader misreads a digit on a badly-lit photograph.
+      // Everything else the NID check refuses (a fake number, an underage date
+      // of birth, an NID already registered) has no such story, so no button.
+      if (
+        err instanceof ApiError &&
+        (err.code === "IAB_NAME_MISMATCH" || err.code === "NID_CARD_MISMATCH")
+      ) {
+        setNameMismatch(true);
+      }
       setError(err instanceof Error ? err.message : "Couldn't submit for verification");
     } finally {
       setSubmitting(false);
@@ -159,6 +174,8 @@ export function ProfessionalWizard({ user }: { user: SessionUser }) {
     switch (key) {
       case "identity":
         return <IdentityStep {...stepProps} email={user.email} />;
+      case "address":
+        return <AddressStep {...stepProps} />;
       case "professional":
         return <ProfessionalStep {...stepProps} />;
       case "license":
@@ -192,8 +209,8 @@ export function ProfessionalWizard({ user }: { user: SessionUser }) {
 
   // Every role's step list is non-empty, but `step` is state — falling back to
   // the first step keeps the render safe if it ever points past the end.
-  const currentKey: StepKey = config.steps[step]?.key ?? "identity";
-  const stepCount = config.steps.length;
+  const currentKey: StepKey = config?.steps[step]?.key ?? "identity";
+  const stepCount = config?.steps.length ?? 0;
 
   // The step panel slides in each time the step changes. AnimatePresence used
   // to fade the old step out first; here the content swaps and the new panel
@@ -214,6 +231,11 @@ export function ProfessionalWizard({ user }: { user: SessionUser }) {
 
   const backRef = useHoverScale<HTMLButtonElement>({ enabled: step > 0 });
   const nextRef = useHoverScale<HTMLButtonElement>({ enabled: step < stepCount - 1 });
+
+  // Roles with nothing to verify (admin, key custodian) have no wizard. The
+  // route never sends them here; this is the guard that makes that true rather
+  // than assumed. It sits below every hook so the hook order never changes.
+  if (!config) return null;
 
   return (
     <div className="relative min-h-screen bg-stone-100 text-stone-900 dark:bg-[#05070C] dark:text-slate-100">
@@ -242,7 +264,7 @@ export function ProfessionalWizard({ user }: { user: SessionUser }) {
             {config.intro}
           </p>
           <div className="mt-5">
-            <StatusBadge status={user.verificationStatus} />
+            <StatusBadge status={user.verificationStatus} role={user.role} />
           </div>
         </div>
 
@@ -264,8 +286,9 @@ export function ProfessionalWizard({ user }: { user: SessionUser }) {
         {error && (
           <div className="mb-6 rounded-2xl border border-rose-400/25 bg-rose-400/15 px-5 py-3.5 text-sm font-medium text-rose-800 backdrop-blur-xl dark:text-rose-100">
             {error}
-            {/* The way out of a name mismatch: skip the automated check and let
-                a supervisor compare the documents by hand. */}
+            {/* The way out of a name or card-number mismatch: skip the
+                automated check and let a supervisor compare the documents by
+                hand. */}
             {nameMismatch && (
               <button
                 type="button"
@@ -342,10 +365,17 @@ export function ProfessionalWizard({ user }: { user: SessionUser }) {
   );
 }
 
-/** Roles that have a verification wizard — everyone except land owners and admins. */
+/** The four professions — the roles with credentials as well as an identity. */
 export const PROFESSIONAL_ROLES: UserRole[] = [
   UserRole.ARCHITECT,
   UserRole.STRUCTURAL_ENGINEER,
   UserRole.CONTRACTOR,
   UserRole.SUPPLIER,
 ];
+
+/**
+ * Everyone who has a verification wizard. Admins are absent because a
+ * supervisor is the one doing the verifying — there's nobody above them to
+ * approve their documents.
+ */
+export const VERIFIABLE_ROLES: UserRole[] = [UserRole.LAND_OWNER, ...PROFESSIONAL_ROLES];

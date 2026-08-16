@@ -15,6 +15,7 @@ import {
 import { useSession } from "@/store/useSession";
 import { Navbar } from "@/components/landing/Navbar";
 import { categoryLabels, formatBdt } from "@/components/market/market";
+import { VerifyNotice, useIsVerified } from "@/components/app/VerifyGate";
 
 const inputClass =
   "block w-full rounded-xl border border-stone-300/80 bg-white/70 px-4 py-2.5 text-sm text-stone-900 placeholder-stone-400 backdrop-blur transition outline-none focus:border-amber-500 focus:bg-white/90 focus:ring-2 focus:ring-amber-400/30 dark:border-white/15 dark:bg-white/5 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:bg-white/10";
@@ -53,6 +54,7 @@ export default function SellPage() {
   useEffect(() => setMounted(true), []);
 
   const isSeller = user?.role === UserRole.SUPPLIER || user?.role === UserRole.CONTRACTOR;
+  const isVerified = useIsVerified();
 
   // Only sellers belong here — everyone else goes to the catalogue.
   useEffect(() => {
@@ -196,100 +198,112 @@ export default function SellPage() {
             </p>
           )}
 
+          {/* Existing listings stay visible and editable-looking below; only the
+              create/edit form is replaced, since every write it makes is gated. */}
+          {!isVerified && (
+            <VerifyNotice action="list products in the marketplace" className="mt-6" />
+          )}
+
           {/* Create / edit form */}
-          <form ref={formRef} onSubmit={save} className={`mt-8 scroll-mt-28 ${cardClass}`}>
-            <p className="text-sm font-bold">{editingId ? "Edit listing" : "Add a product"}</p>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <input
-                required
-                minLength={2}
-                maxLength={120}
-                placeholder="Product name, e.g. Portland Cement 50kg"
-                value={form.name}
-                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                className={inputClass}
-              />
-              <input
-                maxLength={80}
-                placeholder="Brand (optional), e.g. Shah Cement"
-                value={form.brand}
-                onChange={(e) => setForm((f) => ({ ...f, brand: e.target.value }))}
-                className={inputClass}
-              />
-              <select
-                value={form.category}
-                onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
-                className={inputClass}
-                aria-label="Category"
-              >
-                {Object.values(ProductCategory).map((c) => (
-                  <option key={c} value={c}>
-                    {categoryLabels[c]}
-                  </option>
-                ))}
-              </select>
-              <div className="grid grid-cols-2 gap-3">
+          {isVerified && (
+            <form ref={formRef} onSubmit={save} className={`mt-8 scroll-mt-28 ${cardClass}`}>
+              <p className="text-sm font-bold">{editingId ? "Edit listing" : "Add a product"}</p>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 <input
                   required
-                  maxLength={30}
-                  placeholder="Unit, e.g. bag"
-                  value={form.unit}
-                  onChange={(e) => setForm((f) => ({ ...f, unit: e.target.value }))}
+                  minLength={2}
+                  maxLength={120}
+                  placeholder="Product name, e.g. Portland Cement 50kg"
+                  value={form.name}
+                  onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                   className={inputClass}
                 />
                 <input
-                  required
-                  type="number"
-                  min={1}
-                  placeholder="Price (BDT)"
-                  value={form.priceBdt}
-                  onChange={(e) => setForm((f) => ({ ...f, priceBdt: e.target.value }))}
+                  maxLength={80}
+                  placeholder="Brand (optional), e.g. Shah Cement"
+                  value={form.brand}
+                  onChange={(e) => setForm((f) => ({ ...f, brand: e.target.value }))}
                   className={inputClass}
                 />
-              </div>
-              <textarea
-                rows={2}
-                maxLength={1000}
-                placeholder="Description (optional), grade, sizes, delivery area…"
-                value={form.description}
-                onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                className={`${inputClass} sm:col-span-2`}
-              />
-              <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-stone-400/60 px-4 py-2.5 text-sm font-semibold text-stone-600 transition hover:border-amber-500 hover:text-amber-600 dark:border-white/25 dark:text-slate-300">
-                {uploading ? "Uploading…" : form.imageUrl ? "Change photo" : "Upload product photo"}
-                <input type="file" accept="image/*" onChange={handlePhoto} className="hidden" />
-              </label>
-              {form.imageUrl && (
-                /* eslint-disable-next-line @next/next/no-img-element -- Cloudinary-hosted */
-                <img
-                  src={form.imageUrl}
-                  alt="Product preview"
-                  className="h-24 w-32 rounded-xl object-cover"
-                />
-              )}
-            </div>
-            <div className="mt-4 flex gap-2">
-              <button
-                type="submit"
-                disabled={busy || uploading}
-                className="rounded-full bg-amber-400 px-6 py-2.5 text-sm font-bold text-stone-950 transition hover:bg-amber-300 disabled:opacity-60"
-              >
-                {busy ? "Saving…" : editingId ? "Save changes" : "List product"}
-              </button>
-              {editingId && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditingId(null);
-                    setForm(emptyForm);
-                  }}
-                  className="rounded-full border border-stone-300 px-5 py-2.5 text-sm font-bold text-stone-700 transition hover:border-stone-400 dark:border-white/20 dark:text-slate-200"
+                <select
+                  value={form.category}
+                  onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
+                  className={inputClass}
+                  aria-label="Category"
                 >
-                  Cancel edit
+                  {Object.values(ProductCategory).map((c) => (
+                    <option key={c} value={c}>
+                      {categoryLabels[c]}
+                    </option>
+                  ))}
+                </select>
+                <div className="grid grid-cols-2 gap-3">
+                  <input
+                    required
+                    maxLength={30}
+                    placeholder="Unit, e.g. bag"
+                    value={form.unit}
+                    onChange={(e) => setForm((f) => ({ ...f, unit: e.target.value }))}
+                    className={inputClass}
+                  />
+                  <input
+                    required
+                    type="number"
+                    min={1}
+                    placeholder="Price (BDT)"
+                    value={form.priceBdt}
+                    onChange={(e) => setForm((f) => ({ ...f, priceBdt: e.target.value }))}
+                    className={inputClass}
+                  />
+                </div>
+                <textarea
+                  rows={2}
+                  maxLength={1000}
+                  placeholder="Description (optional), grade, sizes, delivery area…"
+                  value={form.description}
+                  onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                  className={`${inputClass} sm:col-span-2`}
+                />
+                <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-stone-400/60 px-4 py-2.5 text-sm font-semibold text-stone-600 transition hover:border-amber-500 hover:text-amber-600 dark:border-white/25 dark:text-slate-300">
+                  {uploading
+                    ? "Uploading…"
+                    : form.imageUrl
+                      ? "Change photo"
+                      : "Upload product photo"}
+                  <input type="file" accept="image/*" onChange={handlePhoto} className="hidden" />
+                </label>
+                {form.imageUrl && (
+                  /* eslint-disable-next-line @next/next/no-img-element -- Cloudinary-hosted */
+                  <img
+                    src={form.imageUrl}
+                    alt="Product preview"
+                    className="h-24 w-32 rounded-xl object-cover"
+                  />
+                )}
+              </div>
+              <div className="mt-4 flex gap-2">
+                <button
+                  type="submit"
+                  disabled={busy || uploading}
+                  className="rounded-full bg-amber-400 px-6 py-2.5 text-sm font-bold text-stone-950 transition hover:bg-amber-300 disabled:opacity-60"
+                >
+                  {busy ? "Saving…" : editingId ? "Save changes" : "List product"}
                 </button>
-              )}
-            </div>
-          </form>
+                {editingId && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingId(null);
+                      setForm(emptyForm);
+                    }}
+                    className="rounded-full border border-stone-300 px-5 py-2.5 text-sm font-bold text-stone-700 transition hover:border-stone-400 dark:border-white/20 dark:text-slate-200"
+                  >
+                    Cancel edit
+                  </button>
+                )}
+              </div>
+            </form>
+          )}
 
           {/* Existing listings */}
           {loading ? (

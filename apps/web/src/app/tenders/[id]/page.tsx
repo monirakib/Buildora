@@ -11,6 +11,7 @@ import { getTender, submitBid } from "@/lib/apiTenders";
 import { useSession } from "@/store/useSession";
 import { useRegisterAiContext } from "@/lib/useRegisterAiContext";
 import { BidSanityPanel } from "@/components/project/BidSanityPanel";
+import { VerifyNotice, useIsVerified } from "@/components/app/VerifyGate";
 
 const inputClass =
   "block w-full rounded-xl border border-stone-300/80 bg-white/70 px-4 py-2.5 text-sm text-stone-900 placeholder-stone-400 backdrop-blur transition outline-none focus:border-amber-500 focus:bg-white/90 focus:ring-2 focus:ring-amber-400/30 dark:border-white/15 dark:bg-white/5 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:bg-white/10";
@@ -31,6 +32,7 @@ export default function TenderDetailPage() {
   const router = useRouter();
   const user = useSession((s) => s.user);
   const token = useSession((s) => s.token);
+  const isVerified = useIsVerified();
 
   const [tender, setTender] = useState<Tender | null>(null);
   const [loading, setLoading] = useState(true);
@@ -157,6 +159,10 @@ export default function TenderDetailPage() {
               <p className="mt-6 rounded-xl bg-amber-100 px-4 py-2.5 text-sm text-amber-900 dark:bg-amber-400/15 dark:text-amber-200">
                 Bidding has closed on this tender.
               </p>
+            ) : !isVerified ? (
+              // The BOQ above stays visible — a contractor should be able to
+              // read the job and decide it's worth getting verified for.
+              <VerifyNotice action="bid on tenders" className="mt-6" />
             ) : (
               <form onSubmit={send} className={`mt-6 ${cardClass}`}>
                 <p className="text-sm font-bold">Bill of Quantities</p>

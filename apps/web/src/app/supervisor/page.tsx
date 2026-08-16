@@ -6,6 +6,8 @@ import {
   UserRole,
   VerificationStatus,
   credentialFor,
+  gradeNidCheck,
+  parseNid13,
   type ProfessionalProfile,
   type SessionUser,
   type VerificationRequest,
@@ -22,6 +24,7 @@ const cardClass =
   "rounded-2xl border border-white/50 bg-white/55 backdrop-blur-xl dark:border-white/10 dark:bg-white/5";
 
 const roleLabels: Record<string, string> = {
+  LAND_OWNER: "Land owner",
   ARCHITECT: "Architect",
   STRUCTURAL_ENGINEER: "Structural engineer",
   CONTRACTOR: "Contractor",
@@ -199,44 +202,71 @@ function CredentialCheckBanner({
  * the uploaded card. The supervisor is the one who decides.
  */
 function NidCheckBanner({ check }: { check: NonNullable<ProfessionalProfile["nidCheck"]> }) {
-  const flags: string[] = [];
-  if (!check.formatOk) flags.push(check.formatIssue ?? "The number isn't a valid NID shape");
-  if (check.duplicate) flags.push("This NID is already registered to another account");
-  if (check.dobMatches === false)
-    flags.push("The NID's birth year disagrees with the date of birth");
-  if (check.ocr?.readable === false)
-    flags.push(check.ocr.note ?? "The card image couldn't be read");
-  if (check.ocr?.nameMatches === false)
-    flags.push(`Card reads "${check.ocr.name}", a different name`);
-  if (check.ocr?.nidMatches === false)
-    flags.push(`Card shows NID ${check.ocr.nid}, a different number`);
-  if (check.ocr?.dobMatches === false) flags.push("Date of birth on the card is different");
+  // The same verdict the applicant was shown and the same one the submit
+  // endpoint enforced — read from the shared grader rather than reassembled
+  // here, so the three can't drift apart and describe the same card
+  // differently.
+  const { severity, blockers, flags } = gradeNidCheck(check);
+  const parts = parseNid13(check.nid);
 
-  const clean = flags.length === 0;
+  const tone =
+    severity === "FAIL"
+      ? "bg-rose-100 text-rose-900 dark:bg-rose-400/15 dark:text-rose-200"
+      : severity === "REVIEW"
+        ? "bg-amber-100 text-amber-900 dark:bg-amber-400/15 dark:text-amber-200"
+        : "bg-emerald-100 text-emerald-900 dark:bg-emerald-400/15 dark:text-emerald-200";
+
   return (
-    <div
-      className={`rounded-2xl px-4 py-3 text-sm ${
-        clean
-          ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-400/15 dark:text-emerald-200"
-          : "bg-rose-100 text-rose-900 dark:bg-rose-400/15 dark:text-rose-200"
-      }`}
-    >
+    <div className={`rounded-2xl px-4 py-3 text-sm ${tone}`}>
       <p className="text-xs font-bold tracking-wider uppercase opacity-80">
         NID pre-screen · {new Date(check.checkedAt).toLocaleString()}
       </p>
-      {clean ? (
+
+      {severity === "PASS" && (
         <p className="mt-1">
           {check.nid}, valid format, not used elsewhere
           {check.ocr?.readable ? ", and the uploaded card agrees" : ""}.
         </p>
-      ) : (
-        <ul className="mt-1 list-disc space-y-0.5 pl-5">
-          {flags.map((f) => (
-            <li key={f}>{f}</li>
-          ))}
-        </ul>
       )}
-      <p className="mt-1 text-xs opacity-80">
+
+      {blockers.length > 0 && (
+        <>
+          <p className="mt-1 text-xs font-bold uppercase opacity-80">Refused</p>
+          <ul className="mt-0.5 list-disc space-y-0.5 pl-5">
+            {blockers.map((f) => (
+              <li key={f}>{f}</li>
+            ))}
+          </ul>
+        </>
+      )}
+
+      {flags.length > 0 && (
+        <>
+          <p className="mt-2 text-xs font-bold uppercase opacity-80">Worth a look</p>
+          <ul className="mt-0.5 list-disc space-y-0.5 pl-5">
+            {flags.map((f) => (
+              <li key={f}>{f}</li>
+            ))}
+          </ul>
+        </>
+      )}
+
+      {/* The codes embedded in a legacy number, shown as digits. They aren't
+          translated into a district name: two contradictory "district code"
+          tables circulate publicly and no Election Commission publication
+          settles which one an NID uses, so naming a district from the wrong
+          one would accuse honest applicants. The holder recognises their own. */}
+      {parts && (
+        <p className="mt-2 text-xs opacity-80">
+          Embedded codes — district {parts.districtCode}, RMO {parts.rmoCode}, upazila{" "}
+          {parts.upazilaCode}, union/ward {parts.unionWardCode}, serial {parts.serial}.
+        </p>
+      )}
+      {check.back?.address && (
+        <p className="mt-1 text-xs opacity-80">Address read from the back: {check.back.address}</p>
+      )}
+
+      <p className="mt-2 text-xs opacity-80">
         Automated pre-screen only. Buildora cannot confirm an NID against the Election Commission.
         Compare the uploaded card yourself before approving.
       </p>
@@ -336,6 +366,10 @@ export default function SupervisorPage() {
   }
 
   const profile = (detail?.professional.profile ?? {}) as ProfessionalProfile;
+  // A land owner's request is an identity check and nothing else — no licence,
+  // no degree, no portfolio — so the credential sections below are skipped for
+  // them rather than rendered empty.
+  const isLandOwner = detail?.professional.role === UserRole.LAND_OWNER;
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -450,20 +484,29 @@ export default function SupervisorPage() {
                     </div>
                   )}
 
-                  {/* Contact + credentials — supervisor-only detail */}
+                  {/* Contact + credentials — supervisor-only detail.
+                      A land owner has no licence body or membership number to
+                      show, so those rows are skipped rather than rendered as a
+                      row of dashes. */}
                   <div className="grid gap-4 sm:grid-cols-2">
                     <Field label="Email">{detail.professional.email}</Field>
                     <Field label="Phone">{detail.professional.phone || "-"}</Field>
-                    <Field label="Firm / company">{profile.company || "-"}</Field>
-                    <Field label="Experience">
-                      {profile.yearsExperience != null ? `${profile.yearsExperience} years` : "-"}
-                    </Field>
-                    <Field label="License body">{profile.licenseAuthority || "-"}</Field>
-                    {/* Labelled by profession — "IAB membership number" for an
-                        architect, "Trade licence number" for a supplier. */}
-                    <Field label={credentialFor(detail.professional.role).numberLabel}>
-                      {profile.licenseNumber || profile.tradeLicenseNo || "-"}
-                    </Field>
+                    {!isLandOwner && (
+                      <>
+                        <Field label="Firm / company">{profile.company || "-"}</Field>
+                        <Field label="Experience">
+                          {profile.yearsExperience != null
+                            ? `${profile.yearsExperience} years`
+                            : "-"}
+                        </Field>
+                        <Field label="License body">{profile.licenseAuthority || "-"}</Field>
+                        {/* Labelled by profession — "IAB membership number" for an
+                            architect, "Trade licence number" for a supplier. */}
+                        <Field label={credentialFor(detail.professional.role).numberLabel}>
+                          {profile.licenseNumber || profile.tradeLicenseNo || "-"}
+                        </Field>
+                      </>
+                    )}
                     {profile.website && (
                       <Field label="Website">
                         <a
@@ -485,17 +528,36 @@ export default function SupervisorPage() {
 
                   {profile.nidCheck && <NidCheckBanner check={profile.nidCheck} />}
 
-                  {/* Identity documents (architect verification wizard) */}
+                  {/* Identity documents — every role fills these in. */}
                   {(profile.nid || profile.nidFrontUrl || profile.dateOfBirth) && (
                     <div className="grid gap-4 sm:grid-cols-2">
                       <Field label="NID number">{profile.nid || "-"}</Field>
                       <Field label="Date of birth">{profile.dateOfBirth || "-"}</Field>
                       {profile.gender && <Field label="Gender">{profile.gender}</Field>}
-                      {profile.currentAddress && (
-                        <Field label="Current address">{profile.currentAddress}</Field>
-                      )}
+                      {/* The permanent address is what the NID checks compare
+                          against, so it's shown with its district and postcode
+                          rather than as a bare line of text. */}
                       {profile.permanentAddress && (
-                        <Field label="Permanent address">{profile.permanentAddress}</Field>
+                        <Field label="Permanent address">
+                          {profile.permanentAddress}
+                          {profile.permanentDistrict && (
+                            <span className="block opacity-70">
+                              {profile.permanentDistrict}, {profile.permanentDivision}
+                              {profile.permanentPostcode ? ` — ${profile.permanentPostcode}` : ""}
+                            </span>
+                          )}
+                        </Field>
+                      )}
+                      {profile.currentAddress && (
+                        <Field label="Current address">
+                          {profile.currentAddress}
+                          {profile.currentDistrict && (
+                            <span className="block opacity-70">
+                              {profile.currentDistrict}, {profile.currentDivision}
+                              {profile.currentPostcode ? ` — ${profile.currentPostcode}` : ""}
+                            </span>
+                          )}
+                        </Field>
                       )}
                       <Field label="NID card">
                         <span className="flex gap-3">
