@@ -1,4 +1,7 @@
-/** The six platform actors defined in the product plan (§3.1). */
+/**
+ * The six platform actors defined in the product plan (§3.1), plus one operator
+ * role that is not an actor in the product at all.
+ */
 export enum UserRole {
   LAND_OWNER = "LAND_OWNER",
   ARCHITECT = "ARCHITECT",
@@ -6,7 +9,39 @@ export enum UserRole {
   CONTRACTOR = "CONTRACTOR",
   SUPPLIER = "SUPPLIER",
   ADMIN = "ADMIN",
+  /**
+   * Holds one power and no others: rotating the encryption and signing keys.
+   *
+   * Deliberately a **sibling of ADMIN, not a superset of it.** Every permission
+   * check in the API is an exact match on the role, so a SUPER_ADMIN satisfies
+   * `requireRole(ADMIN)` nowhere — no user list, no verification queue, no
+   * disputes, no broadcasts. It can reach `/api/keys/*` and nothing else.
+   *
+   * That is the point. Key rotation needs the ability to re-encrypt every
+   * record, which is the most dangerous capability on the platform; pairing it
+   * with routine day-to-day administration would mean the account used for
+   * ordinary supervision also carries it. Splitting them means compromising the
+   * admin console does not hand over the keys, and vice versa.
+   *
+   * Not self-assignable and not grantable from the admin console — it exists
+   * only via `pnpm seed:superadmin`. See controllers/admin.controller.ts.
+   */
+  SUPER_ADMIN = "SUPER_ADMIN",
 }
+
+/**
+ * The roles that are actual product actors — everything a normal screen should
+ * offer. Excludes SUPER_ADMIN, which is an operator account and has no profile,
+ * no verification path and no place in a role picker.
+ */
+export const ACTOR_ROLES: UserRole[] = [
+  UserRole.LAND_OWNER,
+  UserRole.ARCHITECT,
+  UserRole.STRUCTURAL_ENGINEER,
+  UserRole.CONTRACTOR,
+  UserRole.SUPPLIER,
+  UserRole.ADMIN,
+];
 
 /** Professional verification pipeline stages (§5.1). */
 export enum VerificationStatus {

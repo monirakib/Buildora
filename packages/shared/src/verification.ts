@@ -549,11 +549,13 @@ const filled = (s: string | undefined) => typeof s === "string" && s.trim() !== 
  * it for the live percentage and to enable the submit button; the API runs the
  * same function at submit time so the mandatory rules can't be bypassed.
  *
- * Every role shares an identity block (photo + NID card) and a signed
- * declaration, then diverges: what counts as a credential for an architect is
- * an IAB membership, for an engineer an IEB membership and a professional seal,
- * and for a contractor or a supplier a trade licence and a tax registration.
- * The role's own checklist is what gates their submit button.
+ * Every role shares an identity block (photo + NID card + date of birth), a
+ * registered address, and a signed declaration. A land owner's verification is
+ * exactly that and stops there. The four professions then diverge: what counts
+ * as a credential for an architect is an IAB membership, for an engineer an IEB
+ * membership and a professional seal, and for a contractor or a supplier a
+ * trade licence and a tax registration. The role's own checklist is what gates
+ * their submit button.
  */
 export function computeCompletion(
   profile: ProfessionalProfile | undefined,
@@ -570,13 +572,34 @@ export function computeCompletion(
     (pr) => filled(pr.title) && pr.imageUrls.length > 0
   );
 
-  // Shared by all four roles: who you are, and that you signed for it.
+  // Shared by every role: who you are, where you're registered, and that you
+  // signed for it.
+  //
+  // Date of birth became mandatory when the NID checks got serious about it:
+  // the age rule and the 17-digit birth-year cross-check are both worthless
+  // without one, so leaving it optional meant the two checks quietly did
+  // nothing for anyone who skipped the field.
   const identity: CompletionItem[] = [
     { label: "Profile photo", done: filled(p.avatarUrl), mandatory: true },
     { label: "NID number", done: filled(p.nid), mandatory: true },
     { label: "NID front image", done: filled(p.nidFrontUrl), mandatory: true },
     { label: "NID back image", done: filled(p.nidBackUrl), mandatory: true },
+    { label: "Date of birth", done: filled(p.dateOfBirth), mandatory: true },
   ];
+
+  // The permanent address is the one the NID is registered against, so it's the
+  // one that has to be structured — the postcode is only checkable against a
+  // district that was picked from a list rather than typed.
+  const address: CompletionItem[] = [
+    { label: "Permanent address", done: filled(p.permanentAddress), mandatory: true },
+    {
+      label: "Permanent division & district",
+      done: filled(p.permanentDivision) && filled(p.permanentDistrict),
+      mandatory: true,
+    },
+    { label: "Permanent postcode", done: filled(p.permanentPostcode), mandatory: true },
+  ];
+
   const declaration: CompletionItem = {
     label: "Signed declaration",
     done: p.declarationAgreed === true && filled(p.declarationSignature),
@@ -587,9 +610,29 @@ export function computeCompletion(
   // only move the completion percentage, which is what nudges people to fill
   // a profile out properly.
   const commonOptional: CompletionItem[] = [
-    { label: "Date of birth", done: filled(p.dateOfBirth), mandatory: false },
     { label: "Current address", done: filled(p.currentAddress), mandatory: false },
     { label: "About yourself", done: filled(p.bio), mandatory: false },
+  ];
+
+  // Land owners stop here. Their verification is an identity check and nothing
+  // more — they hold no licence and answer to no professional body, so there is
+  // no credential step to add. What the platform needs to know about them is
+  // that they are a real, contactable adult whose NID nobody else is using,
+  // because that is what an architect is relying on when they take a brief and
+  // what escrow is relying on when it holds their money.
+  if (role === UserRole.LAND_OWNER) {
+    const ownerItems = [...identity, ...address, declaration, ...commonOptional];
+    const ownerDone = ownerItems.filter((i) => i.done).length;
+    const ownerMissing = ownerItems.filter((i) => i.mandatory && !i.done).map((i) => i.label);
+    return {
+      percent: Math.round((ownerDone / ownerItems.length) * 100),
+      items: ownerItems,
+      mandatoryComplete: ownerMissing.length === 0,
+      missingMandatory: ownerMissing,
+    };
+  }
+
+  const professionalOptional: CompletionItem[] = [
     { label: "Years of experience", done: typeof p.yearsExperience === "number", mandatory: false },
     { label: "Achievements", done: (p.achievements ?? []).length > 0, mandatory: false },
   ];
@@ -688,7 +731,14 @@ export function computeCompletion(
       break;
   }
 
-  const items = [...identity, ...roleItems, declaration, ...commonOptional];
+  const items = [
+    ...identity,
+    ...address,
+    ...roleItems,
+    declaration,
+    ...commonOptional,
+    ...professionalOptional,
+  ];
   const doneCount = items.filter((i) => i.done).length;
   const missingMandatory = items.filter((i) => i.mandatory && !i.done).map((i) => i.label);
 
