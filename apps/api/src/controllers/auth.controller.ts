@@ -1,11 +1,11 @@
 import type { Request, Response } from "express";
-import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
 import { z } from "zod";
 import { Types, type HydratedDocument } from "mongoose";
 import {
   PaymentMethod,
   UserRole,
+  VerificationStatus,
+  nidKeyFor,
   normalizeMembershipNo,
   normalizeNid,
   type AccountSession,
@@ -14,8 +14,11 @@ import {
   type UserProfile,
 } from "@buildora/shared";
 import { env } from "../config/env";
+import { publicJwks, signAccessToken } from "../services/jwt";
 import { User, type UserDoc } from "../models/User";
-import { Session, liveSessionFilter } from "../models/Session";
+import { Session, liveSessionFilter, sessionExpiry } from "../models/Session";
+import { mintRefreshToken, parseRefreshToken } from "../services/refreshToken";
+import { REFRESH_COOKIE, clearRefreshCookie, setRefreshCookie } from "../utils/cookies";
 import {
   LINK_TTL_HOURS,
   consumeVerification,
@@ -23,6 +26,15 @@ import {
   nudgeIfUnverified,
 } from "../services/emailVerification";
 import { lookupIabMember } from "../services/iab";
+import { hashPassword, spendVerifyTime, verifyPassword } from "../services/password";
+import {
+  nidLookupKey,
+  openBilling,
+  openProfile,
+  sealBilling,
+  sealProfile,
+} from "../services/profileCrypto";
+import { safeIssues } from "../utils/validation";
 
 /**
  * Profile saves replace the whole subdocument, which would throw away the NID
@@ -36,11 +48,68 @@ export function keepNidCheck<T extends { nid?: string; nidCheck?: NidCheck }>(
   previous: UserProfile | undefined,
   next: T
 ): T {
-  const check = (previous as { nidCheck?: NidCheck } | undefined)?.nidCheck;
+  // The blind index is no longer computed here — sealProfile derives it from
+  // `nid` on the way to the database, so there is exactly one place that can
+  // put the lookup key out of step with the number it guards.
+  const check = previous?.nidCheck;
   if (check && next.nid && normalizeNid(check.nid) === normalizeNid(next.nid)) {
     return { ...next, nidCheck: check };
   }
-  return next;
+
+  // Drop a non-matching record explicitly rather than relying on the caller not
+  // to supply one: updateAccount builds `next` by spreading the existing
+  // profile, so a stale check would otherwise ride along attached to a number
+  // nobody ever screened.
+  const out = { ...next };
+  delete out.nidCheck;
+  return out;
+}
+
+/**
+ * Refuses a profile save that would put a second account on one NID, or that
+ * would change the NID an approved badge was granted against.
+ *
+ * Returns an error payload to send, or undefined when the save may proceed.
+ * The unique index is the real enforcement — this exists so the person doing
+ * it gets an explanation instead of a driver error.
+ */
+export async function checkNidChange(
+  userId: string,
+  currentStatus: VerificationStatus,
+  previousNid: string | undefined,
+  nextNid: string | undefined
+): Promise<{ status: number; code: string; message: string } | undefined> {
+  // Compared through the blind index, since the stored numbers are ciphertext
+  // and no two copies of one NID look alike.
+  const lookupKey = nidLookupKey(nextNid);
+  const changed = normalizeNid(previousNid ?? "") !== normalizeNid(nextNid ?? "");
+
+  // A verified account's NID is the identity the badge was granted to. Letting
+  // it be edited afterwards would leave the badge attached to a person nobody
+  // ever checked — so the change goes through a supervisor, not a form.
+  if (changed && currentStatus === VerificationStatus.APPROVED) {
+    return {
+      status: 409,
+      code: "NID_LOCKED",
+      message:
+        "Your NID is locked because your account is verified. Contact a supervisor to change it.",
+    };
+  }
+
+  if (!lookupKey || !changed) return undefined;
+
+  const taken = await User.exists({ _id: { $ne: userId }, "profile.nidKeyBlind": lookupKey });
+  if (taken) {
+    return {
+      status: 409,
+      code: "NID_ALREADY_REGISTERED",
+      message:
+        "Another Buildora account is already registered with this NID. An NID can only be " +
+        "used once — check the number you entered.",
+    };
+  }
+
+  return undefined;
 }
 
 // Account fields every signup shares (land owner and professional alike).
@@ -206,30 +275,207 @@ function toSessionUser(user: HydratedDocument<UserDoc>): SessionUser {
     altPhone: plain.altPhone,
     role: plain.role,
     verificationStatus: plain.verificationStatus,
-    profile: plain.profile,
-    billing: plain.billing,
+    // Decrypted on the way out, so the API's shape is exactly what it was
+    // before encryption existed — the browser still receives `profile.nid` as a
+    // plain string and neither the web app nor packages/shared changes.
+    profile: openProfile(plain.profile, user._id.toString()),
+    billing: openBilling(plain.billing, user._id.toString()),
+  };
+}
+
+/** Seconds an access token is valid for — sent to the client so it can plan. */
+const ACCESS_TTL_SECONDS = env.ACCESS_TOKEN_TTL_MIN * 60;
+
+/** Mints an Ed25519-signed access token for a live session. */
+function mintAccess(userId: string, role: UserRole, sessionId: string): Promise<string> {
+  return signAccessToken({ sub: userId, role, sid: sessionId }, ACCESS_TTL_SECONDS);
+}
+
+/**
+ * Starts a login: one Session document, one short-lived access token, and one
+ * refresh token set as an httpOnly cookie.
+ *
+ * The split is the whole design. The access token is a JWT the browser holds in
+ * memory and sends on every call; it expires in minutes, so a copy stolen
+ * through an XSS bug is worth almost nothing. The refresh token is opaque,
+ * lives only in a cookie JavaScript cannot read, and is checked against the
+ * database every time it is used — which is what makes a login revocable at
+ * all. Neither half is useful without the other.
+ */
+async function startSession(
+  user: HydratedDocument<UserDoc>,
+  req: Request,
+  res: Response
+): Promise<{ token: string; expiresIn: number }> {
+  const now = new Date();
+  const session = await Session.create({
+    user: user._id,
+    userAgent: req.headers["user-agent"],
+    ip: req.ip,
+    ipFirst: req.ip,
+    expiresAt: sessionExpiry(now),
+  });
+
+  const refresh = mintRefreshToken(session._id.toString());
+  session.refreshTokenHash = refresh.secretHash;
+  session.refreshKeyVersion = refresh.keyVersion;
+  await session.save();
+  setRefreshCookie(res, refresh.token);
+
+  return {
+    token: await mintAccess(user._id.toString(), user.role, session._id.toString()),
+    expiresIn: ACCESS_TTL_SECONDS,
   };
 }
 
 /**
- * Records this login as a Session document and returns a JWT carrying both the
- * user id (`sub`) and the session id (`sid`). requireAuth later checks the
- * session is still alive, so logging out actually kills the token server-side.
+ * How long after a refresh the token it replaced is still accepted.
+ *
+ * Without this, rotation breaks the ordinary case of two open tabs: both notice
+ * their access token expired at the same moment, both send the same refresh
+ * token, one wins, and the loser's perfectly legitimate request looks exactly
+ * like a stolen token being replayed. Ten seconds is far longer than that race
+ * and far shorter than any useful attack window — a thief redeeming a token
+ * days later still trips the reuse check below.
  */
-async function startSession(user: HydratedDocument<UserDoc>, req: Request): Promise<string> {
-  const session = await Session.create({
-    user: user._id,
-    userAgent: req.headers["user-agent"],
-  });
-  // Payload matches AuthPayload in middleware/auth.ts.
-  return jwt.sign(
-    { sub: user._id.toString(), role: user.role, sid: session._id.toString() },
-    env.JWT_SECRET,
+const ROTATION_GRACE_MS = 10_000;
+
+/**
+ * POST /api/auth/refresh — trade the refresh cookie for a new access token.
+ *
+ * Every successful refresh replaces the refresh token as well. That is what
+ * turns a stolen cookie from a week-long credential into a detectable event:
+ * once the real browser refreshes, the thief's copy is a token that has already
+ * been used, and presenting it says something has gone wrong. When that
+ * happens the session is revoked outright, which signs out both of them — the
+ * legitimate user recovers with their password, the thief cannot.
+ *
+ * Only this session is revoked, not every login on the account. The evidence is
+ * that one token leaked; taking down someone's other devices on top of it
+ * punishes the victim for being attacked, and the attacker gains nothing from
+ * those sessions surviving.
+ */
+export async function refresh(req: Request, res: Response) {
+  const cookie = req.cookies?.[REFRESH_COOKIE] as string | undefined;
+  if (!cookie) {
+    return res.status(401).json({ error: { message: "Not signed in" } });
+  }
+
+  // Shape and signature first — a token that was never ours is rejected here
+  // without a database round trip.
+  const parsed = parseRefreshToken(cookie);
+  if (!parsed) {
+    clearRefreshCookie(res);
+    return res.status(401).json({ error: { message: "Not signed in" } });
+  }
+
+  const now = new Date();
+  // Claim the rotation atomically: the filter includes the hash we expect to
+  // replace, so if two requests arrive together only one can match and the
+  // other falls through to the reuse path below. Doing this as a read followed
+  // by a write would let both succeed and hand out two live tokens.
+  const next = mintRefreshToken(parsed.sessionId);
+  const session = await Session.findOneAndUpdate(
     {
-      // Cast: jsonwebtoken's types want a "1h"/"7d"-style literal, env gives a plain string.
-      expiresIn: env.JWT_EXPIRES_IN as jwt.SignOptions["expiresIn"],
+      _id: parsed.sessionId,
+      refreshTokenHash: parsed.secretHash,
+      ...liveSessionFilter(now),
+    },
+    {
+      $set: {
+        refreshTokenHash: next.secretHash,
+        refreshKeyVersion: next.keyVersion,
+        previousTokenHash: parsed.secretHash,
+        rotatedAt: now,
+        lastSeenAt: now,
+      },
+    },
+    { returnDocument: "after" }
+  ).catch(() => null);
+
+  if (!session) {
+    // Nothing matched. Either this token was already rotated away — which is
+    // either the two-tab race or a replay — or the session is gone.
+    const replayed = await Session.findOne({
+      _id: parsed.sessionId,
+      previousTokenHash: parsed.secretHash,
+    }).catch(() => null);
+
+    if (
+      replayed &&
+      replayed.rotatedAt &&
+      now.getTime() - replayed.rotatedAt.getTime() > ROTATION_GRACE_MS
+    ) {
+      await Session.updateOne({ _id: replayed._id }, { $set: { revokedAt: now } }).catch(
+        () => null
+      );
+      console.warn(`[auth] refresh token reuse on session ${replayed._id} — session revoked`);
+      clearRefreshCookie(res);
+      return res.status(401).json({
+        error: { message: "This login was ended for security. Please sign in again." },
+      });
     }
-  );
+
+    if (replayed) {
+      // Inside the grace window: the other tab just rotated. Hand back an
+      // access token and leave the refresh cookie completely alone.
+      //
+      // Rotating again here is what makes two tabs unsurvivable rather than
+      // merely racy. A session has one current token hash, and the tab that won
+      // is already holding it; minting a third would overwrite that hash while
+      // previousTokenHash still points at the token being graced, so the
+      // winner's cookie would match neither and its next refresh would be read
+      // as a dead session. The tabs share one cookie jar, so the winner's
+      // Set-Cookie has already delivered a valid token to this browser — there
+      // is nothing for this response to add, and anything it sets can only
+      // land out of order and clobber it.
+      await Session.updateOne({ _id: replayed._id }, { $set: { lastSeenAt: now } }).catch(
+        () => null
+      );
+      const user = await User.findById(replayed.user);
+      if (!user) {
+        clearRefreshCookie(res);
+        return res.status(401).json({ error: { message: "Account no longer exists" } });
+      }
+      return res.json({
+        data: {
+          user: toSessionUser(user),
+          token: await mintAccess(String(user._id), user.role, String(replayed._id)),
+          expiresIn: ACCESS_TTL_SECONDS,
+        },
+      });
+    }
+
+    clearRefreshCookie(res);
+    return res.status(401).json({ error: { message: "Session expired, please sign in again" } });
+  }
+
+  // A refresh is the one moment a device binding can be re-checked without a
+  // live access token to go on.
+  if (session.userAgent && req.headers["user-agent"] !== session.userAgent) {
+    await Session.updateOne({ _id: session._id }, { $set: { revokedAt: now } }).catch(() => null);
+    clearRefreshCookie(res);
+    return res.status(401).json({
+      error: { message: "This login was ended because it was used from a different device" },
+    });
+  }
+
+  const user = await User.findById(session.user);
+  if (!user) {
+    clearRefreshCookie(res);
+    return res.status(401).json({ error: { message: "Account no longer exists" } });
+  }
+
+  setRefreshCookie(res, next.token);
+  // The user comes back too, so an open tab picks up a role change or a new
+  // verification badge without a separate poll.
+  return res.json({
+    data: {
+      user: toSessionUser(user),
+      token: await mintAccess(String(user._id), user.role, String(session._id)),
+      expiresIn: ACCESS_TTL_SECONDS,
+    },
+  });
 }
 
 /**
@@ -244,7 +490,7 @@ export async function register(req: Request, res: Response) {
     return res.status(400).json({
       error: {
         message: parsed.error.issues[0]?.message ?? "Invalid input",
-        details: parsed.error.issues,
+        details: safeIssues(parsed.error.issues),
       },
     });
   }
@@ -261,7 +507,7 @@ export async function register(req: Request, res: Response) {
     return res.status(409).json({ error: { message } });
   }
 
-  const passwordHash = await bcrypt.hash(password, 10);
+  const passwordHash = await hashPassword(password);
   const user = await User.create({
     name,
     username,
@@ -276,8 +522,8 @@ export async function register(req: Request, res: Response) {
   // their account page, which is where the reminder points them anyway.
   void issueVerification(user);
 
-  const token = await startSession(user, req);
-  return res.status(201).json({ data: { user: toSessionUser(user), token } });
+  const { token, expiresIn } = await startSession(user, req, res);
+  return res.status(201).json({ data: { user: toSessionUser(user), token, expiresIn } });
 }
 
 /**
@@ -295,7 +541,7 @@ export async function registerProfessional(req: Request, res: Response) {
     return res.status(400).json({
       error: {
         message: parsed.error.issues[0]?.message ?? "Invalid input",
-        details: parsed.error.issues,
+        details: safeIssues(parsed.error.issues),
       },
     });
   }
@@ -310,7 +556,7 @@ export async function registerProfessional(req: Request, res: Response) {
     return res.status(409).json({ error: { message } });
   }
 
-  const passwordHash = await bcrypt.hash(password, 10);
+  const passwordHash = await hashPassword(password);
   // Drop undefined credential fields so we don't store an empty subdocument.
   const credentials: Record<string, unknown> = Object.fromEntries(
     Object.entries(profile).filter(([, v]) => v !== undefined)
@@ -353,8 +599,8 @@ export async function registerProfessional(req: Request, res: Response) {
 
   void issueVerification(user);
 
-  const token = await startSession(user, req);
-  return res.status(201).json({ data: { user: toSessionUser(user), token } });
+  const { token, expiresIn } = await startSession(user, req, res);
+  return res.status(201).json({ data: { user: toSessionUser(user), token, expiresIn } });
 }
 
 /** POST /api/auth/login — verify credentials, issue a JWT. */
@@ -364,7 +610,7 @@ export async function login(req: Request, res: Response) {
     return res.status(400).json({
       error: {
         message: parsed.error.issues[0]?.message ?? "Invalid input",
-        details: parsed.error.issues,
+        details: safeIssues(parsed.error.issues),
       },
     });
   }
@@ -375,9 +621,35 @@ export async function login(req: Request, res: Response) {
   const login = identifier.toLowerCase();
   // Same message whether the identifier or the password is wrong, so the
   // endpoint can't be used to probe which emails/usernames have accounts.
-  const user = await User.findOne({ $or: [{ email: login }, { username: login }] });
-  if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
+  // passwordHash is select:false on the model, so this is one of the three
+  // queries in the app that has to ask for it explicitly.
+  const user = await User.findOne({ $or: [{ email: login }, { username: login }] }).select(
+    "+passwordHash"
+  );
+  if (!user) {
+    // No such account — but still spend one verification's worth of time before
+    // answering. Returning immediately here makes the "no such user" reply
+    // measurably faster than "wrong password", which turns the login form into
+    // a way to test whether an email is registered and makes the deliberately
+    // identical message above pointless.
+    await spendVerifyTime(password);
     return res.status(401).json({ error: { message: "Invalid credentials" } });
+  }
+
+  const { ok, needsRehash } = await verifyPassword(user.passwordHash, password);
+  if (!ok) {
+    return res.status(401).json({ error: { message: "Invalid credentials" } });
+  }
+
+  // The stored hash is bcrypt (pre-argon2 account) or argon2id at a cost we've
+  // since raised. A correct login is the only moment the plaintext exists to
+  // rehash from, so the upgrade happens here — nobody is asked to reset
+  // anything. Written with updateOne rather than user.save() so one old
+  // document that no longer passes full-schema validation can't turn a valid
+  // login into a 500.
+  if (needsRehash) {
+    const upgraded = await hashPassword(password);
+    await User.updateOne({ _id: user._id }, { $set: { passwordHash: upgraded } });
   }
 
   // Signing in is the one moment we know they're here to read it, so this is
@@ -385,8 +657,8 @@ export async function login(req: Request, res: Response) {
   // because it's a single indexed lookup on the common (verified) path.
   await nudgeIfUnverified(user);
 
-  const token = await startSession(user, req);
-  return res.json({ data: { user: toSessionUser(user), token } });
+  const { token, expiresIn } = await startSession(user, req, res);
+  return res.json({ data: { user: toSessionUser(user), token, expiresIn } });
 }
 
 /**
@@ -395,15 +667,18 @@ export async function login(req: Request, res: Response) {
  * the session is revoked, so the logout takes effect server-side immediately.
  */
 export async function logout(req: Request, res: Response) {
+  // Clear the cookie whatever happens next. Someone pressing "log out" must end
+  // up signed out even if their access token had already expired — leaving a
+  // live refresh cookie in the browser after that would be the worst outcome.
+  clearRefreshCookie(res);
+
   if (!req.auth) {
     return res.status(401).json({ error: { message: "Authentication required" } });
   }
-  if (req.auth.sid) {
-    await Session.updateOne(
-      { _id: req.auth.sid, user: req.auth.sub },
-      { $set: { revokedAt: new Date() } }
-    );
-  }
+  await Session.updateOne(
+    { _id: req.auth.sid, user: req.auth.sub },
+    { $set: { revokedAt: new Date() } }
+  );
   return res.json({ data: { ok: true } });
 }
 
@@ -417,7 +692,7 @@ export async function updateProfile(req: Request, res: Response) {
     return res.status(400).json({
       error: {
         message: parsed.error.issues[0]?.message ?? "Invalid input",
-        details: parsed.error.issues,
+        details: safeIssues(parsed.error.issues),
       },
     });
   }
@@ -457,7 +732,7 @@ export async function updateAccount(req: Request, res: Response) {
     return res.status(400).json({
       error: {
         message: parsed.error.issues[0]?.message ?? "Invalid input",
-        details: parsed.error.issues,
+        details: safeIssues(parsed.error.issues),
       },
     });
   }
@@ -470,6 +745,23 @@ export async function updateAccount(req: Request, res: Response) {
   const { name, phone, altPhone, recoveryEmail, avatarUrl, nid, company, bio, ...billing } =
     parsed.data;
 
+  const userId = user._id.toString();
+  // Decrypt what's on file first: the merge below and the NID rules both need
+  // to compare plaintext against plaintext.
+  const existingProfile = openProfile(user.toObject().profile, userId);
+
+  // One NID per person, and a verified account's NID doesn't change on a form.
+  const nidProblem = await checkNidChange(
+    userId,
+    user.verificationStatus,
+    existingProfile?.nid,
+    nid
+  );
+  if (nidProblem) {
+    const { status, ...error } = nidProblem;
+    return res.status(status).json({ error });
+  }
+
   if (name !== undefined) user.name = name;
   // The form always submits every field, so a blank input (parsed to
   // undefined) means "clear this value".
@@ -478,11 +770,20 @@ export async function updateAccount(req: Request, res: Response) {
   user.recoveryEmail = recoveryEmail;
 
   // Merge — see the note above about not clobbering professional credentials.
-  // `toObject()` first: spreading the live Mongoose subdocument would copy its
-  // internals, including a back-reference to the whole user document.
-  const existingProfile = user.toObject().profile;
-  user.profile = { ...existingProfile, avatarUrl, nid, company, bio };
-  user.billing = billing;
+  // `existingProfile` came from toObject() above: spreading the live Mongoose
+  // subdocument would copy its internals, including a back-reference to the
+  // whole user document.
+  const merged = keepNidCheck(existingProfile, {
+    ...existingProfile,
+    avatarUrl,
+    nid,
+    company,
+    bio,
+  });
+  // Seal on the way back down. Everything above this line worked in plaintext;
+  // nothing below it ever sees the NID.
+  user.profile = sealProfile(merged, userId);
+  user.billing = sealBilling(billing, userId);
 
   await user.save();
   return res.json({ data: { user: toSessionUser(user) } });
@@ -504,17 +805,17 @@ export async function changeEmail(req: Request, res: Response) {
     return res.status(400).json({
       error: {
         message: parsed.error.issues[0]?.message ?? "Invalid input",
-        details: parsed.error.issues,
+        details: safeIssues(parsed.error.issues),
       },
     });
   }
   const { email, currentPassword } = parsed.data;
 
-  const user = await User.findById(req.auth.sub);
+  const user = await User.findById(req.auth.sub).select("+passwordHash");
   if (!user) {
     return res.status(401).json({ error: { message: "Account no longer exists" } });
   }
-  if (!(await bcrypt.compare(currentPassword, user.passwordHash))) {
+  if (!(await verifyPassword(user.passwordHash, currentPassword)).ok) {
     return res.status(401).json({ error: { message: "That password is incorrect" } });
   }
 
@@ -644,21 +945,21 @@ export async function changePassword(req: Request, res: Response) {
     return res.status(400).json({
       error: {
         message: parsed.error.issues[0]?.message ?? "Invalid input",
-        details: parsed.error.issues,
+        details: safeIssues(parsed.error.issues),
       },
     });
   }
   const { currentPassword, newPassword } = parsed.data;
 
-  const user = await User.findById(req.auth.sub);
+  const user = await User.findById(req.auth.sub).select("+passwordHash");
   if (!user) {
     return res.status(401).json({ error: { message: "Account no longer exists" } });
   }
-  if (!(await bcrypt.compare(currentPassword, user.passwordHash))) {
+  if (!(await verifyPassword(user.passwordHash, currentPassword)).ok) {
     return res.status(401).json({ error: { message: "That password is incorrect" } });
   }
 
-  user.passwordHash = await bcrypt.hash(newPassword, 10);
+  user.passwordHash = await hashPassword(newPassword);
   await user.save();
 
   await Session.updateMany(
@@ -715,7 +1016,7 @@ export async function revokeSessions(req: Request, res: Response) {
     return res.status(400).json({
       error: {
         message: parsed.error.issues[0]?.message ?? "Invalid input",
-        details: parsed.error.issues,
+        details: safeIssues(parsed.error.issues),
       },
     });
   }
@@ -733,6 +1034,21 @@ export async function revokeSessions(req: Request, res: Response) {
   );
 
   return res.json({ data: { revoked: result.modifiedCount } });
+}
+
+/**
+ * GET /api/auth/jwks — the public keys access tokens are signed with.
+ *
+ * Public on purpose. Since the tokens are signed with Ed25519, verifying one
+ * needs only the public half, and publishing it is what lets anything else
+ * check a Buildora token without being able to mint one. It is also the
+ * demonstrable proof that the signing is asymmetric: take a token from a login
+ * response, take a key from here, and any JWT tool will verify the pair.
+ */
+export async function jwks(_req: Request, res: Response) {
+  // Cacheable — the key set changes only when a key is rotated.
+  res.setHeader("Cache-Control", "public, max-age=3600");
+  return res.json(await publicJwks());
 }
 
 /** GET /api/auth/me — load the logged-in user from the verified token. */

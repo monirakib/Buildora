@@ -1,15 +1,27 @@
 import type { NextFunction, Request, Response } from "express";
-import jwt from "jsonwebtoken";
 import type { UserRole } from "@buildora/shared";
-import { env } from "../config/env";
 import { touchSession } from "../models/Session";
+import { verifyAccessToken } from "../services/jwt";
+
+// Re-exported so the places that verify a token (the Socket.IO handshake) and
+// the place that signs one keep naming the same constants.
+export { JWT_AUDIENCE, JWT_ISSUER } from "../services/jwt";
 
 export interface AuthPayload {
   /** User id. */
   sub: string;
   role: UserRole;
-  /** Session id — identifies which login this token came from. */
-  sid?: string;
+  /**
+   * Session id — identifies which login this token came from.
+   *
+   * Required, where it used to be optional. Optional was a real hole: the
+   * session check below only ran `if (payload.sid)`, so a token without one
+   * skipped it entirely and could not be logged out, timed out, or revoked by
+   * an admin. It existed to let tokens minted before sessions kept working;
+   * that grace period is long over, and any token missing it now is either
+   * ancient or forged. Both should be refused.
+   */
+  sid: string;
 }
 
 declare global {
@@ -27,20 +39,32 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
   }
   let payload: AuthPayload;
   try {
-    payload = jwt.verify(header.slice("Bearer ".length), env.JWT_SECRET) as AuthPayload;
+    payload = await verifyAccessToken(header.slice("Bearer ".length));
   } catch {
     return res.status(401).json({ error: { message: "Invalid or expired token" } });
   }
+  if (!payload.sid) {
+    return res.status(401).json({ error: { message: "Invalid or expired token" } });
+  }
 
-  // The token names the login it came from — make sure that session hasn't
-  // been logged out or timed out. The same query bumps lastSeenAt, so the
-  // sessions collection doubles as an activity log. (Tokens minted before
-  // sessions existed carry no sid and pass through until they expire.)
-  if (payload.sid) {
-    const session = await touchSession(payload.sid, payload.sub);
-    if (!session) {
-      return res.status(401).json({ error: { message: "Session expired, please sign in again" } });
-    }
+  // The token names the login it came from — make sure that session hasn't been
+  // logged out or timed out, and that it is still the same device. The same
+  // query bumps lastSeenAt, so the sessions collection doubles as an activity
+  // log.
+  const touched = await touchSession(payload.sid, payload.sub, {
+    userAgent: req.headers["user-agent"],
+    ip: req.ip,
+    // Enforced here, and only here plus /auth/refresh: a browser sends the same
+    // User-Agent on every request of a session, so a token under a different
+    // one has moved to another machine.
+    bindUserAgent: true,
+  });
+  if (!touched.ok) {
+    const message =
+      touched.reason === "DEVICE_CHANGED"
+        ? "This login was ended because it was used from a different device"
+        : "Session expired, please sign in again";
+    return res.status(401).json({ error: { message } });
   }
 
   req.auth = payload;
@@ -57,12 +81,14 @@ export async function optionalAuth(req: Request, _res: Response, next: NextFunct
   const header = req.headers.authorization;
   if (header?.startsWith("Bearer ")) {
     try {
-      const payload = jwt.verify(header.slice("Bearer ".length), env.JWT_SECRET) as AuthPayload;
+      const payload = await verifyAccessToken(header.slice("Bearer ".length));
       if (payload.sid) {
-        const session = await touchSession(payload.sid, payload.sub);
-        if (session) req.auth = payload;
-      } else {
-        req.auth = payload;
+        const touched = await touchSession(payload.sid, payload.sub, {
+          userAgent: req.headers["user-agent"],
+          ip: req.ip,
+          bindUserAgent: true,
+        });
+        if (touched.ok) req.auth = payload;
       }
     } catch {
       // Invalid/expired token — treat as a guest rather than failing.
