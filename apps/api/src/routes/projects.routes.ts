@@ -56,6 +56,7 @@ import {
 import { acceptHandover, getHandover, saveHandover } from "../controllers/handover.controller";
 import { requireAuth } from "../middleware/auth";
 import { requireRole } from "../middleware/roles";
+import { requireVerified } from "../middleware/verified";
 import { aiInlineLimit } from "../middleware/aiRateLimit";
 
 export const projectsRouter = Router();
@@ -64,18 +65,36 @@ export const projectsRouter = Router();
 projectsRouter.use(requireAuth);
 
 // Briefs + lifecycle. `/mine` and `/briefs` must come before `/:id`.
-projectsRouter.post("/", requireRole(UserRole.LAND_OWNER), createProject);
+//
+// Reading a brief is open to anyone signed in; creating, publishing and moving
+// one is not. An unverified owner can draft nothing and post nothing, because
+// a brief is the invitation professionals spend unpaid hours answering.
+projectsRouter.post("/", requireRole(UserRole.LAND_OWNER), requireVerified, createProject);
 projectsRouter.get("/mine", listMyProjects);
 projectsRouter.get("/briefs", requireRole(...PROFESSIONAL_ROLES), listOpenBriefs);
 projectsRouter.get("/:id", getProject);
-projectsRouter.patch("/:id", requireRole(UserRole.LAND_OWNER), updateProject);
-projectsRouter.delete("/:id", requireRole(UserRole.LAND_OWNER), deleteProject);
-projectsRouter.post("/:id/post", requireRole(UserRole.LAND_OWNER), postBrief);
-projectsRouter.patch("/:id/status", requireRole(UserRole.LAND_OWNER), updateProjectStatus);
+projectsRouter.patch("/:id", requireRole(UserRole.LAND_OWNER), requireVerified, updateProject);
+projectsRouter.delete("/:id", requireRole(UserRole.LAND_OWNER), requireVerified, deleteProject);
+projectsRouter.post("/:id/post", requireRole(UserRole.LAND_OWNER), requireVerified, postBrief);
+projectsRouter.patch(
+  "/:id/status",
+  requireRole(UserRole.LAND_OWNER),
+  requireVerified,
+  updateProjectStatus
+);
 
 // Proposals on a brief (architects pitch, the owner reads). The draft endpoint
 // only writes text into the form — sending the pitch is still a separate POST.
-projectsRouter.post("/:id/proposals", requireRole(UserRole.ARCHITECT), createProposal);
+//
+// Pitching is gated: an unverified architect's proposal could never be accepted
+// anyway (see proposals.controller), so letting them write one was a dead end
+// that wasted their time. Now the wizard's promise and the rule agree.
+projectsRouter.post(
+  "/:id/proposals",
+  requireRole(UserRole.ARCHITECT),
+  requireVerified,
+  createProposal
+);
 projectsRouter.get("/:id/proposals", listProjectProposals);
 projectsRouter.post(
   "/:id/proposal-draft",
@@ -109,13 +128,18 @@ projectsRouter.get("/:id/floor-plans", listFloorPlans);
 // Before the /:level routes, or "advice" would be parsed as a floor number.
 // Rate limited because it spends the same free-tier quota as everything else AI.
 projectsRouter.post("/:id/floor-plans/advice", aiInlineLimit, floorPlanAdvice);
-projectsRouter.put("/:id/floor-plans/:level", saveFloorPlan);
-projectsRouter.delete("/:id/floor-plans/:level", deleteFloorPlan);
+projectsRouter.put("/:id/floor-plans/:level", requireVerified, saveFloorPlan);
+projectsRouter.delete("/:id/floor-plans/:level", requireVerified, deleteFloorPlan);
 
 // Contractor tendering and the build contract that follows an award.
-projectsRouter.get("/:id/boq-template", requireRole(UserRole.LAND_OWNER), getBoqTemplate);
+projectsRouter.get(
+  "/:id/boq-template",
+  requireRole(UserRole.LAND_OWNER),
+  requireVerified,
+  getBoqTemplate
+);
 projectsRouter.get("/:id/tender", getProjectTender);
-projectsRouter.post("/:id/tender", requireRole(UserRole.LAND_OWNER), createTender);
+projectsRouter.post("/:id/tender", requireRole(UserRole.LAND_OWNER), requireVerified, createTender);
 projectsRouter.get("/:id/build", getProjectBuild);
 
 // Site diary — one entry per day, weather-stamped. `/forecast` before

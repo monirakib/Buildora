@@ -1,21 +1,27 @@
 /**
  * Seeds the marketplace with demo sellers and listings:
  *
- *   - Two SUPPLIER accounts ("brands"): BuildMart Supplies and Metro Hardware
- *     (password: supplier123 — change/remove before any real deployment).
+ *   - Two SUPPLIER accounts ("brands"): BuildMart Supplies and Metro Hardware.
  *   - ~14 product listings with photos, spread across the two suppliers and
  *     the existing contractor account (Karim Builder).
  *
+ * Set SEED_SUPPLIER_PASSWORD to choose the demo sellers' password; without it
+ * one is generated and printed once. It used to be the literal "supplier123"
+ * written into this file, which meant two live accounts on every deployment
+ * shared a password published in the repository.
+ *
  * Run from apps/api: `pnpm tsx src/scripts/seed-market.ts`. Safe to re-run —
  * users are matched by email and products by (seller, name), so it upserts
- * instead of duplicating.
+ * instead of duplicating. Note the password only applies to accounts this run
+ * creates: an upsert leaves an existing account's password alone.
  */
 import mongoose from "mongoose";
-import bcrypt from "bcryptjs";
+import { randomBytes } from "node:crypto";
 import { ProductCategory, UserRole, VerificationStatus } from "@buildora/shared";
 import { connectDb } from "../db/mongoose";
 import { User } from "../models/User";
 import { Product } from "../models/Product";
+import { hashPassword } from "../services/password";
 
 const suppliers = [
   {
@@ -182,7 +188,11 @@ async function main() {
 
   // 1. Upsert the two supplier accounts.
   const sellerIds: Record<string, mongoose.Types.ObjectId> = {};
-  const passwordHash = await bcrypt.hash("supplier123", 10);
+  const password = process.env.SEED_SUPPLIER_PASSWORD || randomBytes(9).toString("base64url");
+  if (!process.env.SEED_SUPPLIER_PASSWORD) {
+    console.log(`[seed] Demo supplier password (shown once): ${password}`);
+  }
+  const passwordHash = await hashPassword(password);
   for (const s of suppliers) {
     const user = await User.findOneAndUpdate(
       { email: s.email },

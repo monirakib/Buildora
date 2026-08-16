@@ -1,5 +1,4 @@
 import type { Server as HttpServer } from "node:http";
-import jwt from "jsonwebtoken";
 import { isValidObjectId } from "mongoose";
 import { Server, type Socket } from "socket.io";
 import {
@@ -13,8 +12,9 @@ import {
   type CallPeer,
   type CallStartPayload,
 } from "@buildora/shared";
-import type { AuthPayload } from "../middleware/auth";
+import { verifyAccessToken } from "../services/jwt";
 import { env } from "../config/env";
+import { allowedOrigins } from "../config/origins";
 import { Call } from "../models/Call";
 import { touchSession } from "../models/Session";
 import { User } from "../models/User";
@@ -39,7 +39,10 @@ async function touchLastSeen(userId: string) {
  */
 export function attachSignaling(server: HttpServer) {
   const io = new Server(server, {
-    cors: { origin: env.CORS_ORIGIN, credentials: true },
+    // The same allowlist the REST side uses. Passing the parsed array rather
+    // than the raw env string matters now that CORS_ORIGIN can hold several
+    // origins — as one string it would be compared whole and never match.
+    cors: { origin: allowedOrigins, credentials: true },
   });
   registerIo(io);
 
@@ -106,12 +109,18 @@ export function attachSignaling(server: HttpServer) {
     try {
       const token = socket.handshake.auth?.token as string | undefined;
       if (!token) return next(new Error("Authentication required"));
-      const payload = jwt.verify(token, env.JWT_SECRET) as AuthPayload;
+      const payload = await verifyAccessToken(token);
 
-      if (payload.sid) {
-        const session = await touchSession(payload.sid, payload.sub);
-        if (!session) return next(new Error("Session expired"));
-      }
+      if (!payload.sid) return next(new Error("Session expired"));
+      // The User-Agent is not checked here — `bindUserAgent` is left off.
+      // Socket.IO's handshake carries the browser's, but it also reconnects on
+      // its own after a network blip, and failing a reconnect on a header the
+      // user never sees would drop calls for no security gain — the REST side
+      // already binds the same session.
+      const touched = await touchSession(payload.sid, payload.sub, {
+        ip: socket.handshake.address,
+      });
+      if (!touched.ok) return next(new Error("Session expired"));
 
       const user = await User.findById(payload.sub).select("name username role profile.avatarUrl");
       if (!user) return next(new Error("User not found"));

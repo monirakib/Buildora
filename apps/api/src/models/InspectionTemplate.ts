@@ -28,6 +28,15 @@ const inspectionTemplateSchema = new Schema<InspectionTemplateDoc>(
   { timestamps: true }
 );
 
+/**
+ * The picker only ever offers active templates, in name order.
+ *
+ * The unique index on `name` sorts correctly but cannot filter on `active`, so
+ * it would still read the inactive ones and discard them. This is a small
+ * collection either way — it is here for consistency, not because it is hot.
+ */
+inspectionTemplateSchema.index({ active: 1, name: 1 });
+
 export const InspectionTemplate = model<InspectionTemplateDoc>(
   "InspectionTemplate",
   inspectionTemplateSchema

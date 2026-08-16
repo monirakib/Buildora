@@ -1,10 +1,11 @@
-import { createHash, randomBytes } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import type { HydratedDocument } from "mongoose";
 import { NotificationType } from "@buildora/shared";
 import { env } from "../config/env";
 import { EmailVerification } from "../models/EmailVerification";
 import { Notification } from "../models/Notification";
 import { User, type UserDoc } from "../models/User";
+import { sha256Hex } from "../utils/hash";
 import { isEmailConfigured, sendEmailOrThrow } from "./email";
 import { notify } from "./notifications";
 
@@ -49,10 +50,14 @@ function cooldownAfter(sends: number): number {
 /** The bell entry that nags an unverified account, deduped on this exact title. */
 const NUDGE_TITLE = "Confirm your email address";
 
-/** The stored form of a token. Never store the token itself. */
-function hash(token: string): string {
-  return createHash("sha256").update(token).digest("hex");
-}
+/**
+ * The stored form of a token. Never store the token itself.
+ *
+ * Now shared with the refresh-token service, which follows the same rule — see
+ * utils/hash.ts for why an unsalted SHA-256 is the right choice for a value the
+ * server generated at random.
+ */
+const hash = sha256Hex;
 
 export interface IssueResult {
   sent: boolean;

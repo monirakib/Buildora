@@ -10,6 +10,7 @@ import { disputesRouter } from "./disputes.routes";
 import { geoRouter } from "./geo.routes";
 import { marketplaceRouter } from "./marketplace.routes";
 import { healthRouter } from "./health.routes";
+import { keysRouter } from "./keys.routes";
 import { meetingsRouter } from "./meetings.routes";
 import { messagesRouter } from "./messages.routes";
 import { nidRouter } from "./nid.routes";
@@ -31,6 +32,8 @@ export const apiRouter = Router();
 
 apiRouter.use("/health", healthRouter);
 apiRouter.use("/auth", authRouter);
+// Key management — SUPER_ADMIN only, and deliberately nothing else.
+apiRouter.use("/keys", keysRouter);
 apiRouter.use("/professionals", professionalsRouter);
 apiRouter.use("/inquiries", inquiriesRouter);
 apiRouter.use("/uploads", uploadsRouter);

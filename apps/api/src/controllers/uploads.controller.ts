@@ -1,13 +1,6 @@
 import type { Request, Response } from "express";
-import { v2 as cloudinary } from "cloudinary";
 import multer from "multer";
-import { env } from "../config/env";
-
-cloudinary.config({
-  cloud_name: env.CLOUDINARY_CLOUD_NAME,
-  api_key: env.CLOUDINARY_API_KEY,
-  api_secret: env.CLOUDINARY_API_SECRET,
-});
+import { cloudinary, isCloudinaryConfigured } from "../config/cloudinary";
 
 /**
  * Multer keeps the file in memory (never on disk) so it can be streamed
@@ -29,7 +22,7 @@ export const imageUpload = multer({
  * profile field it belongs to (avatar, certificate, portfolio photo).
  */
 export async function uploadImage(req: Request, res: Response) {
-  if (!env.CLOUDINARY_CLOUD_NAME || !env.CLOUDINARY_API_KEY || !env.CLOUDINARY_API_SECRET) {
+  if (!isCloudinaryConfigured()) {
     return res.status(503).json({
       error: { message: "Image uploads aren't configured (missing Cloudinary keys)" },
     });
@@ -71,7 +64,7 @@ export const modelUpload = multer({
  * file (it's not an image), served back to the in-browser 3D viewer.
  */
 export async function uploadModel(req: Request, res: Response) {
-  if (!env.CLOUDINARY_CLOUD_NAME || !env.CLOUDINARY_API_KEY || !env.CLOUDINARY_API_SECRET) {
+  if (!isCloudinaryConfigured()) {
     return res.status(503).json({
       error: { message: "Uploads aren't configured (missing Cloudinary keys)" },
     });

@@ -245,6 +245,8 @@ function NotificationRow({
 export function NotificationBell({ tone = "dark" }: { tone?: "dark" | "surface" }) {
   const router = useRouter();
   const token = useSession((s) => s.token);
+  const userId = useSession((s) => s.user?.id ?? null);
+  const hasToken = useSession((s) => Boolean(s.token));
   const items = useNotifications((s) => s.items);
   const unreadCount = useNotifications((s) => s.unreadCount);
   const loading = useNotifications((s) => s.loading);
@@ -261,12 +263,23 @@ export function NotificationBell({ tone = "dark" }: { tone?: "dark" | "surface" 
 
   // Load once the session is known, then keep a slow poll running as a fallback
   // for anything the socket missed (laptop asleep, connection dropped).
+  //
+  // Depends on the user, not on the token's value: tokens rotate every few
+  // minutes, and re-running on each one would refetch the feed and restart the
+  // interval every time — a poll that keeps getting reset never fires. The
+  // token is read fresh on each tick instead.
   useEffect(() => {
-    if (!token) return;
-    load(token);
-    const timer = setInterval(() => load(token), POLL_EVERY_MS);
+    if (!userId || !hasToken) return;
+    const current = () => useSession.getState().token;
+    const first = current();
+    if (!first) return;
+    load(first);
+    const timer = setInterval(() => {
+      const live = current();
+      if (live) load(live);
+    }, POLL_EVERY_MS);
     return () => clearInterval(timer);
-  }, [token, load]);
+  }, [userId, hasToken, load]);
 
   // Close on Escape or a click outside the dropdown.
   useEffect(() => {

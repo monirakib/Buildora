@@ -75,30 +75,30 @@ say so rather than failing. `apps/api/.env.example` documents each variable.
 The nine modules from the product plan, plus the accounts and verification layer underneath
 them. All data is real — read and written to MongoDB; nothing is mocked.
 
-| Module                  | What it does                                                                                             |
-| ----------------------- | -------------------------------------------------------------------------------------------------------- |
-| **Accounts & roles**    | Six actors, JWT + DB sessions, device list, admin console with live analytics                              |
-| **Verification**        | A staged wizard per profession — architect (IAB), engineer (IEB + seal), contractor and supplier (trade licence, TIN/BIN) — with automated pre-screens and a supervisor review queue |
-| **Design Studio**       | Briefs, architect proposals, concept fee, design contract, revision rounds, 2D floor plan builder          |
-| **Finance & Escrow**    | Escrow deposits, staged releases, platform commission, full payment ledger per contract                    |
-| **Permit Module**       | DAP zone checker, RAJUK fee calculator, ECPS step tracker — all admin-editable, none hardcoded             |
-| **Bidding System**      | BOQ tender builder, **sealed** contractor bids, side-by-side comparison, award                             |
-| **Inspection & Reports**| Milestone schedule, engineer-signed inspections with geotagged photo proof, escrow tranche release         |
-| **Site Diary**          | Daily log with labour, materials and equipment, stamped with the weather over the plot                     |
-| **Marketplace**         | Supplier product listings, land-owner orders, gateway checkout                                             |
-| **Comms Hub**           | Per-project messaging, 1:1 voice and video calls (WebRTC), notification bell, admin broadcasts             |
-| **Project Hub**         | One tabbed view per project — Overview, Architect, Engineer, RAJUK, Contractor, Site diary, Documents — with a progress bar computed from real completed gates |
+| Module                   | What it does                                                                                                                                                                                                                                                                                                                                                                   |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Accounts & roles**     | Six actors, JWT + DB sessions, device list, admin console with live analytics                                                                                                                                                                                                                                                                                                  |
+| **Verification**         | A staged wizard per role — land owner (identity + registered address), architect (IAB), engineer (IEB + seal), contractor and supplier (trade licence, TIN/BIN) — with automated NID and credential pre-screens, one NID per account, and a supervisor review queue. Unverified accounts can browse everything but can't act; land owners can still order from the marketplace |
+| **Design Studio**        | Briefs, architect proposals, concept fee, design contract, revision rounds, 2D floor plan builder                                                                                                                                                                                                                                                                              |
+| **Finance & Escrow**     | Escrow deposits, staged releases, platform commission, full payment ledger per contract                                                                                                                                                                                                                                                                                        |
+| **Permit Module**        | DAP zone checker, RAJUK fee calculator, ECPS step tracker — all admin-editable, none hardcoded                                                                                                                                                                                                                                                                                 |
+| **Bidding System**       | BOQ tender builder, **sealed** contractor bids, side-by-side comparison, award                                                                                                                                                                                                                                                                                                 |
+| **Inspection & Reports** | Milestone schedule, engineer-signed inspections with geotagged photo proof, escrow tranche release                                                                                                                                                                                                                                                                             |
+| **Site Diary**           | Daily log with labour, materials and equipment, stamped with the weather over the plot                                                                                                                                                                                                                                                                                         |
+| **Marketplace**          | Supplier product listings, land-owner orders, gateway checkout                                                                                                                                                                                                                                                                                                                 |
+| **Comms Hub**            | Per-project messaging, 1:1 voice and video calls (WebRTC), notification bell, admin broadcasts                                                                                                                                                                                                                                                                                 |
+| **Project Hub**          | One tabbed view per project — Overview, Architect, Engineer, RAJUK, Contractor, Site diary, Documents — with a progress bar computed from real completed gates                                                                                                                                                                                                                 |
 
 ## External integrations
 
-| Service                | Used for                                        | Key needed |
-| ---------------------- | ----------------------------------------------- | ---------- |
-| Cloudinary             | Image and document uploads                      | yes        |
-| SSLCommerz             | Payment gateway (sandbox)                       | yes        |
-| Google Gemini          | NID card OCR, in-app assistant                  | yes        |
-| Open-Meteo             | Site diary weather and rain-day tally           | no         |
-| OpenStreetMap/Nominatim| Plot map picker, geocoding (via Leaflet)        | no         |
-| IAB public directory   | Architect membership lookup                     | no         |
+| Service                 | Used for                                 | Key needed |
+| ----------------------- | ---------------------------------------- | ---------- |
+| Cloudinary              | Image and document uploads               | yes        |
+| SSLCommerz              | Payment gateway (sandbox)                | yes        |
+| Google Gemini           | NID card OCR, in-app assistant           | yes        |
+| Open-Meteo              | Site diary weather and rain-day tally    | no         |
+| OpenStreetMap/Nominatim | Plot map picker, geocoding (via Leaflet) | no         |
+| IAB public directory    | Architect membership lookup              | no         |
 
 Meeting invites are generated as Google Calendar / Outlook links and `.ics` downloads on the
 client, so the calendar feature needs no API key or OAuth consent.

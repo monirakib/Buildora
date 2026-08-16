@@ -36,7 +36,10 @@ export function IdentityStep({ form, patch, onError, email }: StepProps & { emai
               className={input}
             />
           </Field>
-          <Field id="dateOfBirth" title="Date of Birth">
+          {/* Required, because two of the NID checks are built on it: nobody
+              is issued a card before 18, and a 17-digit number carries its
+              holder's birth year in front. */}
+          <Field id="dateOfBirth" title="Date of Birth" required hint="As printed on your NID card">
             <input
               id="dateOfBirth"
               type="date"
@@ -74,26 +77,10 @@ export function IdentityStep({ form, patch, onError, email }: StepProps & { emai
           <input id="email" type="email" value={email} disabled className={input} />
         </Field>
 
-        <Field id="currentAddress" title="Current Address">
-          <textarea
-            id="currentAddress"
-            rows={2}
-            maxLength={300}
-            value={form.currentAddress}
-            onChange={(e) => patch({ currentAddress: e.target.value })}
-            className={input}
-          />
-        </Field>
-        <Field id="permanentAddress" title="Permanent Address">
-          <textarea
-            id="permanentAddress"
-            rows={2}
-            maxLength={300}
-            value={form.permanentAddress}
-            onChange={(e) => patch({ permanentAddress: e.target.value })}
-            className={input}
-          />
-        </Field>
+        {/* Addresses used to be two free-text boxes here. They moved to their
+            own step, where the division and district are picked from a list —
+            that's what lets the postcode be checked against the district, and
+            the district against the address on the back of the card. */}
 
         <Field
           id="nid"
@@ -134,6 +121,8 @@ export function IdentityStep({ form, patch, onError, email }: StepProps & { emai
         <NidCheckPanel
           nid={form.nid}
           dateOfBirth={form.dateOfBirth}
+          permanentDistrict={form.permanentDistrict}
+          permanentPostcode={form.permanentPostcode}
           hasCardImage={!!form.nidFrontUrl}
         />
 

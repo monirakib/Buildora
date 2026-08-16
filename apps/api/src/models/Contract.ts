@@ -1,4 +1,5 @@
 import { Schema, model, Types } from "mongoose";
+import { protectLedger, type LedgerProtected } from "../services/ledgerIntegrity";
 import {
   ContractStatus,
   DeliverableKind,
@@ -35,7 +36,7 @@ export interface DeliverableDoc {
  * 04–07): concept fee → concept review → escrow deposit → design with ≤3
  * revision rounds → approval releases the escrow minus platform commission.
  */
-export interface ContractDoc {
+export interface ContractDoc extends LedgerProtected {
   project: Types.ObjectId;
   client: Types.ObjectId;
   architect: Types.ObjectId;
@@ -106,5 +107,30 @@ const contractSchema = new Schema<ContractDoc>(
   },
   { timestamps: true }
 );
+
+/** The design-contract ledger: concept fee, escrow, and what left it. */
+protectLedger(contractSchema, (doc) => ({
+  conceptFeeBdt: doc.conceptFeeBdt,
+  designFeeBdt: doc.designFeeBdt,
+  commissionRate: doc.commissionRate,
+  commissionBdt: doc.commissionBdt,
+  releasedToArchitectBdt: doc.releasedToArchitectBdt,
+  status: doc.status,
+  payments: (doc.payments as { kind: string; amountBdt: number; at?: Date }[] | undefined)?.map(
+    (p) => `${p.kind}:${p.amountBdt}:${p.at ? new Date(p.at).toISOString() : ""}`
+  ),
+}));
+
+/**
+ * `listMyContracts` matches `{ $or: [{ client: me }, { architect: me }] }` and
+ * sorts newest-first.
+ *
+ * An `$or` is planned as one lookup per branch whose results are merged, so each
+ * branch needs its own index — hence two, not one compound. Both end in
+ * `createdAt` so each branch comes back already ordered and the merge has less
+ * to do.
+ */
+contractSchema.index({ client: 1, createdAt: -1 });
+contractSchema.index({ architect: 1, createdAt: -1 });
 
 export const Contract = model<ContractDoc>("Contract", contractSchema);

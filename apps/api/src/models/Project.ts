@@ -77,14 +77,16 @@ const plotLocationSchema = new Schema(
 
 const projectSchema = new Schema<ProjectDoc>(
   {
-    owner: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
-    architect: { type: Schema.Types.ObjectId, ref: "User", index: true },
-    // Set when a structural engineer is appointed; indexed because an engineer's
-    // project list queries on it, the same way an architect's does.
-    engineer: { type: Schema.Types.ObjectId, ref: "User", index: true },
-    // Set when the owner awards a tender. Indexed for the same reason as the
-    // two above: it's how the contractor's project list is queried.
-    contractor: { type: Schema.Types.ObjectId, ref: "User", index: true },
+    // These four are how each role finds its own projects. None of them carries
+    // `index: true` any more — every one of those lists also sorts by createdAt,
+    // so the compound indexes at the bottom of this file serve them properly and
+    // a single-field index here would be a redundant prefix of one.
+    owner: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    architect: { type: Schema.Types.ObjectId, ref: "User" },
+    // Set when a structural engineer is appointed.
+    engineer: { type: Schema.Types.ObjectId, ref: "User" },
+    // Set when the owner awards a tender.
+    contractor: { type: Schema.Types.ObjectId, ref: "User" },
     title: { type: String, required: true, trim: true, maxlength: 120 },
     description: { type: String, required: true, trim: true, maxlength: 3000 },
     address: { type: String, required: true, trim: true, maxlength: 200 },
@@ -112,14 +114,43 @@ const projectSchema = new Schema<ProjectDoc>(
     // Sparse so the unique index only covers projects that are actually
     // shared; without sparse, every unshared project would collide on null.
     shareToken: { type: String, unique: true, sparse: true, index: true },
+    // Not indexed on its own — see the {status, createdAt} index below.
     status: {
       type: String,
       enum: Object.values(ProjectStatus),
       default: ProjectStatus.DRAFT,
-      index: true,
     },
   },
   { timestamps: true }
 );
+
+/**
+ * The open-briefs board: `listOpenBriefs` matches `status: BRIEF_POSTED` and
+ * sorts newest-first.
+ *
+ * Equality field first, sort field second. Read in that order the index is
+ * already grouped by status and, inside each group, ordered by createdAt — so
+ * MongoDB walks a contiguous run of entries in the order the query asked for
+ * and never sorts anything. A single-field index on `status` alone would narrow
+ * the search but still leave every matching document to be sorted in memory.
+ *
+ * The direction (-1) does not strictly matter — an index can be walked either
+ * way — but it is written to match the query so the intent is obvious.
+ */
+projectSchema.index({ status: 1, createdAt: -1 });
+
+/**
+ * The four "my projects" lists. `listMyProjects` picks one of these fields based
+ * on the caller's role and always sorts newest-first, so each gets the same
+ * equality-then-sort treatment as the board above.
+ *
+ * Four narrow indexes rather than one wide one: a project has one owner and at
+ * most one architect, engineer and contractor, and the query only ever filters
+ * on a single one of them, so a combined index could not be used by any of them.
+ */
+projectSchema.index({ owner: 1, createdAt: -1 });
+projectSchema.index({ architect: 1, createdAt: -1 });
+projectSchema.index({ engineer: 1, createdAt: -1 });
+projectSchema.index({ contractor: 1, createdAt: -1 });
 
 export const Project = model<ProjectDoc>("Project", projectSchema);

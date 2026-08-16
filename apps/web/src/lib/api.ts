@@ -27,11 +27,23 @@ export interface ApiHealth {
   uptime: number;
 }
 
-/** User + JWT returned by the register and login endpoints. */
+/** User + access token returned by the register, login and refresh endpoints. */
 export interface AuthResult {
   user: SessionUser;
   token: string;
+  /** Seconds until `token` expires. */
+  expiresIn: number;
 }
+
+/**
+ * Header the API requires on the two endpoints that read the refresh cookie.
+ *
+ * It is not a secret — it is a CSRF guard. A cross-origin page cannot set a
+ * custom header without the browser first sending a preflight request, which
+ * the API only answers for our own origins. So the header can only be present
+ * on a request the app itself made.
+ */
+const REFRESH_HEADER = { "X-Buildora-Refresh": "1" };
 
 /**
  * An error the API itself returned, with the status attached. Callers that only
@@ -56,13 +68,82 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * The in-flight refresh, if there is one.
+ *
+ * Access tokens now expire in fifteen minutes, and a screen typically fires
+ * several API calls at once — so when the token dies, several of them get a 401
+ * in the same tick. Without this they would each start their own refresh, and
+ * since every refresh rotates the token, the later ones would be presenting a
+ * token the earlier ones had already replaced. The server reads that as a
+ * replayed token and revokes the session, so the user is signed out by nothing
+ * worse than opening a busy page. Sharing one promise means one refresh.
+ */
+let refreshInFlight: Promise<string | null> | null = null;
+
+/**
+ * Trades the httpOnly refresh cookie for a new access token, and writes it to
+ * the session store. Returns null when the session is genuinely over.
+ *
+ * `credentials: "include"` is required and easy to miss: without it the browser
+ * sends no cookies at all to a different origin, and this always fails.
+ */
+async function refreshAccessToken(): Promise<string | null> {
+  refreshInFlight ??= (async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
+        method: "POST",
+        credentials: "include",
+        headers: REFRESH_HEADER,
+      });
+      if (!res.ok) return null;
+      const body = (await res.json()) as { data?: AuthResult };
+      if (!body.data?.token) return null;
+      const { useSession } = await import("@/store/useSession");
+      useSession.getState().setSession(body.data.user, body.data.token);
+      return body.data.token;
+    } catch {
+      // Network failure is not proof the session ended — leave it alone and
+      // let the caller surface the original error.
+      return null;
+    } finally {
+      refreshInFlight = null;
+    }
+  })();
+  return refreshInFlight;
+}
+
+/** Exported for SessionSync, which refreshes on load and on a timer. */
+export function refreshSession(): Promise<string | null> {
+  return refreshAccessToken();
+}
+
 // Exported so the domain modules (apiProjects, apiMessages, apiPermits) share
 // the same fetch + error-shaping behaviour.
-export async function request<T>(path: string, init?: RequestInit): Promise<T> {
+export async function request<T>(path: string, init?: RequestInit, retry = true): Promise<T> {
   const res = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
     headers: { "Content-Type": "application/json", ...init?.headers },
   });
+
+  // An expired access token looks like any other 401, so try exactly once to
+  // renew it and repeat the call. Every caller in the app goes through this
+  // function, which is why none of them had to learn about refreshing.
+  //
+  // Only retried when the request actually carried a token: a 401 from a call
+  // that never authenticated means "you need to sign in", not "your token
+  // aged out", and refreshing on those would turn every anonymous 401 into a
+  // pointless extra round trip.
+  const authorization = new Headers(init?.headers as HeadersInit | undefined).get("Authorization");
+  if (res.status === 401 && retry && authorization) {
+    const fresh = await refreshAccessToken();
+    if (fresh) {
+      const headers = new Headers(init?.headers as HeadersInit | undefined);
+      headers.set("Authorization", `Bearer ${fresh}`);
+      return request<T>(path, { ...init, headers }, false);
+    }
+  }
+
   if (!res.ok) {
     // The API replies with { error: { message } } — surface that message so
     // forms can show "Invalid email or password" instead of a status code.
@@ -91,8 +172,12 @@ export async function registerLandOwner(input: {
   phone?: string;
   password: string;
 }): Promise<AuthResult> {
+  // credentials:"include" so the browser keeps the refresh cookie the API sets
+  // on this response. Without it the signup succeeds and the session silently
+  // can't be renewed fifteen minutes later.
   const res = await request<{ data: AuthResult }>("/api/auth/register", {
     method: "POST",
+    credentials: "include",
     body: JSON.stringify(input),
   });
   return res.data;
@@ -106,6 +191,7 @@ export async function registerLandOwner(input: {
 export async function registerProfessional(input: Record<string, string>): Promise<AuthResult> {
   const res = await request<{ data: AuthResult }>("/api/auth/register-professional", {
     method: "POST",
+    credentials: "include",
     body: JSON.stringify(input),
   });
   return res.data;
@@ -117,6 +203,7 @@ export async function loginUser(input: {
 }): Promise<AuthResult> {
   const res = await request<{ data: AuthResult }>("/api/auth/login", {
     method: "POST",
+    credentials: "include",
     body: JSON.stringify(input),
   });
   return res.data;
@@ -236,13 +323,17 @@ export async function revokeSessions(token: string, ids: string[]): Promise<numb
 }
 
 /**
- * POST /api/auth/logout — revoke this login's session server-side so the JWT
- * stops working everywhere, not just in this browser's localStorage.
+ * POST /api/auth/logout — revoke this login's session server-side so the token
+ * stops working everywhere, and clear the refresh cookie in the browser.
+ *
+ * Sends the cookie (credentials) and the CSRF header, because this is one of
+ * the two endpoints that touches it.
  */
 export async function logoutUser(token: string): Promise<void> {
   await request<{ data: { ok: boolean } }>("/api/auth/logout", {
     method: "POST",
-    headers: { Authorization: `Bearer ${token}` },
+    credentials: "include",
+    headers: { Authorization: `Bearer ${token}`, ...REFRESH_HEADER },
   });
 }
 

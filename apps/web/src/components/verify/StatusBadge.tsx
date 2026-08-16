@@ -2,24 +2,40 @@
 
 import { useRef } from "react";
 import { BadgeCheck, FileCheck2, PencilLine, ShieldAlert, ShieldCheck } from "lucide-react";
-import { VerificationStatus } from "@buildora/shared";
+import { UserRole, VerificationStatus } from "@buildora/shared";
 import { gsap, prefersReducedMotion, useGSAP } from "@/lib/gsap";
+import { wizardFor } from "./roles";
 
 // The four stages of the verification journey, in order. REJECTED is shown
-// separately — it sends the architect back to the editable draft state.
-const STAGES = [
-  { status: VerificationStatus.PENDING_VERIFICATION, label: "Draft", icon: PencilLine },
-  {
-    status: VerificationStatus.DOCUMENTS_SUBMITTED,
-    label: "Documents Submitted",
-    icon: FileCheck2,
-  },
-  { status: VerificationStatus.UNDER_REVIEW, label: "Supervisor Review", icon: ShieldCheck },
-  { status: VerificationStatus.APPROVED, label: "Verified Architect", icon: BadgeCheck },
-];
+// separately — it sends the applicant back to the editable draft state.
+//
+// The final label depends on the role: this used to read "Verified Architect"
+// for everyone, which was already wrong for the three other professions and
+// would be nonsense for a land owner. It comes from the same role table the
+// wizard reads.
+function stagesFor(role: UserRole) {
+  return [
+    { status: VerificationStatus.PENDING_VERIFICATION, label: "Draft", icon: PencilLine },
+    {
+      status: VerificationStatus.DOCUMENTS_SUBMITTED,
+      label: "Documents Submitted",
+      icon: FileCheck2,
+    },
+    { status: VerificationStatus.UNDER_REVIEW, label: "Supervisor Review", icon: ShieldCheck },
+    {
+      status: VerificationStatus.APPROVED,
+      // Roles with no wizard (admin, key custodian) never reach this screen;
+      // the fallback only keeps the badge readable if one somehow does.
+      label: wizardFor(role)?.verifiedLabel ?? "Verified",
+      icon: BadgeCheck,
+    },
+  ];
+}
 
 /** Animated pipeline badge: Draft → Submitted → Review → Verified. */
-export function StatusBadge({ status }: { status: VerificationStatus }) {
+export function StatusBadge({ status, role }: { status: VerificationStatus; role: UserRole }) {
+  const STAGES = stagesFor(role);
+
   // Hooks must run on every render, so they sit above the REJECTED early
   // return below — the ref is simply null in that branch.
   const activeRef = useRef<HTMLSpanElement>(null);

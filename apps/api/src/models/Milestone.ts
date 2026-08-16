@@ -1,5 +1,6 @@
 import { Schema, model, Types } from "mongoose";
 import { InspectionVerdict, MilestoneStatus } from "@buildora/shared";
+import { protectLedger, type LedgerProtected } from "../services/ledgerIntegrity";
 
 /**
  * One construction stage, and the escrow tranche that pays for it.
@@ -40,7 +41,7 @@ export interface InspectionDoc {
   inspectedAt: Date;
 }
 
-export interface MilestoneDoc {
+export interface MilestoneDoc extends LedgerProtected {
   buildContract: Types.ObjectId;
   project: Types.ObjectId;
   order: number;
@@ -123,5 +124,19 @@ const milestoneSchema = new Schema<MilestoneDoc>(
 
 /** The schedule always reads in build order, and positions can't collide. */
 milestoneSchema.index({ buildContract: 1, order: 1 }, { unique: true });
+
+/**
+ * The tranche figures and the status gate that decides when they pay out.
+ * `status` is in here because moving a milestone straight to RELEASED is the
+ * cheapest possible way to steal from the escrow chain.
+ */
+protectLedger(milestoneSchema, (doc) => ({
+  buildContract: String(doc.buildContract),
+  order: doc.order,
+  amountBdt: doc.amountBdt,
+  amountPct: doc.amountPct,
+  releasedAmountBdt: doc.releasedAmountBdt,
+  status: doc.status,
+}));
 
 export const Milestone = model<MilestoneDoc>("Milestone", milestoneSchema);

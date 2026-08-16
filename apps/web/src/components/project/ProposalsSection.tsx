@@ -11,6 +11,7 @@ import {
 } from "@buildora/shared";
 import { createProposal, decideProposal, listProjectProposals } from "@/lib/apiProjects";
 import { VerifiedBadge } from "@/components/app/VerifiedBadge";
+import { VerifyNotice, useIsVerified } from "@/components/app/VerifyGate";
 import { formatBdt, formatDate } from "@/components/app/projectStatus";
 import { ProposalDraftButton } from "@/components/project/ProposalDraftButton";
 
@@ -58,6 +59,7 @@ export function ProposalsSection({
 
   const isOwner = role === UserRole.LAND_OWNER;
   const isArchitect = role === UserRole.ARCHITECT;
+  const isVerified = useIsVerified();
 
   // Pitch form (architects only).
   const [form, setForm] = useState({
@@ -235,8 +237,15 @@ export function ProposalsSection({
             </div>
           ))}
 
-          {/* Architects pitch here while the brief is open and they have no live proposal. */}
-          {isArchitect && !myLiveProposal && (
+          {/* Architects pitch here while the brief is open and they have no live
+              proposal — and only once verified, since an unverified architect's
+              proposal can't be accepted anyway. */}
+          {isArchitect && !myLiveProposal && !isVerified && (
+            <div className={cardClass}>
+              <VerifyNotice action="send proposals on briefs" />
+            </div>
+          )}
+          {isArchitect && !myLiveProposal && isVerified && (
             <form onSubmit={submitPitch} className={cardClass}>
               <h3 className="font-bold">Send a proposal</h3>
               <p className="mt-1 text-sm text-stone-600 dark:text-slate-400">

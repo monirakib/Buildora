@@ -35,11 +35,11 @@ export interface ChangeOrderDoc {
 const changeOrderSchema = new Schema<ChangeOrderDoc>(
   {
     project: { type: Schema.Types.ObjectId, ref: "Project", required: true, index: true },
+    // Covered by the {buildContract, createdAt} index below.
     buildContract: {
       type: Schema.Types.ObjectId,
       ref: "BuildContract",
       required: true,
-      index: true,
     },
     raisedBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
     title: { type: String, required: true, trim: true, maxlength: 160 },
@@ -60,5 +60,8 @@ const changeOrderSchema = new Schema<ChangeOrderDoc>(
   },
   { timestamps: true }
 );
+
+/** One contract's variations, newest-first, on the build panel. */
+changeOrderSchema.index({ buildContract: 1, createdAt: -1 });
 
 export const ChangeOrder = model<ChangeOrderDoc>("ChangeOrder", changeOrderSchema);

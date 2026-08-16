@@ -2,17 +2,18 @@ import { UserRole } from "@buildora/shared";
 import type { WizardForm } from "./form";
 
 /**
- * What each profession's verification wizard is made of.
+ * What each role's verification wizard is made of.
  *
- * All four roles run the same machinery — sidebar, autosave, completion bar,
- * submit — and differ only in this table: which steps they see, in what order,
- * and what the page calls itself. Adding a profession means adding a row here,
- * not another wizard.
+ * Every role runs the same machinery — sidebar, autosave, completion bar,
+ * submit — and differs only in this table: which steps they see, in what order,
+ * and what the page calls itself. Adding a role means adding a row here, not
+ * another wizard.
  */
 
 /** Every step the wizard knows how to render. */
 export type StepKey =
   | "identity"
+  | "address"
   | "professional"
   | "license"
   | "engineerLicense"
@@ -52,6 +53,7 @@ const ARCHITECT: RoleWizard = {
   verifiedLabel: "Verified Architect",
   steps: [
     { key: "identity", label: "Identity" },
+    { key: "address", label: "Address" },
     { key: "professional", label: "Professional" },
     { key: "license", label: "License" },
     { key: "education", label: "Education" },
@@ -75,6 +77,7 @@ const ENGINEER: RoleWizard = {
   verifiedLabel: "Verified Structural Engineer",
   steps: [
     { key: "identity", label: "Identity" },
+    { key: "address", label: "Address" },
     { key: "professional", label: "Practice" },
     { key: "engineerLicense", label: "IEB & Seal" },
     { key: "education", label: "Education" },
@@ -98,6 +101,7 @@ const CONTRACTOR: RoleWizard = {
   verifiedLabel: "Verified Contractor",
   steps: [
     { key: "identity", label: "Identity" },
+    { key: "address", label: "Address" },
     { key: "professional", label: "Firm" },
     { key: "business", label: "Registration" },
     { key: "capacity", label: "Capacity" },
@@ -120,6 +124,7 @@ const SUPPLIER: RoleWizard = {
   verifiedLabel: "Verified Supplier",
   steps: [
     { key: "identity", label: "Identity" },
+    { key: "address", label: "Address" },
     { key: "professional", label: "Business" },
     { key: "business", label: "Registration" },
     { key: "catalogue", label: "Catalogue" },
@@ -130,8 +135,42 @@ const SUPPLIER: RoleWizard = {
   ],
 };
 
-export function wizardFor(role: UserRole): RoleWizard {
+// A land owner holds no licence and answers to no professional body, so there
+// is no credential step to give them — their verification is an identity check
+// and nothing more. It's the shortest wizard on the platform by design: what
+// the platform needs to know is that they are a real, contactable adult whose
+// NID nobody else is using, because that is what an architect relies on when
+// they take a brief and what escrow relies on when it holds their money.
+const LAND_OWNER: RoleWizard = {
+  eyebrow: "Land Owner Verification",
+  intro:
+    "Confirm your identity so professionals know who they're working for. Verified land owners " +
+    "can post briefs, hire architects and engineers, run tenders and fund escrow. " +
+    "You can order from the marketplace either way.",
+  verifiedLabel: "Verified Land Owner",
+  steps: [
+    { key: "identity", label: "Identity" },
+    { key: "address", label: "Address" },
+    { key: "declaration", label: "Declaration" },
+  ],
+};
+
+/**
+ * The verification wizard for a role, or undefined for roles that have nothing
+ * to verify (ADMIN, SUPER_ADMIN).
+ *
+ * Architect used to be the `default:` branch, which meant any role without a
+ * case of its own was handed an architect's IAB-membership wizard. That was
+ * harmless while the only such role was ADMIN, who never opens the page — and
+ * it is exactly the kind of silent fallback that stops being harmless the
+ * moment a role is added. Returning undefined makes callers say what they do.
+ */
+export function wizardFor(role: UserRole): RoleWizard | undefined {
   switch (role) {
+    case UserRole.LAND_OWNER:
+      return LAND_OWNER;
+    case UserRole.ARCHITECT:
+      return ARCHITECT;
     case UserRole.STRUCTURAL_ENGINEER:
       return ENGINEER;
     case UserRole.CONTRACTOR:
@@ -139,7 +178,7 @@ export function wizardFor(role: UserRole): RoleWizard {
     case UserRole.SUPPLIER:
       return SUPPLIER;
     default:
-      return ARCHITECT;
+      return undefined;
   }
 }
 
@@ -158,8 +197,17 @@ export function stepCopy(key: StepKey, role: UserRole): { title: string; subtitl
   const engineer = role === UserRole.STRUCTURAL_ENGINEER;
   const contractor = role === UserRole.CONTRACTOR;
   const supplier = role === UserRole.SUPPLIER;
+  const owner = role === UserRole.LAND_OWNER;
 
   switch (key) {
+    case "identity":
+      return {
+        title: "Identity",
+        subtitle: owner
+          ? "Your NID and a photo of yourself. This is the whole of a land owner's verification, so it's checked carefully."
+          : "Your NID and a photo of yourself, checked against the card you upload.",
+      };
+
     case "professional":
       if (contractor) {
         return {
@@ -266,7 +314,23 @@ export function stepCopy(key: StepKey, role: UserRole): { title: string; subtitl
 export function isStepComplete(key: StepKey, form: WizardForm, role: UserRole): boolean {
   switch (key) {
     case "identity":
-      return !!(form.avatarUrl && form.name && form.nid && form.nidFrontUrl && form.nidBackUrl);
+      return !!(
+        form.avatarUrl &&
+        form.name &&
+        form.nid &&
+        form.dateOfBirth &&
+        form.nidFrontUrl &&
+        form.nidBackUrl
+      );
+    case "address":
+      // Only the permanent trio counts — that's the one the NID checks compare
+      // against and the one computeCompletion makes mandatory.
+      return !!(
+        form.permanentAddress &&
+        form.permanentDivision &&
+        form.permanentDistrict &&
+        form.permanentPostcode
+      );
     case "professional":
       // Independents have no firm to name, so the firm only counts when they
       // aren't independent. Contractors and suppliers are always a business.

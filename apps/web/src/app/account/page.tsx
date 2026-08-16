@@ -814,9 +814,23 @@ export default function AccountPage() {
                   <NidCheckPanel
                     nid={form.nid}
                     dateOfBirth={form.dateOfBirth}
+                    permanentDistrict={user.profile?.permanentDistrict}
+                    permanentPostcode={user.profile?.permanentPostcode}
                     hasCardImage={!!form.nidFrontUrl}
                     saved={user.profile?.nidCheck}
                   />
+                  {/* These fields feed verification but don't complete it — the
+                      address and declaration steps live in the wizard, and only
+                      a submitted request reaches a supervisor. */}
+                  <p className="mt-3 text-xs text-stone-500 dark:text-slate-500">
+                    Getting verified also needs your registered address and a signed declaration.{" "}
+                    <Link
+                      href="/verify"
+                      className="font-semibold text-amber-600 hover:underline dark:text-amber-400"
+                    >
+                      Finish verification →
+                    </Link>
+                  </p>
                 </FieldRow>
                 <FieldRow label="Company" hint="Optional" htmlFor="company">
                   <input

@@ -1,4 +1,5 @@
 import { Schema, model, Types } from "mongoose";
+import { protectLedger, type LedgerProtected } from "../services/ledgerIntegrity";
 import {
   BuildContractStatus,
   DEFAULT_COMMISSION_RATE,
@@ -26,7 +27,7 @@ export interface PaymentEntryDoc {
   at: Date;
 }
 
-export interface BuildContractDoc {
+export interface BuildContractDoc extends LedgerProtected {
   project: Types.ObjectId;
   tender: Types.ObjectId;
   bid: Types.ObjectId;
@@ -63,8 +64,10 @@ const buildContractSchema = new Schema<BuildContractDoc>(
     project: { type: Schema.Types.ObjectId, ref: "Project", required: true },
     tender: { type: Schema.Types.ObjectId, ref: "Tender", required: true },
     bid: { type: Schema.Types.ObjectId, ref: "Bid", required: true },
-    client: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
-    contractor: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
+    // Not indexed individually — the compound indexes at the bottom lead with
+    // these and cover the sort too.
+    client: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    contractor: { type: Schema.Types.ObjectId, ref: "User", required: true },
     engineer: { type: Schema.Types.ObjectId, ref: "User" },
     status: {
       type: String,
@@ -93,5 +96,36 @@ buildContractSchema.index(
     },
   }
 );
+
+/**
+ * The construction escrow ledger — the largest sums on the platform, and the
+ * record an attacker with database access would most want to edit.
+ */
+protectLedger(buildContractSchema, (doc) => ({
+  contractSumBdt: doc.contractSumBdt,
+  releasedToContractorBdt: doc.releasedToContractorBdt,
+  commissionBdt: doc.commissionBdt,
+  commissionRate: doc.commissionRate,
+  status: doc.status,
+  contractor: String(doc.contractor),
+  client: String(doc.client),
+  // Each entry reduced to what it means financially, so the tag doesn't churn
+  // on incidental subdocument fields Mongoose may add.
+  payments: (doc.payments as { kind: string; amountBdt: number; at?: Date }[] | undefined)?.map(
+    (p) => `${p.kind}:${p.amountBdt}:${p.at ? new Date(p.at).toISOString() : ""}`
+  ),
+}));
+
+/**
+ * `/api/build/mine` matches `{ $or: [{client}, {contractor}, {engineer}] }`,
+ * newest-first, so each of the three branches gets its own index.
+ *
+ * `engineer` had no index at all before this — the field was added later than
+ * the other two and the `$or` branch was never given one, so that branch of
+ * every query scanned the collection.
+ */
+buildContractSchema.index({ client: 1, createdAt: -1 });
+buildContractSchema.index({ contractor: 1, createdAt: -1 });
+buildContractSchema.index({ engineer: 1, createdAt: -1 });
 
 export const BuildContract = model<BuildContractDoc>("BuildContract", buildContractSchema);

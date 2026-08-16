@@ -1,5 +1,6 @@
 import { Schema, model, Types } from "mongoose";
 import { PaymentPurpose, PaymentSessionStatus } from "@buildora/shared";
+import { protectLedger, type LedgerProtected } from "../services/ledgerIntegrity";
 
 /**
  * One attempt at paying for one thing through SSLCommerz.
@@ -17,7 +18,7 @@ import { PaymentPurpose, PaymentSessionStatus } from "@buildora/shared";
  * server to server — and crediting an escrow twice would be a real financial
  * bug. Settlement only ever runs when this field is unset.
  */
-export interface PaymentSessionDoc {
+export interface PaymentSessionDoc extends LedgerProtected {
   purpose: PaymentPurpose;
   refId: Types.ObjectId;
   payer: Types.ObjectId;
@@ -70,5 +71,20 @@ const paymentSessionSchema = new Schema<PaymentSessionDoc>(
   },
   { timestamps: true }
 );
+
+/**
+ * The gateway's side of the story. `appliedAt` is in here because it is the
+ * idempotency latch that stops one payment being credited twice — clearing it
+ * in the database would let a settled session be replayed.
+ */
+protectLedger(paymentSessionSchema, (doc) => ({
+  tranId: doc.tranId,
+  purpose: doc.purpose,
+  refId: String(doc.refId),
+  amountBdt: doc.amountBdt,
+  status: doc.status,
+  appliedAt: doc.appliedAt,
+  valId: doc.valId,
+}));
 
 export const PaymentSession = model<PaymentSessionDoc>("PaymentSession", paymentSessionSchema);

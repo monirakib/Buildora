@@ -14,10 +14,12 @@ import {
 } from "../controllers/meetings.controller";
 import { requireAuth } from "../middleware/auth";
 import { requireRole } from "../middleware/roles";
+import { requireVerified } from "../middleware/verified";
 
 export const meetingsRouter = Router();
 
-// An architect's own bookable hours.
+// An architect's own bookable hours. Publishing hours is an offer to meet
+// clients, so it waits for the badge; reading your own back does not.
 meetingsRouter.get(
   "/availability",
   requireAuth,
@@ -28,12 +30,19 @@ meetingsRouter.put(
   "/availability",
   requireAuth,
   requireRole(UserRole.ARCHITECT),
+  requireVerified,
   saveMyAvailability
 );
 
 // Anyone signed in can look at an architect's open slots; only land owners book.
 meetingsRouter.get("/architects/:id/slots", requireAuth, getArchitectSlots);
-meetingsRouter.post("/", requireAuth, requireRole(UserRole.LAND_OWNER), bookMeeting);
+meetingsRouter.post(
+  "/",
+  requireAuth,
+  requireRole(UserRole.LAND_OWNER),
+  requireVerified,
+  bookMeeting
+);
 
 // Everything below is for either side of a meeting they're already on — the
 // controllers check membership, so no role guard applies.

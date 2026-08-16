@@ -37,8 +37,9 @@ export interface MarketOrderDoc {
 
 const marketOrderSchema = new Schema<MarketOrderDoc>(
   {
-    buyer: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
-    seller: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
+    // Not indexed individually — see the compound indexes at the bottom.
+    buyer: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    seller: { type: Schema.Types.ObjectId, ref: "User", required: true },
     product: { type: Schema.Types.ObjectId, ref: "Product", required: true },
     productSnapshot: {
       name: { type: String, required: true },
@@ -57,7 +58,6 @@ const marketOrderSchema = new Schema<MarketOrderDoc>(
       type: String,
       enum: Object.values(OrderStatus),
       default: OrderStatus.PLACED,
-      index: true,
     },
     // Appended to on every move, never rewritten — the history is the point.
     timeline: {
@@ -80,5 +80,20 @@ const marketOrderSchema = new Schema<MarketOrderDoc>(
   },
   { timestamps: true }
 );
+
+/**
+ * The order history, read from both ends: a buyer sees the orders they placed,
+ * a seller the orders placed with them. Both are newest-first, so both get the
+ * equality-then-sort pairing.
+ *
+ * Two indexes rather than one on `{buyer, seller}`: a query only ever filters on
+ * one of the two, and a compound index is no use to a query that does not match
+ * its first field.
+ */
+marketOrderSchema.index({ buyer: 1, createdAt: -1 });
+marketOrderSchema.index({ seller: 1, createdAt: -1 });
+
+/** The admin order queue, filtered by status and sorted newest-first. */
+marketOrderSchema.index({ status: 1, createdAt: -1 });
 
 export const MarketOrder = model<MarketOrderDoc>("MarketOrder", marketOrderSchema);

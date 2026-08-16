@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { UserRole } from "@buildora/shared";
 import { useSession } from "@/store/useSession";
 import { Navbar } from "@/components/landing/Navbar";
+import { VerifyBanner } from "@/components/app/VerifyGate";
 import { Stagger } from "@/components/Stagger";
 
 const cardClass =
@@ -58,6 +59,14 @@ export default function DashboardPage() {
                 ? "Review professionals' verification requests and keep the platform trustworthy."
                 : "Manage your profile and the client requests coming your way."}
           </p>
+
+          {/* Renders itself away once a supervisor approves the account. Admins
+              have nothing to verify, so they never see it. */}
+          {!isAdmin && (
+            <div className="mt-8">
+              <VerifyBanner role={user.role} />
+            </div>
+          )}
 
           <Stagger className="mt-10 grid gap-5 sm:grid-cols-2">
             {!isAdmin && (

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Megaphone, Info, Send } from "lucide-react";
 import {
+  ACTOR_ROLES,
   BROADCAST_ALL,
   NotificationType,
   UserRole,
@@ -17,9 +18,13 @@ import { ROLE_LABELS, timeAgo } from "@/components/admin/format";
 /** Audience options, in the order they read best in the dropdown. */
 const AUDIENCES: { value: BroadcastAudience; label: string }[] = [
   { value: BROADCAST_ALL, label: "Everyone (all non-admin users)" },
-  ...Object.values(UserRole)
-    .filter((role) => role !== UserRole.ADMIN)
-    .map((role) => ({ value: role as BroadcastAudience, label: `${ROLE_LABELS[role]}s only` })),
+  // ACTOR_ROLES rather than every UserRole: it already excludes the operator
+  // accounts, so a new non-actor role can't quietly appear in this dropdown the
+  // way it would with a filter that has to be remembered.
+  ...ACTOR_ROLES.filter((role) => role !== UserRole.ADMIN).map((role) => ({
+    value: role as BroadcastAudience,
+    label: `${ROLE_LABELS[role]}s only`,
+  })),
 ];
 
 const MAX_TITLE = 140;

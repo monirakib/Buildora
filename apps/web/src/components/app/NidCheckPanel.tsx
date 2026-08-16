@@ -2,7 +2,15 @@
 
 import { useState } from "react";
 import { AlertTriangle, CheckCircle2, Loader2, ShieldCheck, XCircle } from "lucide-react";
-import { checkNidFormat, nidMatchesDateOfBirth, type NidCheck } from "@buildora/shared";
+import {
+  checkNidAge,
+  checkNidFormat,
+  gradeNidCheck,
+  isDummyNid,
+  nidMatchesDateOfBirth,
+  postcodeFitsDistrict,
+  type NidCheck,
+} from "@buildora/shared";
 import { runNidCheck } from "@/lib/api";
 import { useSession } from "@/store/useSession";
 
@@ -19,6 +27,8 @@ import { useSession } from "@/store/useSession";
 export function NidCheckPanel({
   nid,
   dateOfBirth,
+  permanentDistrict,
+  permanentPostcode,
   hasCardImage,
   saved,
   /** Called after a run so the parent can refresh its copy of the profile. */
@@ -26,6 +36,9 @@ export function NidCheckPanel({
 }: {
   nid: string;
   dateOfBirth?: string;
+  /** The registered district and postcode, for the geographic cross-check. */
+  permanentDistrict?: string;
+  permanentPostcode?: string;
   hasCardImage: boolean;
   /** The stored result from the last run, if any. */
   saved?: NidCheck;
@@ -37,10 +50,18 @@ export function NidCheckPanel({
   const [error, setError] = useState("");
 
   // Instant, offline feedback while they're still typing — no request needed.
+  // These are the same functions the API runs, so what someone is told here and
+  // what a supervisor eventually sees can't disagree.
   const format = checkNidFormat(nid);
+  const dummy = isDummyNid(nid);
+  const age = checkNidAge(dateOfBirth);
   const dobMatches = nidMatchesDateOfBirth(nid, dateOfBirth);
+  const postcodeMatches = postcodeFitsDistrict(permanentPostcode, permanentDistrict);
   // A stored result is only about the number it was run against.
   const current = check && check.nid === format.normalized ? check : undefined;
+  // Everything the stored run objects to, split into what refuses a submission
+  // and what a supervisor merely reads.
+  const grade = current ? gradeNidCheck(current) : undefined;
 
   async function run() {
     if (!token) return;
@@ -77,6 +98,22 @@ export function NidCheckPanel({
             format.ok ? `Valid ${labelFor(format.format)} number` : (format.issue ?? "Invalid")
           }
         />
+        {format.ok && (
+          <Row
+            ok={!dummy}
+            label={
+              dummy
+                ? "That's a repeated or counting pattern, not an issued NID"
+                : "Not a made-up number pattern"
+            }
+          />
+        )}
+        {dateOfBirth && (
+          <Row
+            ok={age.ok}
+            label={age.ok ? `Old enough to hold an NID (${age.age})` : (age.issue ?? "Too young")}
+          />
+        )}
         {dobMatches !== undefined && (
           <Row
             ok={dobMatches}
@@ -84,6 +121,17 @@ export function NidCheckPanel({
               dobMatches
                 ? "Birth year in the NID matches your date of birth"
                 : "Birth year in the NID does not match your date of birth"
+            }
+          />
+        )}
+        {postcodeMatches !== undefined && (
+          <Row
+            ok={postcodeMatches}
+            warn
+            label={
+              postcodeMatches
+                ? `Postcode is in ${permanentDistrict}`
+                : `Postcode isn't in ${permanentDistrict} — a supervisor will look`
             }
           />
         )}
@@ -98,7 +146,36 @@ export function NidCheckPanel({
           />
         )}
         {current?.ocr && <OcrRows ocr={current.ocr} />}
+        {current?.back && !current.back.readable && (
+          <Row
+            ok={false}
+            warn
+            label={current.back.note ?? "The back of the card couldn't be read"}
+          />
+        )}
+        {current?.back?.districtMatches === false && (
+          <Row ok={false} warn label="The address on the back names a different district" />
+        )}
+        {(current?.images ?? []).map((image) => (
+          <ImageRows key={image.side} image={image} />
+        ))}
       </ul>
+
+      {/* The stored run's own verdict, so nobody has to read the rows and guess
+          whether they're allowed to submit. */}
+      {grade && grade.severity !== "PASS" && (
+        <p
+          className={`mt-3 rounded-xl px-3.5 py-2 text-xs font-medium ${
+            grade.severity === "FAIL"
+              ? "bg-rose-100 text-rose-900 dark:bg-rose-400/15 dark:text-rose-200"
+              : "bg-amber-100 text-amber-900 dark:bg-amber-400/15 dark:text-amber-200"
+          }`}
+        >
+          {grade.severity === "FAIL"
+            ? "This has to be fixed before you can submit for verification."
+            : "None of this stops you submitting — a supervisor reads these when they review you."}
+        </p>
+      )}
 
       {!hasCardImage && (
         <p className="mt-3 flex items-start gap-2 text-xs text-stone-500 dark:text-slate-500">
@@ -141,25 +218,59 @@ function labelFor(format?: string) {
       : "13-digit";
 }
 
-/** One pass/fail line. */
-function Row({ ok, label }: { ok: boolean; label: string }) {
+/**
+ * One check, pass or fail.
+ *
+ * `warn` marks a check that a supervisor weighs rather than one that refuses a
+ * submission — amber instead of red. Colouring a flag the same as a blocker
+ * would make honest people think they'd been rejected, which is exactly the
+ * distinction gradeNidCheck exists to keep.
+ */
+function Row({ ok, label, warn }: { ok: boolean; label: string; warn?: boolean }) {
+  const failClass = warn
+    ? "font-semibold text-amber-700 dark:text-amber-300"
+    : "font-semibold text-rose-700 dark:text-rose-300";
+
   return (
     <li className="flex items-start gap-2 text-xs">
       {ok ? (
         <CheckCircle2 className="mt-px h-3.5 w-3.5 shrink-0 text-emerald-500" />
+      ) : warn ? (
+        <AlertTriangle className="mt-px h-3.5 w-3.5 shrink-0 text-amber-500" />
       ) : (
         <XCircle className="mt-px h-3.5 w-3.5 shrink-0 text-rose-500" />
       )}
-      <span
-        className={
-          ok
-            ? "text-stone-600 dark:text-slate-400"
-            : "font-semibold text-rose-700 dark:text-rose-300"
-        }
-      >
-        {label}
-      </span>
+      <span className={ok ? "text-stone-600 dark:text-slate-400" : failClass}>{label}</span>
     </li>
+  );
+}
+
+/**
+ * What the uploaded file looks like. Only complaints are rendered — telling
+ * somebody their photo is the right shape is noise.
+ */
+function ImageRows({ image }: { image: NonNullable<NidCheck["images"]>[number] }) {
+  return (
+    <>
+      {image.note && <Row ok={false} warn label={`${image.side} image: ${image.note}`} />}
+      {image.aspectOk === false && (
+        <Row
+          ok={false}
+          warn
+          label={`The ${image.side} photo isn't card-shaped — crop it closer to the card`}
+        />
+      )}
+      {image.resolutionOk === false && (
+        <Row ok={false} warn label={`The ${image.side} photo is too small to read clearly`} />
+      )}
+      {image.editorSoftware && (
+        <Row
+          ok={false}
+          warn
+          label={`The ${image.side} photo was saved by ${image.editorSoftware}`}
+        />
+      )}
+    </>
   );
 }
 

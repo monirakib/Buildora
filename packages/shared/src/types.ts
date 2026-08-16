@@ -31,6 +31,12 @@ import type {
  */
 export interface LandOwnerProfile {
   nid?: string;
+  /**
+   * The NID reduced to one canonical form, so a 13-digit number and its
+   * 17-digit spelling can't back two accounts. Written by the server only;
+   * a unique index on this field is what enforces one NID per person.
+   */
+  nidKey?: string;
   /** Photos of the NID card, so the automated check and a supervisor can read it. */
   nidFrontUrl?: string;
   nidBackUrl?: string;
@@ -38,9 +44,23 @@ export interface LandOwnerProfile {
   nidCheck?: NidCheck;
   /** ISO "YYYY-MM-DD" — cross-checked against a 17-digit NID's birth year. */
   dateOfBirth?: string;
+  gender?: string;
   avatarUrl?: string;
   company?: string;
   bio?: string;
+  /** Where they live now, and where they're registered. See AddressFields. */
+  currentAddress?: string;
+  currentDivision?: string;
+  currentDistrict?: string;
+  currentPostcode?: string;
+  permanentAddress?: string;
+  permanentDivision?: string;
+  permanentDistrict?: string;
+  permanentPostcode?: string;
+  /** Signed declaration, the last step of the verification wizard. */
+  declarationAgreed?: boolean;
+  declarationSignature?: string;
+  declarationSignedAt?: string;
 }
 
 /**
@@ -231,9 +251,72 @@ export interface NidCheck {
   dobMatches?: boolean | null;
   /** Another account already holds this NID — the one hard failure. */
   duplicate: boolean;
+  /** The number is one people invent: all-same digits, a counting run, 1212… */
+  dummy?: boolean;
+  /** Holder is at least 18, the age an NID is first issued. */
+  ageOk?: boolean;
+  /** Completed years from the date of birth, when it could be read. */
+  age?: number;
+  /** Why the age check failed, ready to show in a form. */
+  ageIssue?: string;
+  /**
+   * Postcode sits inside the block Bangladesh Post assigns to the declared
+   * permanent district. `null` when there was nothing to compare.
+   */
+  postcodeMatches?: boolean | null;
   /** What the card image actually said, read by the OCR pass. */
   ocr?: NidOcrResult;
+  /** The same pass over the back of the card. */
+  back?: NidBackResult;
+  /** What the uploaded files themselves look like. */
+  images?: NidImageCheck[];
   checkedAt: string;
+}
+
+/**
+ * What the uploaded card photo is, as a file — read from Cloudinary rather
+ * than from the browser, so it describes the image actually stored.
+ *
+ * None of it proves a card is genuine. A forged card photographed well passes
+ * every one of these. What it catches is the careless end: a screenshot of a
+ * screenshot, a portrait crop with the number cut off, a file that has been
+ * through an image editor.
+ */
+export interface NidImageCheck {
+  /** "front" or "back". */
+  side: string;
+  width?: number;
+  height?: number;
+  /** width / height, rounded to two places. */
+  aspectRatio?: number;
+  /**
+   * Whether the shape is plausible for a photographed ID-1 card. `null` when
+   * the dimensions couldn't be read.
+   */
+  aspectOk?: boolean | null;
+  /** False when the image is too small to read a number off reliably. */
+  resolutionOk?: boolean | null;
+  /** Editing software named in the file's EXIF header, when there is one. */
+  editorSoftware?: string;
+  /** Set when the image couldn't be inspected at all. */
+  note?: string;
+}
+
+/** What Gemini read off the back of the card. */
+export interface NidBackResult {
+  readable: boolean;
+  /** Permanent address printed on the reverse. */
+  address?: string;
+  /** Issue date, ISO "YYYY-MM-DD" where legible. */
+  issueDate?: string;
+  /** Whether a machine-readable barcode is visible (legacy cards have none). */
+  hasBarcode?: boolean | null;
+  /**
+   * Whether the printed address names the district the user declared as their
+   * permanent one. `null` when either side was missing.
+   */
+  districtMatches?: boolean | null;
+  note?: string;
 }
 
 /**
@@ -294,6 +377,17 @@ export interface NidOcrResult {
   nameMatches?: boolean | null;
   nidMatches?: boolean | null;
   dobMatches?: boolean | null;
+  /** Which face of the card the reader thinks it was given. */
+  side?: string;
+  /**
+   * How many human faces the reader can see. An NID front carries exactly one
+   * portrait, so zero means it probably isn't a card front and two or more
+   * means something else is in shot. This is the face check, answered by the
+   * model already reading the card rather than by a separate vision library.
+   */
+  faceCount?: number | null;
+  /** Whether a portrait box sits where an NID front has one. */
+  hasPhotoBox?: boolean | null;
   /** Set when the model refused or the image wasn't an NID card at all. */
   note?: string;
 }
@@ -325,10 +419,27 @@ export interface ProfessionalProfile {
   /** ISO date "YYYY-MM-DD". */
   dateOfBirth?: string;
   gender?: string;
+  /**
+   * Addresses, structured. The free-text line is the street part; the division,
+   * district and postcode beside it are picked from BD_DIVISIONS/BD_DISTRICTS,
+   * which is what lets the postcode be cross-checked against the district
+   * instead of being an unvalidated four digits.
+   *
+   * The permanent one is the one that matters for the NID checks: people
+   * register in the district they're from and live somewhere else.
+   */
   currentAddress?: string;
+  currentDivision?: string;
+  currentDistrict?: string;
+  currentPostcode?: string;
   permanentAddress?: string;
+  permanentDivision?: string;
+  permanentDistrict?: string;
+  permanentPostcode?: string;
   /** National ID number. */
   nid?: string;
+  /** Canonical NID, unique across accounts — see LandOwnerProfile.nidKey. */
+  nidKey?: string;
   nidFrontUrl?: string;
   nidBackUrl?: string;
   /** Result of the automated NID pre-screen — see NidCheck. */

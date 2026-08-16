@@ -47,7 +47,8 @@ const bidSchema = new Schema<BidDoc>(
   {
     // Covered by the unique compound index below.
     tender: { type: Schema.Types.ObjectId, ref: "Tender", required: true },
-    contractor: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
+    // Covered by the {contractor, createdAt} index below.
+    contractor: { type: Schema.Types.ObjectId, ref: "User", required: true },
     lines: { type: [bidLineSchema], default: [] },
     totalBdt: { type: Number, required: true, min: 0 },
     timelineWeeks: { type: Number, required: true, min: 1, max: 520 },
@@ -69,5 +70,12 @@ bidSchema.index({ tender: 1, contractor: 1 }, { unique: true });
 
 // The comparison view reads every bid on a tender, cheapest first.
 bidSchema.index({ tender: 1, totalBdt: 1 });
+
+/**
+ * A contractor's own bid history (`/api/bids/mine`), newest-first. The
+ * standalone `contractor` index on the field above is replaced by this, since
+ * that list always sorts by date.
+ */
+bidSchema.index({ contractor: 1, createdAt: -1 });
 
 export const Bid = model<BidDoc>("Bid", bidSchema);
