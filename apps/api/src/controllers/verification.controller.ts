@@ -7,14 +7,18 @@ import {
   UserRole,
   VerificationStatus,
   computeCompletion,
+  gradeNidCheck,
   normalizeMembershipNo,
+  type LandOwnerProfile,
   type ProfessionalProfile,
   type VerificationRequest as VerificationRequestShape,
 } from "@buildora/shared";
 import { User, type UserDoc } from "../models/User";
 import { VerificationRequest, type VerificationRequestDoc } from "../models/VerificationRequest";
+import { claimFromProfile, runNidCheck } from "./nid.controller";
 import { normalizeCredentials, screenCredentials } from "../services/credentials";
 import { lookupIabMember } from "../services/iab";
+import { openProfile, sealProfile } from "../services/profileCrypto";
 import { notify, notifyMany } from "../services/notifications";
 
 // The professional field is populated on every query in this file, so the
@@ -90,9 +94,13 @@ export async function checkIabMembership(req: Request, res: Response) {
 const submitSchema = z.object({
   message: z.preprocess((v) => (v === "" ? undefined : v), z.string().trim().max(1000).optional()),
   /**
-   * Set when the professional chose to bypass the automated IAB check and go
-   * straight to a human. It never skips the lookup — the result is still
-   * recorded — it only stops a name mismatch from blocking the submission.
+   * Set when the applicant chose to bypass an automated check and go straight
+   * to a human. It never skips the check — the result is still recorded and
+   * shown to the supervisor — it only stops two specific disagreements from
+   * blocking the submission: an IAB name that doesn't match the account, and an
+   * NID card whose photographed number the reader read differently. Both have
+   * innocent explanations often enough that a person should get to make the
+   * case; nothing else it could raise does.
    */
   manualReview: z.boolean().optional(),
 });
@@ -127,7 +135,11 @@ export async function submitVerification(req: Request, res: Response) {
     return res.status(409).json({ error: { message: "Your request is already under review" } });
   }
 
-  const profile = (user.profile ?? {}) as ProfessionalProfile;
+  // Decrypted, because everything below compares real values: the completion
+  // checklist, the pre-screen, and the grading of its result.
+  const userId = user._id.toString();
+  const profile = (openProfile(user.toObject().profile, userId) ?? {}) as ProfessionalProfile &
+    LandOwnerProfile;
 
   // Every professional role now goes through its own verification wizard, and
   // each one has its own mandatory checklist — an architect's IAB membership, an
@@ -141,6 +153,43 @@ export async function submitVerification(req: Request, res: Response) {
         message: `Complete the mandatory items first: ${completion.missingMandatory.join(", ")}`,
       },
     });
+  }
+
+  // The identity pre-screen, run here rather than trusted from the browser.
+  // /api/nid/check exists so the wizard can show a result while someone is
+  // still filling the form, but this is the run that counts — it reads the
+  // profile as stored and its answer is what a supervisor sees.
+  //
+  // gradeNidCheck decides what refuses a submission and what is only a flag.
+  // Blockers are things that can't be true of a real applicant giving their own
+  // number; everything else goes through and the supervisor weighs it.
+  try {
+    profile.nidCheck = await runNidCheck(userId, claimFromProfile(user.name, profile));
+    profile.nid = profile.nidCheck.nid || profile.nid;
+  } catch (err) {
+    // Never let an outage cost somebody their submission — the same rule the
+    // IAB and credential pre-screens already follow.
+    console.error("[nid] pre-screen failed during submit:", err);
+  }
+
+  const grade = gradeNidCheck(profile.nidCheck);
+  if (grade.severity === "FAIL") {
+    // One exception to "blockers refuse": when the only complaint is that the
+    // card reads a different number, the applicant can send it to a human
+    // instead. OCR misreads a digit on a bad photograph often enough that
+    // refusing outright would strand real people — and this is exactly the
+    // escape hatch the IAB name mismatch already uses.
+    const onlyOcrDisagrees =
+      grade.blockers.length === 1 && profile.nidCheck?.ocr?.nidMatches === false;
+
+    if (!onlyOcrDisagrees || !parsed.data.manualReview) {
+      return res.status(409).json({
+        error: {
+          code: onlyOcrDisagrees ? "NID_CARD_MISMATCH" : "NID_CHECK_FAILED",
+          message: `The NID check didn't pass: ${grade.blockers.join(" · ")}`,
+        },
+      });
+    }
   }
 
   // Automated pre-screening: record what the IAB directory says about the
@@ -167,8 +216,7 @@ export async function submitVerification(req: Request, res: Response) {
             },
           });
         }
-        // `profile` is the same object as `user.profile`, just narrowed to the
-        // professional shape — writing through it updates the subdocument.
+        // Written on the decrypted copy; it is sealed back onto the user below.
         profile.iabCheck = check;
 
         // Catches architects who signed up without a membership number and
@@ -185,11 +233,15 @@ export async function submitVerification(req: Request, res: Response) {
     }
   }
 
-  // The other three roles have no public register to look their credentials up
+  // The other professions have no public register to look their credentials up
   // in, so they get the structural pre-screen instead: right shape, not expired,
   // not already claimed by another account. Nothing here blocks a submission —
   // the supervisor is the gate, and they see every flag it raises.
-  if (user.role !== UserRole.ARCHITECT) {
+  //
+  // Land owners are skipped: they hold no professional credential at all, so
+  // there would be nothing to screen and an empty record would read as
+  // "checked, found nothing wrong", which is a different claim.
+  if (user.role !== UserRole.ARCHITECT && user.role !== UserRole.LAND_OWNER) {
     normalizeCredentials(user.role, profile);
     try {
       profile.credentialCheck = await screenCredentials(user._id.toString(), user.role, profile);
@@ -199,8 +251,10 @@ export async function submitVerification(req: Request, res: Response) {
     }
   }
 
-  // `profile` is the same object as `user.profile`; Mongoose doesn't notice
-  // writes made through it, so the change has to be declared before saving.
+  // `profile` is a decrypted *copy*, not the stored subdocument — so it has to
+  // be sealed and assigned back, not just marked modified. (It used to be the
+  // same object, which is why markModified alone was enough before.)
+  user.profile = sealProfile(profile, userId);
   user.markModified("profile");
 
   // Submission lands as DOCUMENTS_SUBMITTED; it becomes UNDER_REVIEW when a
@@ -317,7 +371,10 @@ export async function getVerificationRequest(req: Request, res: Response) {
         phone: professional.phone,
         role: professional.role,
         verificationStatus: professional.verificationStatus,
-        profile: professional.profile,
+        // The supervisor is the one reviewer who legitimately needs the NID and
+        // the pre-screen, so this view decrypts. It is already ADMIN-only at
+        // the route.
+        profile: openProfile(professional.profile, professional._id.toString()),
       },
     },
   });

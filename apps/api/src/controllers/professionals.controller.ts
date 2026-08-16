@@ -9,6 +9,7 @@ import {
   UserRole,
   VerificationStatus,
   isDistrictInDivision,
+  isPostcodeShape,
   isKnownExpertise,
   type Paginated,
   type ProfessionalProfile,
@@ -16,7 +17,8 @@ import {
   type SessionUser,
 } from "@buildora/shared";
 import { User, type UserDoc } from "../models/User";
-import { keepNidCheck } from "./auth.controller";
+import { openProfile, sealProfile } from "../services/profileCrypto";
+import { checkNidChange, keepNidCheck } from "./auth.controller";
 
 /** Public-safe projection of a professional — no email, phone, NID, or license number. */
 function toPublicProfessional(user: HydratedDocument<UserDoc>): PublicProfessional {
@@ -234,110 +236,165 @@ const brandAuthorizationSchema = z.object({
 
 // The whole editable professional profile, submitted in one save (mirrors how
 // the land-owner profile PATCH replaces the profile subdocument).
-const professionalProfileSchema = z.object({
-  name: z.preprocess(
-    emptyToUndef,
-    z.string().trim().min(2, "Name must be at least 2 characters").optional()
-  ),
-  phone: optionalText(30),
-  avatarUrl: optionalUrl,
-  // Optional at the schema level because plenty of professionals practise
-  // independently and the wizard hides the field for them. Where a firm name
-  // genuinely is required — contractors and suppliers, who are businesses —
-  // it's a mandatory row in that role's computeCompletion checklist instead,
-  // which is what gates the submit button and the submit endpoint.
-  company: z.preprocess(
-    emptyToUndef,
-    z.string().trim().min(2, "Enter your firm or company").max(120).optional()
-  ),
-  bio: optionalText(1000),
-  portfolioTitle: optionalText(90),
-  portfolioIntro: optionalText(280),
-  licenseAuthority: optionalText(60),
-  licenseNumber: optionalText(60),
-  specialties: optionalText(200),
-  yearsExperience: z.preprocess(
-    emptyToUndef,
-    z.coerce.number().min(0, "Must be zero or more").max(80).optional()
-  ),
-  website: optionalUrl,
-  // ---- Architect verification wizard fields (all optional) ----
-  dateOfBirth: optionalText(10),
-  gender: optionalText(20),
-  currentAddress: optionalText(300),
-  permanentAddress: optionalText(300),
-  nid: optionalText(20),
-  nidFrontUrl: optionalUrl,
-  nidBackUrl: optionalUrl,
-  professionalTitle: optionalText(120),
-  isIndependent: z.boolean().optional(),
-  officeAddress: optionalText(300),
-  languages: optionalText(160),
-  linkedin: optionalUrl,
-  practiceDivision: optionalText(40),
-  practiceDistrict: optionalText(40),
-  membershipStatus: optionalText(30),
-  membershipCategory: optionalText(30),
-  licenseIssueDate: optionalText(10),
-  licenseExpiryDate: optionalText(10),
-  iabCertificateUrl: optionalUrl,
-  membershipCardUrl: optionalUrl,
-  rajukEnlistmentNo: optionalText(60),
-  rajukCertificateUrl: optionalUrl,
-  // ---- Engineer verification wizard ----
-  licenseCertificateUrl: optionalUrl,
-  professionalSealUrl: optionalUrl,
-  // ---- Contractor / supplier business registration ----
-  tradeLicenseNo: optionalText(60),
-  tradeLicenseIssuer: optionalText(120),
-  tradeLicenseExpiry: optionalText(10),
-  tradeLicenseUrl: optionalUrl,
-  binNumber: optionalText(30),
-  binCertificateUrl: optionalUrl,
-  tinNumber: optionalText(30),
-  tinCertificateUrl: optionalUrl,
-  rjscRegistrationNo: optionalText(60),
-  rjscCertificateUrl: optionalUrl,
-  // ---- Contractor capacity ----
-  enlistmentBody: optionalText(60),
-  contractorClass: optionalText(30),
-  enlistmentCertificateUrl: optionalUrl,
-  crewSize: optionalNonNegative(100_000),
-  equipment: z
-    .array(z.string().trim().min(1).max(60))
-    .max(30, "Too many equipment items")
-    .default([]),
-  largestProjectBdt: optionalNonNegative(100_000_000_000),
-  bankSolvencyUrl: optionalUrl,
-  // ---- Supplier catalogue ----
-  supplyCategories: z.array(z.enum(ProductCategory)).max(20, "Too many categories").default([]),
-  brandAuthorizations: z
-    .array(brandAuthorizationSchema)
-    .max(20, "At most 20 brand authorisations")
-    .default([]),
-  warehouseAddress: optionalText(300),
-  warehouseLocation: z
-    .object({ lat: z.coerce.number().min(-90).max(90), lng: z.coerce.number().min(-180).max(180) })
-    .optional(),
-  deliveryDistricts: z
-    .array(z.string().trim().min(1).max(40))
-    .max(64, "Too many districts")
-    .default([]),
-  bstiLicenseNo: optionalText(60),
-  bstiCertificateUrl: optionalUrl,
-  declarationAgreed: z.boolean().optional(),
-  declarationSignature: optionalText(120),
-  declarationSignedAt: optionalText(30),
-  education: z.array(educationEntrySchema).max(10, "At most 10 education entries").default([]),
-  experience: z.array(experienceEntrySchema).max(15, "At most 15 experience entries").default([]),
-  expertise: z
-    .array(z.string().trim().min(1).max(60))
-    .max(20, "Too many expertise areas")
-    .default([]),
-  skills: z.array(skillEntrySchema).max(20, "At most 20 skills").default([]),
-  achievements: z.array(achievementEntrySchema).max(15, "At most 15 achievements").default([]),
-  portfolio: z.array(portfolioProjectSchema).max(12, "At most 12 projects").default([]),
-});
+const professionalProfileSchema = z
+  .object({
+    name: z.preprocess(
+      emptyToUndef,
+      z.string().trim().min(2, "Name must be at least 2 characters").optional()
+    ),
+    phone: optionalText(30),
+    avatarUrl: optionalUrl,
+    // Optional at the schema level because plenty of professionals practise
+    // independently and the wizard hides the field for them. Where a firm name
+    // genuinely is required — contractors and suppliers, who are businesses —
+    // it's a mandatory row in that role's computeCompletion checklist instead,
+    // which is what gates the submit button and the submit endpoint.
+    company: z.preprocess(
+      emptyToUndef,
+      z.string().trim().min(2, "Enter your firm or company").max(120).optional()
+    ),
+    bio: optionalText(1000),
+    portfolioTitle: optionalText(90),
+    portfolioIntro: optionalText(280),
+    licenseAuthority: optionalText(60),
+    licenseNumber: optionalText(60),
+    specialties: optionalText(200),
+    yearsExperience: z.preprocess(
+      emptyToUndef,
+      z.coerce.number().min(0, "Must be zero or more").max(80).optional()
+    ),
+    website: optionalUrl,
+    // ---- Architect verification wizard fields (all optional) ----
+    dateOfBirth: optionalText(10),
+    gender: optionalText(20),
+    // Addresses. The division/district/postcode trio beside each free-text line
+    // is what the NID postcode cross-check compares against; the server validates
+    // the district really belongs to the division before saving (see below).
+    currentAddress: optionalText(300),
+    currentDivision: optionalText(40),
+    currentDistrict: optionalText(40),
+    currentPostcode: optionalText(4),
+    permanentAddress: optionalText(300),
+    permanentDivision: optionalText(40),
+    permanentDistrict: optionalText(40),
+    permanentPostcode: optionalText(4),
+    nid: optionalText(20),
+    nidFrontUrl: optionalUrl,
+    nidBackUrl: optionalUrl,
+    professionalTitle: optionalText(120),
+    isIndependent: z.boolean().optional(),
+    officeAddress: optionalText(300),
+    languages: optionalText(160),
+    linkedin: optionalUrl,
+    practiceDivision: optionalText(40),
+    practiceDistrict: optionalText(40),
+    membershipStatus: optionalText(30),
+    membershipCategory: optionalText(30),
+    licenseIssueDate: optionalText(10),
+    licenseExpiryDate: optionalText(10),
+    iabCertificateUrl: optionalUrl,
+    membershipCardUrl: optionalUrl,
+    rajukEnlistmentNo: optionalText(60),
+    rajukCertificateUrl: optionalUrl,
+    // ---- Engineer verification wizard ----
+    licenseCertificateUrl: optionalUrl,
+    professionalSealUrl: optionalUrl,
+    // ---- Contractor / supplier business registration ----
+    tradeLicenseNo: optionalText(60),
+    tradeLicenseIssuer: optionalText(120),
+    tradeLicenseExpiry: optionalText(10),
+    tradeLicenseUrl: optionalUrl,
+    binNumber: optionalText(30),
+    binCertificateUrl: optionalUrl,
+    tinNumber: optionalText(30),
+    tinCertificateUrl: optionalUrl,
+    rjscRegistrationNo: optionalText(60),
+    rjscCertificateUrl: optionalUrl,
+    // ---- Contractor capacity ----
+    enlistmentBody: optionalText(60),
+    contractorClass: optionalText(30),
+    enlistmentCertificateUrl: optionalUrl,
+    crewSize: optionalNonNegative(100_000),
+    equipment: z
+      .array(z.string().trim().min(1).max(60))
+      .max(30, "Too many equipment items")
+      .default([]),
+    largestProjectBdt: optionalNonNegative(100_000_000_000),
+    bankSolvencyUrl: optionalUrl,
+    // ---- Supplier catalogue ----
+    supplyCategories: z.array(z.enum(ProductCategory)).max(20, "Too many categories").default([]),
+    brandAuthorizations: z
+      .array(brandAuthorizationSchema)
+      .max(20, "At most 20 brand authorisations")
+      .default([]),
+    warehouseAddress: optionalText(300),
+    warehouseLocation: z
+      .object({
+        lat: z.coerce.number().min(-90).max(90),
+        lng: z.coerce.number().min(-180).max(180),
+      })
+      .optional(),
+    deliveryDistricts: z
+      .array(z.string().trim().min(1).max(40))
+      .max(64, "Too many districts")
+      .default([]),
+    bstiLicenseNo: optionalText(60),
+    bstiCertificateUrl: optionalUrl,
+    declarationAgreed: z.boolean().optional(),
+    declarationSignature: optionalText(120),
+    declarationSignedAt: optionalText(30),
+    education: z.array(educationEntrySchema).max(10, "At most 10 education entries").default([]),
+    experience: z.array(experienceEntrySchema).max(15, "At most 15 experience entries").default([]),
+    expertise: z
+      .array(z.string().trim().min(1).max(60))
+      .max(20, "Too many expertise areas")
+      .default([]),
+    skills: z.array(skillEntrySchema).max(20, "At most 20 skills").default([]),
+    achievements: z.array(achievementEntrySchema).max(15, "At most 15 achievements").default([]),
+    portfolio: z.array(portfolioProjectSchema).max(12, "At most 12 projects").default([]),
+  })
+  /**
+   * The address pairs have to be real ones. Checked here rather than trusted
+   * from the form because the postcode cross-check compares against the stored
+   * district — a district that isn't in its division, or a postcode outside
+   * that district's block, would make the check compare nonsense and then
+   * report a mismatch the applicant can't fix.
+   */
+  .superRefine((value, ctx) => {
+    const pairs = [
+      {
+        label: "permanent",
+        division: value.permanentDivision,
+        district: value.permanentDistrict,
+        postcode: value.permanentPostcode,
+        path: "permanentDistrict",
+      },
+      {
+        label: "current",
+        division: value.currentDivision,
+        district: value.currentDistrict,
+        postcode: value.currentPostcode,
+        path: "currentDistrict",
+      },
+    ];
+
+    for (const pair of pairs) {
+      if (pair.division && pair.district && !isDistrictInDivision(pair.division, pair.district)) {
+        ctx.addIssue({
+          code: "custom",
+          path: [pair.path],
+          message: `${pair.district} isn't a district of ${pair.division}`,
+        });
+      }
+      if (pair.postcode && !isPostcodeShape(pair.postcode)) {
+        ctx.addIssue({
+          code: "custom",
+          path: [`${pair.label}Postcode`],
+          message: "A Bangladeshi postcode is four digits",
+        });
+      }
+    }
+  });
 
 /** Strips DB internals; same shape the auth endpoints return. */
 function toSessionUser(user: HydratedDocument<UserDoc>): SessionUser {
@@ -389,14 +446,31 @@ export async function updateMyProfessionalProfile(req: Request, res: Response) {
   }
 
   const { name, phone, ...rest } = parsed.data;
+
+  const userId = user._id.toString();
+  // Decrypted so the NID rules and the pre-screen carry-over compare plaintext.
+  const existingProfile = openProfile(user.toObject().profile, userId);
+
+  // One NID per person, and a verified account's NID doesn't change on a form.
+  const nidProblem = await checkNidChange(
+    userId,
+    user.verificationStatus,
+    existingProfile?.nid,
+    rest.nid
+  );
+  if (nidProblem) {
+    const { status, ...error } = nidProblem;
+    return res.status(status).json({ error });
+  }
+
   // Same rule as the land-owner profile: the NID pre-screen survives an edit
   // only while the NID it was run against is still the one on file.
-  const profile = keepNidCheck(user.profile, rest);
+  const profile = keepNidCheck(existingProfile, rest);
   if (name !== undefined) user.name = name;
   // The editor always submits the full form, so blanks mean "clear this value"
   // — replace rather than merge, like the land-owner profile update.
   user.phone = phone;
-  user.profile = profile;
+  user.profile = sealProfile(profile, userId);
   await user.save();
 
   return res.json({ data: { user: toSessionUser(user) } });

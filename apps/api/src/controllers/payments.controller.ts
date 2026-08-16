@@ -14,6 +14,7 @@ import {
   SSLCOMMERZ_MAX_BDT,
   SSLCOMMERZ_MIN_BDT,
   StructuralStatus,
+  VerificationStatus,
   type PaymentConfig,
 } from "@buildora/shared";
 import { env } from "../config/env";
@@ -283,6 +284,16 @@ const checkoutSchema = z.object({
   refId: z.string().min(1, "Missing reference"),
 });
 
+/**
+ * The one payment an unverified account may make.
+ *
+ * Checkout is a single funnel for every kind of payment on the platform, so
+ * the verification gate can't live on the route — putting `requireVerified` in
+ * front of it would block marketplace buying, which is precisely the thing
+ * unverified land owners are meant to keep. It's decided per purpose instead.
+ */
+const PURPOSES_WITHOUT_VERIFICATION: PaymentPurpose[] = [PaymentPurpose.MARKET_ORDER];
+
 /** POST /api/payments/checkout — open a gateway session and hand back its URL. */
 export async function startCheckout(req: Request, res: Response) {
   // Validate the request before checking whether the server can take payments.
@@ -303,6 +314,21 @@ export async function startCheckout(req: Request, res: Response) {
   const payable = await describe(purpose, refId, req.auth!.sub);
   if (!payable) return res.status(404).json({ error: { message: "Nothing to pay for here" } });
   if (payable.blocked) return res.status(400).json({ error: { message: payable.blocked } });
+
+  // Escrow, concept fees and milestone tranches all wait for the badge; a
+  // marketplace order doesn't. See PURPOSES_WITHOUT_VERIFICATION above.
+  if (!PURPOSES_WITHOUT_VERIFICATION.includes(purpose)) {
+    const account = await User.findById(req.auth!.sub).select("verificationStatus");
+    if (account && account.verificationStatus !== VerificationStatus.APPROVED) {
+      return res.status(403).json({
+        error: {
+          code: "NOT_VERIFIED",
+          status: account.verificationStatus,
+          message: "Verify your account before making this payment.",
+        },
+      });
+    }
+  }
 
   // SSLCommerz refuses anything outside this band, so say so plainly rather
   // than letting the gateway reject it with its own wording.

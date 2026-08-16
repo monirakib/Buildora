@@ -19,6 +19,7 @@ import { InspectionTemplate } from "../models/InspectionTemplate";
 import { Milestone, type InspectionDoc, type MilestoneDoc } from "../models/Milestone";
 import { Project, type ProjectDoc } from "../models/Project";
 import { hasLiveDispute } from "./disputes.controller";
+import { ledgerProblem } from "../services/ledgerIntegrity";
 import { notify } from "../services/notifications";
 import { refId } from "../utils/refId";
 import { findProjectOr404 } from "./projects.controller";
@@ -282,6 +283,13 @@ export async function applyMilestoneFunding(
   method: PaymentMethod,
   reference: string
 ) {
+  // `milestone.amountBdt` is about to become a real charge, so its tag is
+  // checked before the figure is trusted. Throws rather than returning a
+  // response: this runs from the gateway callback as well as from a request,
+  // and settling a payment against a doctored amount must stop outright.
+  const problem = ledgerProblem(milestone, `milestone ${milestone._id}`);
+  if (problem) throw new Error(`${problem.code}: milestone ${milestone._id}`);
+
   contract.payments.push({
     kind: PaymentKind.ESCROW_DEPOSIT,
     amountBdt: milestone.amountBdt,
@@ -505,6 +513,21 @@ export async function releaseMilestone(req: Request, res: Response) {
         message: "This tranche is frozen while the dispute on it is being reviewed",
       },
     });
+  }
+
+  // Both records are checked before a figure is read off either of them. This
+  // is the largest single payout in the app, and the two numbers it multiplies
+  // together — the tranche amount and the commission rate — are exactly what
+  // someone editing the database directly would change.
+  for (const [doc, label] of [
+    [contract, `build contract ${contract._id}`],
+    [milestone, `milestone ${milestone._id}`],
+  ] as const) {
+    const problem = ledgerProblem(doc, label);
+    if (problem) {
+      const { status, ...error } = problem;
+      return res.status(status).json({ error });
+    }
   }
 
   const commission = Math.round(milestone.amountBdt * contract.commissionRate);

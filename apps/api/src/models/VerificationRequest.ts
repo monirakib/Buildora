@@ -41,6 +41,15 @@ const verificationRequestSchema = new Schema<VerificationRequestDoc>(
   { timestamps: true }
 );
 
+/**
+ * The supervisor's review queue: filter by status, newest-first.
+ *
+ * `status` had no index at all before this, so the queue — the one screen whose
+ * whole job is to filter on it — read every verification request ever made and
+ * then sorted them in memory.
+ */
+verificationRequestSchema.index({ status: 1, createdAt: -1 });
+
 export const VerificationRequest = model<VerificationRequestDoc>(
   "VerificationRequest",
   verificationRequestSchema

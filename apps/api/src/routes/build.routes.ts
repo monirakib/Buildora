@@ -15,6 +15,7 @@ import {
   withdrawChangeOrder,
 } from "../controllers/changeorders.controller";
 import { requireAuth } from "../middleware/auth";
+import { requireVerified } from "../middleware/verified";
 
 export const buildRouter = Router();
 
@@ -25,12 +26,14 @@ buildRouter.get("/mine", listMyBuildContracts);
 buildRouter.get("/inspection-templates", listInspectionTemplates);
 
 // One milestone's journey: funded by the owner, claimed by the contractor,
-// inspected by the engineer, released by the owner.
-buildRouter.post("/:id/milestones/:milestoneId/fund", fundMilestone);
-buildRouter.post("/:id/milestones/:milestoneId/claim", claimMilestone);
-buildRouter.post("/:id/milestones/:milestoneId/inspect", inspectMilestone);
-buildRouter.post("/:id/milestones/:milestoneId/release", releaseMilestone);
-buildRouter.patch("/:id/milestones/:milestoneId", updateMilestone);
+// inspected by the engineer, released by the owner. Every step of that chain
+// moves escrow, so every step is verified-only — the engineer's inspection
+// most of all, since their signature is what releases the tranche.
+buildRouter.post("/:id/milestones/:milestoneId/fund", requireVerified, fundMilestone);
+buildRouter.post("/:id/milestones/:milestoneId/claim", requireVerified, claimMilestone);
+buildRouter.post("/:id/milestones/:milestoneId/inspect", requireVerified, inspectMilestone);
+buildRouter.post("/:id/milestones/:milestoneId/release", requireVerified, releaseMilestone);
+buildRouter.patch("/:id/milestones/:milestoneId", requireVerified, updateMilestone);
 
 // ---- Variations ----
 // Change orders hang off the build contract because that's what they change.

@@ -20,14 +20,22 @@ const PROFESSIONAL_ROLES = [
   UserRole.SUPPLIER,
 ] as const;
 
-// Professional side — submit for review, check own status.
+/**
+ * Everyone who can be verified — the four professions plus land owners.
+ * ADMIN is absent because a supervisor is the one doing the verifying; there
+ * is nobody above them to approve their documents.
+ */
+const VERIFIABLE_ROLES = [UserRole.LAND_OWNER, ...PROFESSIONAL_ROLES] as const;
+
+// Applicant side — submit for review, check own status. Land owners go through
+// the same queue as professionals; only their checklist differs.
 verificationRouter.post(
   "/submit",
   requireAuth,
-  requireRole(...PROFESSIONAL_ROLES),
+  requireRole(...VERIFIABLE_ROLES),
   submitVerification
 );
-verificationRouter.get("/mine", requireAuth, requireRole(...PROFESSIONAL_ROLES), getMyVerification);
+verificationRouter.get("/mine", requireAuth, requireRole(...VERIFIABLE_ROLES), getMyVerification);
 
 // IAB directory lookup — the architect runs it from the wizard, the supervisor
 // re-runs it while reviewing. Signed-in only: it proxies a public directory and
