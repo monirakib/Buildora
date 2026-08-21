@@ -5,7 +5,15 @@ import { DocumentCategory, type ProjectDocument } from "@buildora/shared";
 import { uploadImage, uploadModel } from "@/lib/api";
 import { addProjectDocument, deleteProjectDocument, listProjectDocuments } from "@/lib/apiProjects";
 import { formatDate } from "@/components/app/projectStatus";
-import { ModelViewerModal } from "./ModelViewerModal";
+/**
+ * The 3D viewer is loaded only when a model is actually opened.
+ *
+ * It pulls in three.js, which is around 600 KB — a real cost on the project
+ * page, where most visits never open a `.glb` at all. A plain `import()` inside
+ * the effect below keeps it off the first load, the same way the map picker
+ * defers Leaflet.
+ */
+type ModelViewer = typeof import("./ModelViewerModal").ModelViewerModal;
 
 const inputClass =
   "block w-full rounded-xl border border-stone-300/80 bg-white/70 px-4 py-2.5 text-sm text-stone-900 placeholder-stone-400 backdrop-blur transition outline-none focus:border-amber-500 focus:bg-white/90 focus:ring-2 focus:ring-amber-400/30 dark:border-white/15 dark:bg-white/5 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:bg-white/10";
@@ -51,6 +59,19 @@ export function DocumentsSection({
   const [uploading, setUploading] = useState(false);
   // Which document is open in the 3D viewer (null = closed).
   const [viewing, setViewing] = useState<ProjectDocument | null>(null);
+  const [ModelViewerModal, setModelViewerModal] = useState<ModelViewer | null>(null);
+
+  // Fetch the viewer the first time a model is opened, then keep it.
+  useEffect(() => {
+    if (!viewing || ModelViewerModal) return;
+    let alive = true;
+    import("./ModelViewerModal").then((module) => {
+      if (alive) setModelViewerModal(() => module.ModelViewerModal);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [viewing, ModelViewerModal]);
 
   const is3d = form.category === String(DocumentCategory.MODEL_3D);
 
@@ -223,7 +244,7 @@ export function DocumentsSection({
       </div>
 
       {/* Full-screen 3D viewer for the selected model document */}
-      {viewing && (
+      {viewing && ModelViewerModal && (
         <ModelViewerModal
           url={viewing.fileUrl}
           title={viewing.title}

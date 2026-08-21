@@ -29,6 +29,12 @@ import {
   listFloorPlans,
   saveFloorPlan,
 } from "../controllers/floorplans.controller";
+import {
+  getStudioVersion,
+  loadStudioDesign,
+  saveStudioDesign,
+  saveStudioVersion,
+} from "../controllers/studio.controller";
 import { createTender, getBoqTemplate, getProjectTender } from "../controllers/tenders.controller";
 import { getProjectBuild } from "../controllers/build.controller";
 import {
@@ -130,6 +136,16 @@ projectsRouter.get("/:id/floor-plans", listFloorPlans);
 projectsRouter.post("/:id/floor-plans/advice", aiInlineLimit, floorPlanAdvice);
 projectsRouter.put("/:id/floor-plans/:level", requireVerified, saveFloorPlan);
 projectsRouter.delete("/:id/floor-plans/:level", requireVerified, deleteFloorPlan);
+
+// The 3D Design Studio. It keeps its own project format alongside the floor
+// plans above rather than inside them — see studio.controller for why — and
+// mirrors the rooms it detects back into /floor-plans/:level as it saves, so
+// the FAR check, the cost estimate and the BOQ keep reading one source.
+projectsRouter.get("/:id/studio", loadStudioDesign);
+projectsRouter.put("/:id/studio", requireVerified, saveStudioDesign);
+// Before "/:id/studio/versions/:vid", so "versions" is never read as an id.
+projectsRouter.post("/:id/studio/versions", requireVerified, saveStudioVersion);
+projectsRouter.get("/:id/studio/versions/:vid", getStudioVersion);
 
 // Contractor tendering and the build contract that follows an award.
 projectsRouter.get(
