@@ -1,0 +1,489 @@
+/**
+ * BD Design Studio — the tool's skin, in Buildora's design language.
+ *
+ * The stylesheet started life as `Essentials/design3d.html`'s, and its
+ * *structure* is still that file's: every selector, every width, height,
+ * padding, gap, font-size and letter-spacing is untouched, so the tool lays
+ * out pixel-for-pixel the way it was drawn. What changed is only what a skin
+ * is allowed to change — colour, border, radius, shadow, blur and typeface —
+ * so the studio stops looking like a stray blue-and-grey CAD app dropped into
+ * the site and starts looking like the rest of Buildora.
+ *
+ * What that meant in practice:
+ *   - the cool `#eef0f4` / `#2f6bff` palette became the site's warm stone
+ *     neutrals and amber accent, taken from `components/ui/surface.ts` and
+ *     `components/account/ui.tsx` rather than re-invented here;
+ *   - flat white panels became the same liquid glass every card on the site
+ *     uses — a translucent white over a blur, with a hairline edge;
+ *   - `#bds-root` itself is transparent, so the studio floats on the page's
+ *     own `AmbientBackground` (the drifting washes and blueprint grid) instead
+ *     of hiding it behind an opaque sheet. That is what makes the glass read
+ *     as glass;
+ *   - buttons, pills and tags picked up the site's `rounded-full` shape, and
+ *     the cards its larger radii;
+ *   - Inter became Manrope, the site's typeface, through the `--font-manrope`
+ *     variable next/font puts on <html>.
+ *
+ * **Every colour in here is a variable, and nothing below the palette block
+ * names a colour directly.** That is what makes night mode one short override
+ * instead of a second stylesheet: `.dark #bds-root` re-points the same names
+ * and every rule follows. The variables are more numerous than they would be
+ * in a light-only sheet for exactly that reason — `--float`, `--pop`, `--fill`
+ * and friends exist because a translucent *white* is not something that can be
+ * flipped by changing a neutral.
+ *
+ * Every selector is still prefixed with `#bds-root`. Next injects a route's
+ * CSS into the whole document, and the original was written for a page it
+ * owned outright — a bare `*`, `body` and `:root` would have reset the rest of
+ * Buildora. The prefix keeps the rules confined to the studio's own subtree,
+ * and the id also gives them enough specificity to sit above Tailwind's
+ * utilities and preflight.
+ *
+ * The class names themselves are load-bearing: the engine writes them as
+ * strings when it builds the rail, the panels and the modals. None was
+ * renamed, and none should be.
+ *
+ * @see design3dEngine.js — `THEMES`, the other half of the skin. The two
+ *      canvases have no stylesheet, so their colours live in JavaScript; the
+ *      engine's `applyTheme()` is what keeps this file and that table in step.
+ */
+
+/**
+ * The studio's page. It sits *over* the site chrome rather than inside it,
+ * which is how a tool built for a viewport it owns keeps its layout untouched.
+ *
+ * `z-index:50` is chosen, not arbitrary. It clears the ambient backdrop
+ * (`-z-10`) and the assistant bubble (`z-40`), both of which would otherwise
+ * show through or sit on top of the tool. It stays *under* the call overlay at
+ * `z-60`, because an architect drawing for an hour still needs to see an
+ * incoming call. The one other thing up there is the cursor glow, which is a
+ * 5%-white radial wash — over these panels it is not perceptible, and that is
+ * a better trade than swallowing calls.
+ */
+#bds-root{
+  position:fixed;
+  inset:0;
+  z-index:50;
+  /* Tells the browser which way to paint the chrome it draws itself — the open
+     list of a <select>, the scrollbars, the number spinners. It tracks the
+     theme rather than being pinned, because the studio now has both. */
+  color-scheme:light;
+  /* The studio was written for a page with the browser's default line spacing;
+     it sets line-height only where it wants something specific. Tailwind's
+     preflight puts `line-height:1.5` on <html>, which is inherited, and that
+     alone moved every label in the tool by about a pixel and would have
+     re-flowed the multi-line ones. Handing the subtree back its default is the
+     whole fix. */
+  line-height:normal;
+}
+
+#bds-root *{box-sizing:border-box;margin:0;padding:0}
+
+/**
+ * The day palette, lifted from the site rather than invented.
+ *
+ * `--accent` is amber-600 and `--accent-fill` amber-400 because the site uses
+ * the two differently and so must the studio: 600 wherever amber is *text* or
+ * a border, where it has to stay readable on a light panel, and 400 wherever
+ * amber is a *filled* surface with stone-950 sitting on it — which is exactly
+ * what `primaryButtonClass` does everywhere else in the app.
+ */
+#bds-root{
+  --bg:#f5f2ec;                          /* the site's day canvas */
+  --panel:rgba(255,255,255,.62);         /* liquid glass, as in surfaceClass */
+  --panel2:rgba(120,113,108,.09);        /* stone tint — hover / raised fill */
+  --card:rgba(255,255,255,.62);          /* inner cards on a glass panel */
+  --line:rgba(28,25,23,.08);             /* hairline edge and divider */
+  --line2:rgba(214,211,209,.85);         /* stone-300/85 — control borders */
+  --text:#1c1917;                        /* stone-900 */
+  --text2:#44403c;                       /* stone-700 */
+  --muted:#78716c;                       /* stone-500 */
+  --accent:#d97706;                      /* amber-600 — accent text and lines */
+  --accent2:#b45309;                     /* amber-700 */
+  --accent-fill:#fbbf24;                 /* amber-400 — filled controls */
+  --accent-fill2:#fcd34d;                /* amber-300 — its hover */
+  --accent-on:#0c0a09;                   /* stone-950 — text on the fill */
+  --accent-soft:rgba(251,191,36,.16);    /* amber wash behind a selection */
+  --accent-line:rgba(245,158,11,.45);    /* amber-500/45 — selected outline */
+  --ring:0 0 0 3px rgba(251,191,36,.32); /* focus ring, as focus:ring-amber-400/30 */
+  --green:#059669;                       /* emerald-600 */
+  --amber:#b45309;
+  --red:#dc2626;
+  --shadow:0 1px 2px rgba(28,25,23,.04), 0 12px 32px rgba(28,25,23,.08);
+  --shadow-sm:0 1px 2px rgba(28,25,23,.06);
+  --modal-shadow:0 24px 60px rgba(28,25,23,.28);
+
+  /* Surfaces that are a translucent *white* rather than a neutral, and so
+     cannot be flipped by changing --panel. Each names the job it does. */
+  --fill:rgba(255,255,255,.6);           /* a resting button */
+  --fill-h:rgba(255,255,255,.95);        /* the same button, hovered */
+  --field:rgba(255,255,255,.7);          /* an input at rest */
+  --field-h:rgba(255,255,255,.95);       /* an input with focus */
+  --field-line-h:rgba(168,162,158,.9);   /* its border on hover */
+  --float:rgba(255,255,255,.72);         /* overlay cards over the canvas */
+  --float-line:rgba(255,255,255,.6);     /* their bright top edge */
+  --pop:rgba(255,255,255,.82);           /* the ⋯ menu */
+  --pop2:rgba(255,255,255,.92);          /* a modal */
+  --paper:#faf8f3;                       /* under the 2D canvas, matching it */
+  --sw-line:rgba(0,0,0,.08);             /* outline on a material swatch */
+  --track:rgba(120,113,108,.3);          /* a toggle's track, off */
+  --knob:#fff;                           /* its knob */
+  --scrim:rgba(28,25,23,.45);
+  --hud:rgba(28,25,23,.6);               /* the walk-mode overlay */
+  --toast:#1c1917;
+  --toast-fg:#fff;
+  --note-fg:#78350f;                     /* amber-900 — text in an amber note */
+  --key:rgba(120,113,108,.6);            /* the shortcut letter on a tool */
+  --scroll:rgba(28,25,23,.18);
+  --scroll-h:rgba(28,25,23,.3);
+  --danger-line:rgba(220,38,38,.3);
+  --danger-bg:rgba(220,38,38,.08);
+  --danger-bg-h:rgba(220,38,38,.15);
+  /* The <select> chevron. A data URI can't read a variable, so the whole image
+     is the variable and the dark block supplies a second one. */
+  --caret:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2378716c' stroke-width='2.5' stroke-linecap='round'><polyline points='6 9 12 15 18 9'/></svg>");
+}
+
+/**
+ * Night. The same names, re-pointed — no rule below this block changes.
+ *
+ * It follows the site's own night mode (`#060a15`, `bg-white/5` cards,
+ * `border-white/10`, amber-400 accents, slate type) rather than inventing a
+ * dark scheme, and it hangs off `.dark` on <html>, which is the one flag the
+ * whole app already agrees on: the pre-hydration script in `layout.tsx` sets
+ * it, `store/useTheme` writes it, and the studio's own toggle goes through
+ * that same store.
+ */
+.dark #bds-root{
+  color-scheme:dark;
+
+  --bg:#060a15;
+  --panel:rgba(255,255,255,.05);
+  --panel2:rgba(255,255,255,.07);
+  --card:rgba(255,255,255,.04);
+  --line:rgba(255,255,255,.1);
+  --line2:rgba(255,255,255,.16);
+  --text:#f1f5f9;                        /* slate-100 */
+  --text2:#cbd5e1;                       /* slate-300 */
+  --muted:#94a3b8;                       /* slate-400 */
+  /* Amber-400 for accent text too: on slate there is no readability reason to
+     drop to 600, and the site's own `dark:text-amber-400` says the same. */
+  --accent:#fbbf24;
+  --accent2:#fcd34d;
+  --accent-fill:#fbbf24;
+  --accent-fill2:#fcd34d;
+  --accent-on:#0c0a09;
+  --accent-soft:rgba(251,191,36,.16);
+  --accent-line:rgba(251,191,36,.42);
+  --ring:0 0 0 3px rgba(251,191,36,.28);
+  --green:#34d399;                       /* emerald-400 */
+  --amber:#fbbf24;
+  --red:#f87171;                         /* red-400 */
+  --shadow:0 1px 2px rgba(0,0,0,.3), 0 12px 32px rgba(0,0,0,.45);
+  --shadow-sm:0 1px 2px rgba(0,0,0,.35);
+  --modal-shadow:0 24px 60px rgba(0,0,0,.6);
+
+  --fill:rgba(255,255,255,.06);
+  --fill-h:rgba(255,255,255,.13);
+  --field:rgba(255,255,255,.05);
+  --field-h:rgba(255,255,255,.1);
+  --field-line-h:rgba(255,255,255,.28);
+  --float:rgba(15,23,42,.78);
+  --float-line:rgba(255,255,255,.12);
+  --pop:rgba(15,23,42,.9);
+  --pop2:rgba(15,23,42,.95);
+  --paper:#0c1424;
+  --sw-line:rgba(255,255,255,.12);
+  --track:rgba(255,255,255,.18);
+  --knob:#e2e8f0;
+  --scrim:rgba(2,6,23,.6);
+  --hud:rgba(2,6,23,.68);
+  --toast:#1e293b;
+  --toast-fg:#f1f5f9;
+  --note-fg:#fde68a;                     /* amber-200 */
+  --key:rgba(148,163,184,.6);
+  --scroll:rgba(255,255,255,.18);
+  --scroll-h:rgba(255,255,255,.3);
+  --danger-line:rgba(248,113,113,.35);
+  --danger-bg:rgba(248,113,113,.12);
+  --danger-bg-h:rgba(248,113,113,.2);
+  --caret:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round'><polyline points='6 9 12 15 18 9'/></svg>");
+}
+
+/* Transparent on purpose — see the header note. The page's AmbientBackground
+   is what shows through, and it is what the panels blur. It is also why night
+   mode needs no background of its own here: the body underneath is already
+   `#060a15` when `.dark` is set. */
+#bds-root{
+  font-family:var(--font-manrope),ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif;
+  background:transparent;color:var(--text);font-size:13px;overflow:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+#bds-root button, #bds-root input, #bds-root select, #bds-root textarea{font-family:inherit;font-size:inherit;color:inherit}
+#bds-root button{cursor:pointer;background:none;border:none}
+#bds-root ::-webkit-scrollbar{width:8px;height:8px}
+#bds-root ::-webkit-scrollbar-thumb{background:var(--scroll);border-radius:8px;border:2px solid transparent;background-clip:content-box}
+#bds-root ::-webkit-scrollbar-thumb:hover{background:var(--scroll-h);background-clip:content-box}
+
+#bds-root #app{height:100vh;display:flex;flex-direction:column}
+
+/* ─────────── TOP BAR ─────────── */
+#bds-root .topbar{height:56px;flex-shrink:0;background:var(--panel);border-bottom:1px solid var(--line);
+  backdrop-filter:blur(20px) saturate(1.5);-webkit-backdrop-filter:blur(20px) saturate(1.5);
+  display:flex;align-items:center;gap:10px;padding:0 14px;z-index:40;position:relative}
+#bds-root .brand{display:flex;align-items:center;gap:9px;font-weight:800;font-size:14.5px;letter-spacing:-.02em}
+#bds-root .brand .mark{width:28px;height:28px;border-radius:999px;background:var(--accent-fill);
+  display:flex;align-items:center;justify-content:center;color:var(--accent-on);font-size:14px;font-weight:800}
+#bds-root .vdiv{width:1px;height:24px;background:var(--line2);margin:0 4px;flex-shrink:0}
+#bds-root #projName{border:1px solid transparent;background:transparent;font-weight:700;font-size:13.5px;
+  padding:6px 8px;border-radius:9px;width:190px;outline:none;transition:.12s}
+#bds-root #projName:hover{background:var(--panel2);border-color:var(--line)}
+#bds-root #projName:focus{background:var(--field-h);border-color:var(--accent);box-shadow:var(--ring)}
+#bds-root .floor-chip{font-size:11.5px;color:var(--muted);background:var(--panel2);border:1px solid var(--line);
+  padding:4px 9px;border-radius:20px;white-space:nowrap;font-weight:600}
+#bds-root .tb-center{display:flex;align-items:center;gap:8px;margin:0 auto}
+#bds-root .icon-btn{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;
+  color:var(--muted);border:1px solid transparent;transition:.12s}
+#bds-root .icon-btn:hover{background:var(--panel2);color:var(--text);border-color:var(--line)}
+#bds-root .icon-btn:disabled{opacity:.35;cursor:default}
+#bds-root .icon-btn:disabled:hover{background:none;border-color:transparent;color:var(--muted)}
+#bds-root .seg{display:flex;background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:3px;gap:2px}
+#bds-root .seg button{padding:5px 14px;border-radius:999px;font-size:12px;font-weight:700;color:var(--muted);transition:.12s}
+#bds-root .seg button:hover{color:var(--text)}
+#bds-root .seg button.on{background:var(--accent-fill);color:var(--accent-on);box-shadow:var(--shadow-sm)}
+#bds-root .tb-right{display:flex;align-items:center;gap:10px}
+#bds-root .save-state{font-size:11.5px;color:var(--muted);display:flex;align-items:center;gap:6px;white-space:nowrap;font-weight:600}
+#bds-root .save-state.dirty{color:var(--amber)}
+/* Buttons take the site's pill shape: `.btn` is `ghostButtonClass`, and
+   `.btn.primary` is `primaryButtonClass` — amber-400 under stone-950, with the
+   amber-tinted shadow that goes with it. */
+#bds-root .btn{height:34px;padding:0 15px;border-radius:999px;font-size:12.5px;font-weight:700;border:1px solid var(--line2);
+  background:var(--fill);color:var(--text2);transition:.12s;display:inline-flex;align-items:center;gap:7px}
+#bds-root .btn:hover{background:var(--fill-h);border-color:var(--line2)}
+#bds-root .btn.primary{background:var(--accent-fill);border-color:var(--accent-fill);color:var(--accent-on);
+  box-shadow:0 4px 14px rgba(245,158,11,.25)}
+#bds-root .btn.primary:hover{background:var(--accent-fill2);border-color:var(--accent-fill2)}
+#bds-root .btn.ghost{border-color:transparent;background:transparent;color:var(--muted);box-shadow:none}
+#bds-root .btn.ghost:hover{background:var(--panel2);color:var(--text)}
+#bds-root .btn.danger{color:var(--red);border-color:var(--danger-line);background:var(--danger-bg);box-shadow:none}
+#bds-root .btn.danger:hover{background:var(--danger-bg-h)}
+#bds-root .btn.sm{height:28px;padding:0 10px;font-size:11.5px;border-radius:999px}
+
+/* ─────────── WORKSPACE ─────────── */
+#bds-root .workspace{flex:1;display:flex;min-height:0}
+
+/* Tool rail */
+#bds-root .rail{width:82px;flex-shrink:0;background:var(--panel);border-right:1px solid var(--line);
+  backdrop-filter:blur(20px) saturate(1.5);-webkit-backdrop-filter:blur(20px) saturate(1.5);
+  display:flex;flex-direction:column;padding:10px 8px;gap:2px;overflow-y:auto}
+#bds-root .tool{width:100%;padding:9px 4px 7px;border-radius:12px;display:flex;flex-direction:column;align-items:center;
+  gap:5px;color:var(--muted);border:1px solid transparent;transition:.12s;position:relative}
+#bds-root .tool:hover{background:var(--panel2);color:var(--text2)}
+#bds-root .tool.on{background:var(--accent-soft);color:var(--accent);border-color:var(--accent-line)}
+/* `nowrap` guards the one tight spot in the tool: at the 1100px breakpoint the
+   rail narrows to 72px, which leaves "Furniture" about its own width of room.
+   Manrope is a hair wider than the Inter this was drawn in, and a label that
+   wrapped would make that one button taller than every other in the rail. */
+#bds-root .tool .lbl{font-size:10px;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
+#bds-root .tool .key{position:absolute;top:5px;right:7px;font-size:8.5px;color:var(--key);font-weight:800}
+#bds-root .tool.on .key{color:var(--accent2)}
+#bds-root .rail-sep{height:1px;background:var(--line);margin:8px 6px}
+#bds-root .rail-title{font-size:8.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.09em;
+  padding:2px 6px 5px;text-align:center}
+
+/* Stage */
+#bds-root .stage{flex:1;min-width:0;display:flex;gap:0;background:transparent;position:relative}
+#bds-root .pane{position:relative;min-width:0;flex:1;overflow:hidden}
+#bds-root .pane canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+/* Matches the paper the 2D renderer fills its canvas with, in both modes, so
+   there is no flash of a different colour before the first frame. */
+#bds-root .pane-2d{background:var(--paper);border-right:1px solid var(--line)}
+#bds-root .pane.hidden{display:none}
+#bds-root .pane-split-hidden{display:none}
+
+/* Floating overlays */
+#bds-root .ov{position:absolute;z-index:12}
+#bds-root .ov-card{background:var(--float);backdrop-filter:blur(16px) saturate(1.5);
+  -webkit-backdrop-filter:blur(16px) saturate(1.5);border:1px solid var(--float-line);
+  border-radius:14px;box-shadow:var(--shadow);padding:6px}
+#bds-root .ov-tl{top:12px;left:12px}
+#bds-root .ov-tr{top:12px;right:12px}
+#bds-root .ov-bl{bottom:12px;left:12px}
+#bds-root .ov-br{bottom:12px;right:12px}
+#bds-root .ov-bc{bottom:12px;left:50%;transform:translateX(-50%);width:max-content;max-width:calc(100% - 24px)}
+#bds-root .ov-row{display:flex;align-items:center;gap:3px}
+#bds-root .ov-btn{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;
+  color:var(--muted);transition:.12s}
+#bds-root .ov-btn:hover{background:var(--panel2);color:var(--text)}
+#bds-root .ov-btn.on{background:var(--accent-soft);color:var(--accent)}
+#bds-root .pane-tag{position:absolute;top:12px;left:12px;z-index:12;font-size:11px;font-weight:800;color:var(--muted);
+  background:var(--float);border:1px solid var(--float-line);border-radius:999px;padding:5px 10px;
+  letter-spacing:.02em;box-shadow:var(--shadow-sm);pointer-events:none;
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+#bds-root .hint-bar{font-size:11.5px;color:var(--text2);padding:7px 14px;white-space:nowrap;
+  background:var(--float);backdrop-filter:blur(16px) saturate(1.5);
+  -webkit-backdrop-filter:blur(16px) saturate(1.5);border:1px solid var(--float-line);
+  border-radius:20px;box-shadow:var(--shadow);max-width:min(560px,90%);overflow:hidden;text-overflow:ellipsis}
+#bds-root .hint-bar b{color:var(--accent)}
+#bds-root .hint-bar kbd{background:var(--panel2);border:1px solid var(--line2);border-bottom-width:2px;border-radius:4px;
+  padding:1px 5px;font-size:10px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--text2)}
+#bds-root .stat-pill{display:flex;gap:14px;font-size:11px;color:var(--muted);padding:7px 12px}
+#bds-root .stat-pill b{color:var(--text);font-weight:800}
+#bds-root .walk-hud{position:absolute;inset:0;z-index:20;background:var(--hud);color:#fff;
+  display:none;align-items:center;justify-content:center;flex-direction:column;gap:10px;cursor:pointer;
+  backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}
+#bds-root .walk-hud.on{display:flex}
+#bds-root .walk-hud .big{font-size:16px;font-weight:800;letter-spacing:-.02em}
+#bds-root .walk-hud .sm{font-size:12px;opacity:.75}
+
+/* ─────────── RIGHT PANEL ─────────── */
+#bds-root .panel{width:298px;flex-shrink:0;background:var(--panel);border-left:1px solid var(--line);
+  backdrop-filter:blur(20px) saturate(1.5);-webkit-backdrop-filter:blur(20px) saturate(1.5);
+  display:flex;flex-direction:column;min-height:0}
+#bds-root .ptabs{display:flex;padding:8px 10px 0;gap:2px;border-bottom:1px solid var(--line);flex-shrink:0}
+#bds-root .ptab{flex:1;padding:8px 4px 9px;font-size:11.5px;font-weight:700;color:var(--muted);border-bottom:2px solid transparent;
+  margin-bottom:-1px;transition:.12s;border-radius:8px 8px 0 0}
+#bds-root .ptab:hover{color:var(--text2);background:var(--panel2)}
+#bds-root .ptab.on{color:var(--accent);border-bottom-color:var(--accent-fill)}
+#bds-root .pbody{flex:1;overflow-y:auto;padding:14px;min-height:0}
+#bds-root .phead{display:flex;align-items:center;gap:9px;margin-bottom:14px}
+#bds-root .phead .ico{width:30px;height:30px;border-radius:10px;background:var(--accent-soft);color:var(--accent);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0}
+#bds-root .phead .tt{font-size:14px;font-weight:800;letter-spacing:-.02em}
+#bds-root .phead .st{font-size:10.5px;color:var(--muted);margin-top:1px}
+#bds-root .sec{margin-bottom:16px}
+/* The section caption is the site's `eyebrowClass` — stone-500, uppercase,
+   widely tracked — at the studio's smaller type scale. */
+#bds-root .sec-t{font-size:9.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.09em;margin-bottom:9px;
+  display:flex;align-items:center;justify-content:space-between}
+#bds-root .sec-t .act{color:var(--accent);font-size:10px;font-weight:800;text-transform:none;letter-spacing:0;cursor:pointer}
+#bds-root .field{display:flex;align-items:center;gap:9px;margin-bottom:7px}
+#bds-root .field .fico{width:18px;flex-shrink:0;color:var(--muted);display:flex;align-items:center;justify-content:center}
+#bds-root .field label{flex:1;font-size:12px;color:var(--text2);font-weight:600}
+#bds-root .inp{width:104px;flex-shrink:0;height:32px;border:1px solid var(--line2);border-radius:10px;padding:0 9px;
+  background:var(--field);outline:none;font-size:12.5px;transition:.12s;text-align:left}
+#bds-root .inp:hover{border-color:var(--field-line-h)}
+#bds-root .inp:focus{border-color:var(--accent);background:var(--field-h);box-shadow:var(--ring)}
+#bds-root .inp.full{width:100%}
+#bds-root .inp[type=number]{padding-right:4px}
+#bds-root .unit{position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--muted);pointer-events:none}
+#bds-root .inp-wrap{position:relative;width:104px;flex-shrink:0}
+#bds-root .inp-wrap .inp{width:100%;padding-right:26px}
+#bds-root select.inp{cursor:pointer;-webkit-appearance:none;appearance:none;
+  background-image:var(--caret);
+  background-repeat:no-repeat;background-position:right 8px center;padding-right:26px}
+#bds-root .toggle{width:38px;height:22px;border-radius:20px;background:var(--track);position:relative;transition:.16s;flex-shrink:0}
+#bds-root .toggle::after{content:'';position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;
+  background:var(--knob);box-shadow:0 1px 3px rgba(0,0,0,.25);transition:.16s}
+#bds-root .toggle.on{background:var(--accent-fill)}
+#bds-root .toggle.on::after{transform:translateX(16px)}
+#bds-root .mat-card{display:flex;align-items:center;gap:10px;border:1px solid var(--line2);border-radius:12px;padding:8px;
+  background:var(--card);cursor:pointer;transition:.12s}
+#bds-root .mat-card:hover{border-color:var(--accent-line);background:var(--accent-soft)}
+#bds-root .mat-sw{width:38px;height:38px;border-radius:9px;flex-shrink:0;border:1px solid var(--sw-line);background-size:cover}
+#bds-root .mat-nm{font-size:12.5px;font-weight:700}
+#bds-root .mat-sub{font-size:10.5px;color:var(--muted)}
+#bds-root .grid2{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+#bds-root .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+#bds-root .tile{border:1px solid var(--line);border-radius:12px;padding:8px 6px;background:var(--card);transition:.12s;
+  display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center}
+#bds-root .tile:hover{border-color:var(--accent-line);background:var(--accent-soft);transform:translateY(-1px)}
+#bds-root .tile.on{border-color:var(--accent-line);background:var(--accent-soft)}
+#bds-root .tile .tsw{width:100%;height:34px;border-radius:8px;border:1px solid var(--sw-line);background-size:cover}
+#bds-root .tile .tnm{font-size:10.5px;font-weight:700;line-height:1.25}
+#bds-root .tile .tsz{font-size:9.5px;color:var(--muted)}
+#bds-root .tile .tico{color:var(--text2);height:30px;display:flex;align-items:center}
+#bds-root .note{background:var(--accent-soft);border:1px solid var(--accent-line);border-radius:12px;padding:10px;display:flex;gap:8px;
+  font-size:11.5px;color:var(--note-fg);line-height:1.5}
+#bds-root .note .i{flex-shrink:0;color:var(--accent)}
+#bds-root .empty{text-align:center;padding:34px 12px;color:var(--muted)}
+#bds-root .empty .eico{width:46px;height:46px;margin:0 auto 12px;border-radius:14px;background:var(--panel2);
+  border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--muted)}
+#bds-root .empty .et{font-size:12.5px;font-weight:700;color:var(--text2);margin-bottom:4px}
+#bds-root .empty .es{font-size:11.5px;line-height:1.5}
+
+/* Layers */
+#bds-root .layer{display:flex;align-items:center;gap:9px;padding:9px 10px;border:1px solid var(--line);border-radius:12px;
+  margin-bottom:6px;background:var(--card);cursor:pointer;transition:.12s}
+#bds-root .layer:hover{border-color:var(--line2);background:var(--fill-h)}
+#bds-root .layer.on{border-color:var(--accent-line);background:var(--accent-soft)}
+#bds-root .layer .dot{width:8px;height:8px;border-radius:50%;background:var(--track);flex-shrink:0}
+#bds-root .layer.on .dot{background:var(--accent-fill)}
+#bds-root .layer .ln{flex:1;min-width:0}
+#bds-root .layer .lnm{font-size:12.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#bds-root .layer .lsub{font-size:10.5px;color:var(--muted)}
+#bds-root .layer .eye{width:26px;height:26px;border-radius:8px;display:flex;align-items:center;justify-content:center;
+  color:var(--muted);flex-shrink:0}
+#bds-root .layer .eye:hover{background:var(--panel2);color:var(--text)}
+#bds-root .layer .eye.off{opacity:.35}
+#bds-root .ver{display:flex;align-items:center;gap:9px;padding:8px 9px;border:1px solid var(--line);border-radius:12px;
+  margin-bottom:6px;background:var(--card)}
+#bds-root .ver .vth{width:44px;height:34px;border-radius:8px;background:var(--panel2);border:1px solid var(--line);flex-shrink:0;
+  background-size:cover;background-position:center}
+#bds-root .ver .vn{flex:1;min-width:0}
+#bds-root .ver .vnm{font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#bds-root .ver .vt{font-size:10px;color:var(--muted)}
+
+/* Menu + modal */
+#bds-root .menu{position:absolute;top:52px;right:14px;width:250px;background:var(--pop);
+  border:1px solid var(--float-line);backdrop-filter:blur(24px) saturate(1.6);
+  -webkit-backdrop-filter:blur(24px) saturate(1.6);
+  border-radius:16px;box-shadow:var(--shadow);padding:6px;z-index:60;display:none}
+#bds-root .menu.on{display:block}
+#bds-root .menu-t{font-size:9.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.09em;padding:8px 10px 5px}
+#bds-root .menu-i{width:100%;display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;font-size:12.5px;
+  color:var(--text2);transition:.1s;text-align:left;font-weight:600}
+#bds-root .menu-i:hover{background:var(--accent-soft);color:var(--accent2)}
+#bds-root .menu-i .mi{width:16px;flex-shrink:0;display:flex;color:var(--muted)}
+#bds-root .menu-i:hover .mi{color:var(--accent)}
+#bds-root .menu-i .mk{margin-left:auto;font-size:10px;color:var(--muted)}
+#bds-root .menu-sep{height:1px;background:var(--line);margin:5px 4px}
+#bds-root .scrim{position:fixed;inset:0;background:var(--scrim);z-index:70;display:none;align-items:center;justify-content:center;padding:20px;
+  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+#bds-root .scrim.on{display:flex}
+#bds-root .modal{background:var(--pop2);border:1px solid var(--float-line);
+  backdrop-filter:blur(24px) saturate(1.6);-webkit-backdrop-filter:blur(24px) saturate(1.6);
+  border-radius:20px;box-shadow:var(--modal-shadow);width:100%;max-width:460px;
+  max-height:86vh;display:flex;flex-direction:column;overflow:hidden}
+#bds-root .modal-h{padding:16px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:between;gap:10px}
+#bds-root .modal-h .mt{font-size:15px;font-weight:800;flex:1;letter-spacing:-.02em}
+#bds-root .modal-b{padding:16px 18px;overflow-y:auto;font-size:12.5px;line-height:1.6;color:var(--text2)}
+#bds-root .modal-f{padding:12px 18px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end;background:var(--panel2)}
+#bds-root .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--toast);color:var(--toast-fg);
+  padding:10px 18px;border-radius:999px;font-size:12.5px;font-weight:600;z-index:90;opacity:0;transition:.25s;
+  box-shadow:var(--modal-shadow);pointer-events:none;max-width:80vw;text-align:center}
+#bds-root .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* Status bar */
+#bds-root .statusbar{height:30px;flex-shrink:0;background:var(--panel);border-top:1px solid var(--line);display:flex;
+  backdrop-filter:blur(20px) saturate(1.5);-webkit-backdrop-filter:blur(20px) saturate(1.5);
+  align-items:center;padding:0 12px;gap:14px;font-size:11px;color:var(--muted)}
+#bds-root .sb-i{display:flex;align-items:center;gap:5px;white-space:nowrap}
+#bds-root .sb-i b{color:var(--text2);font-weight:700}
+#bds-root .sb-btn{padding:3px 8px;border-radius:999px;font-size:11px;color:var(--muted);transition:.1s;display:flex;align-items:center;gap:5px;font-weight:600}
+#bds-root .sb-btn:hover{background:var(--panel2);color:var(--text)}
+#bds-root .sb-btn.on{color:var(--accent2);background:var(--accent-soft)}
+#bds-root .sb-sep{width:1px;height:14px;background:var(--line2)}
+#bds-root .sb-right{margin-left:auto;display:flex;align-items:center;gap:12px}
+#bds-root .dotlive{width:6px;height:6px;border-radius:50%;background:var(--green)}
+
+/* AI */
+#bds-root .ai-msgs{display:flex;flex-direction:column;gap:8px}
+#bds-root .ai-m{border:1px solid var(--line);background:var(--card);border-radius:14px;padding:9px 11px;font-size:12px;line-height:1.6}
+#bds-root .ai-m.u{background:var(--accent-soft);border-color:var(--accent-line);color:var(--note-fg)}
+#bds-root .ai-m b{font-weight:800}
+#bds-root .ai-in{display:flex;gap:7px;padding:10px;border-top:1px solid var(--line);flex-shrink:0}
+#bds-root .ai-in textarea{flex:1;border:1px solid var(--line2);border-radius:12px;padding:8px 10px;resize:none;outline:none;
+  font-size:12.5px;line-height:1.4;background:var(--field);transition:.12s}
+#bds-root .ai-in textarea:focus{border-color:var(--accent);background:var(--field-h);box-shadow:var(--ring)}
+#bds-root .chip-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+#bds-root .chip{font-size:11px;padding:5px 10px;border:1px solid var(--line2);border-radius:20px;color:var(--text2);
+  background:var(--card);transition:.12s;font-weight:600}
+#bds-root .chip:hover{border-color:var(--accent-line);color:var(--accent2);background:var(--accent-soft)}
+#bds-root .spin{display:inline-block;width:12px;height:12px;border:2px solid var(--line2);border-top-color:var(--accent);
+  border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#bds-root .boot{position:fixed;inset:0;background:var(--bg);z-index:100;display:flex;align-items:center;justify-content:center;
+  flex-direction:column;gap:14px;color:var(--muted);font-size:13px;font-weight:600}
+#bds-root .boot.off{display:none}
+@media (max-width:1100px){#bds-root .panel{width:262px}#bds-root .rail{width:72px}}

@@ -2,12 +2,20 @@ import type { Request, Response } from "express";
 import type { HydratedDocument } from "mongoose";
 import { z } from "zod";
 import {
+  ColumnShape,
+  DEFAULT_CEILING_FT,
+  DEFAULT_SLAB_FT,
+  DoorSwing,
   FurnitureKind,
+  HingeSide,
   OpeningKind,
+  PlanMaterial,
   RoomKind,
+  StairRailSide,
   UserRole,
   floorAreaSqft,
   kathaToSqft,
+  openingHeadFt,
   wallLengthFt,
   type FloorPlan as FloorPlanDto,
   type PlanCompliance,
@@ -37,7 +45,14 @@ function toFloorPlanDto(doc: HydratedDocument<FloorPlanDoc>): FloorPlanDto {
     rooms: doc.rooms,
     openings: doc.openings,
     furniture: doc.furniture,
+    stairs: doc.stairs,
+    columns: doc.columns,
     gridStepFt: doc.gridStepFt,
+    ceilingHeightFt: doc.ceilingHeightFt,
+    slabThicknessFt: doc.slabThicknessFt,
+    floorMaterial: doc.floorMaterial,
+    ceilingMaterial: doc.ceilingMaterial,
+    showCeiling: doc.showCeiling,
     updatedBy:
       editor && typeof editor === "object" && "name" in editor
         ? {
@@ -53,7 +68,7 @@ function toFloorPlanDto(doc: HydratedDocument<FloorPlanDoc>): FloorPlanDto {
 }
 
 /** Plans are visible to the people on the project: owner, architect, or admin. */
-function canViewPlans(
+export function canViewPlans(
   project: HydratedDocument<ProjectDoc>,
   auth: { sub: string; role: UserRole }
 ) {
@@ -70,7 +85,7 @@ function canViewPlans(
  * change-suggestions land later, they go in as their own request/response
  * flow, not by widening this check.)
  */
-function canEditPlans(
+export function canEditPlans(
   project: HydratedDocument<ProjectDoc>,
   auth: { sub: string; role: UserRole }
 ) {
@@ -84,6 +99,9 @@ const pointSchema = z.object({
   y: z.number().finite().min(-5000).max(5000),
 });
 
+/** Every 3D finish field is the same optional enum. */
+const material = z.enum(PlanMaterial).optional();
+
 const wallSchema = z.object({
   id: z.string().trim().min(1).max(40),
   x1: z.number().finite().min(-5000).max(5000),
@@ -91,6 +109,8 @@ const wallSchema = z.object({
   x2: z.number().finite().min(-5000).max(5000),
   y2: z.number().finite().min(-5000).max(5000),
   thicknessIn: z.number().min(2).max(24),
+  heightFt: z.number().min(1).max(30).optional(),
+  material,
 });
 
 const roomSchema = z.object({
@@ -103,6 +123,8 @@ const roomSchema = z.object({
     .string()
     .regex(/^#[0-9a-f]{6}$/i, "A room colour must be a #rrggbb hex value")
     .optional(),
+  floorMaterial: material,
+  ceilingMaterial: material,
 });
 
 const furnitureSchema = z.object({
@@ -114,6 +136,9 @@ const furnitureSchema = z.object({
   depthFt: z.number().min(0.5).max(60),
   rotation: z.number().int().min(0).max(359),
   label: z.string().trim().max(40).optional(),
+  heightFt: z.number().min(0.2).max(12).optional(),
+  mountFt: z.number().min(0).max(12).optional(),
+  material,
 });
 
 const openingSchema = z.object({
@@ -122,6 +147,34 @@ const openingSchema = z.object({
   offsetFt: z.number().min(0).max(5000),
   widthFt: z.number().min(0.5).max(40),
   kind: z.enum(OpeningKind, { message: "An opening is either a door or a window" }),
+  heightFt: z.number().min(1).max(12).optional(),
+  sillFt: z.number().min(0).max(10).optional(),
+  hinge: z.enum(HingeSide).optional(),
+  swing: z.enum(DoorSwing).optional(),
+  openDeg: z.number().min(0).max(120).optional(),
+  frameMaterial: material,
+});
+
+const stairSchema = z.object({
+  id: z.string().trim().min(1).max(40),
+  x: z.number().finite().min(-5000).max(5000),
+  y: z.number().finite().min(-5000).max(5000),
+  widthFt: z.number().min(2).max(12),
+  runFt: z.number().min(3).max(40),
+  rotation: z.number().int().min(0).max(359),
+  riseFt: z.number().min(3).max(25).optional(),
+  railSide: z.enum(StairRailSide).optional(),
+  material,
+});
+
+const columnSchema = z.object({
+  id: z.string().trim().min(1).max(40),
+  x: z.number().finite().min(-5000).max(5000),
+  y: z.number().finite().min(-5000).max(5000),
+  sizeFt: z.number().min(0.5).max(5),
+  shape: z.enum(ColumnShape).optional(),
+  heightFt: z.number().min(1).max(30).optional(),
+  material,
 });
 
 const savePlanSchema = z
@@ -133,7 +186,16 @@ const savePlanSchema = z
     // browser tab left open across the deploy) stores an empty list instead of
     // failing validation.
     furniture: z.array(furnitureSchema).max(300).default([]),
+    // Same reasoning as `furniture` above: defaulted, not required, so a plan
+    // saved from a tab that predates the 3D studio still validates.
+    stairs: z.array(stairSchema).max(20).default([]),
+    columns: z.array(columnSchema).max(200).default([]),
     gridStepFt: z.number().min(0.25).max(10),
+    ceilingHeightFt: z.number().min(6).max(20).default(DEFAULT_CEILING_FT),
+    slabThicknessFt: z.number().min(0.25).max(2).default(DEFAULT_SLAB_FT),
+    floorMaterial: material,
+    ceilingMaterial: material,
+    showCeiling: z.boolean().default(false),
   })
   .superRefine((plan, ctx) => {
     // An opening is a hole in a specific wall, so it must name a wall that
@@ -153,6 +215,18 @@ const savePlanSchema = z
         ctx.addIssue({
           code: "custom",
           message: `A ${opening.kind.toLowerCase()} is wider than the wall it sits on`,
+          path: ["openings"],
+        });
+      }
+      // Now that openings carry a height and a sill, they can also overshoot
+      // the wall vertically — a window set 7 ft up in a 9 ft wall, say. The 3D
+      // view would build a lintel of negative height, so catch it here.
+      // `ceilingHeightFt` is already defaulted by the time refinement runs.
+      const wallTopFt = wall.heightFt ?? plan.ceilingHeightFt;
+      if (openingHeadFt(opening) > wallTopFt + 0.01) {
+        ctx.addIssue({
+          code: "custom",
+          message: `A ${opening.kind.toLowerCase()} reaches higher than the wall it is cut into`,
           path: ["openings"],
         });
       }

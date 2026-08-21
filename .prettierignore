@@ -4,3 +4,11 @@ pnpm-lock.yaml
 .next/
 dist/
 .turbo/
+
+# The 3D Design Studio is Essentials/design3d.html, ported over as it was
+# written so each file stays comparable against the one it came from. Prettier
+# would reflow the markup and the engine into something that no longer diffs
+# against the original, which is the one property this port has to keep.
+apps/web/src/components/studio/design3dEngine.js
+apps/web/src/components/studio/design3d.css
+apps/web/src/components/studio/StudioShell.tsx

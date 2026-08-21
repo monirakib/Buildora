@@ -31,7 +31,10 @@ export function createApp() {
       allowedHeaders: ["Content-Type", "Authorization", REFRESH_HEADER],
     })
   );
-  app.use(express.json());
+  // A fully drawn floor plan is by far the largest body this API accepts: at the
+  // validator's own caps (400 walls, 400 openings, 300 pieces of furniture, 120
+  // rooms) the JSON runs past 150 KB, which the 100 KB default would reject.
+  app.use(express.json({ limit: "1mb" }));
   // Reads the refresh cookie on /api/auth/refresh and /api/auth/logout. Nothing
   // else in the app authenticates from a cookie.
   app.use(cookieParser());

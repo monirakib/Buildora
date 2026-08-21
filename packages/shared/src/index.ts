@@ -13,5 +13,6 @@ export * from "./payments";
 export * from "./resolution";
 export * from "./sitediary";
 export * from "./structural";
+export * from "./studio";
 export * from "./types";
 export * from "./verification";

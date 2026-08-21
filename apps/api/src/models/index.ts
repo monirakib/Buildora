@@ -55,6 +55,8 @@ import { Session } from "./Session";
 import { SiteCheckIn } from "./SiteCheckIn";
 import { SiteDiaryEntry } from "./SiteDiaryEntry";
 import { StructuralEngagement } from "./StructuralEngagement";
+import { StudioDesign } from "./StudioDesign";
+import { StudioVersion } from "./StudioVersion";
 import { Tender } from "./Tender";
 import { User } from "./User";
 import { VerificationRequest } from "./VerificationRequest";
@@ -103,6 +105,8 @@ export const allModels = [
   SiteCheckIn,
   SiteDiaryEntry,
   StructuralEngagement,
+  StudioDesign,
+  StudioVersion,
   Tender,
   User,
   VerificationRequest,

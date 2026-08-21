@@ -39,7 +39,7 @@ import { ProposalsSection } from "@/components/project/ProposalsSection";
 import { ContractSection } from "@/components/project/ContractSection";
 import { EcpsSection } from "@/components/project/EcpsSection";
 import { StructuralSection } from "@/components/project/StructuralSection";
-import { FloorPlanSection } from "@/components/project/FloorPlanSection";
+import { DesignStudioCard } from "@/components/project/DesignStudioCard";
 import { DocumentsSection } from "@/components/project/DocumentsSection";
 import { SiteDiarySection } from "@/components/project/SiteDiarySection";
 import { TenderSection } from "@/components/project/TenderSection";
@@ -504,7 +504,7 @@ export default function ProjectDetailPage() {
                       />
                     )}
                     {(isOwner || isAssignedArchitect) && project.architect && (
-                      <FloorPlanSection project={project} token={token} />
+                      <DesignStudioCard project={project} token={token} />
                     )}
                     {!contract && project.status !== ProjectStatus.BRIEF_POSTED && (
                       <EmptyTab

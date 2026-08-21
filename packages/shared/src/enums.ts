@@ -362,6 +362,77 @@ export enum FurnitureKind {
   BATHTUB = "BATHTUB",
   DESK = "DESK",
   CHAIR = "CHAIR",
+  // Added with the 3D studio. Every one of these needs three things or it will
+  // not render: a row in FURNITURE_PRESETS, a 2D symbol in furnitureSymbols.tsx,
+  // and a 3D builder in plan3d/furniture3d.ts.
+  NIGHTSTAND = "NIGHTSTAND",
+  SECTIONAL_SOFA = "SECTIONAL_SOFA",
+  ARMCHAIR = "ARMCHAIR",
+  COFFEE_TABLE = "COFFEE_TABLE",
+  AREA_RUG = "AREA_RUG",
+  KITCHEN_ISLAND = "KITCHEN_ISLAND",
+  COUNTER_RUN = "COUNTER_RUN",
+  REFRIGERATOR = "REFRIGERATOR",
+  BOOKSHELF = "BOOKSHELF",
+  PLANTER = "PLANTER",
+  SPLIT_AC = "SPLIT_AC",
+}
+
+/**
+ * A surface finish that can be put on a wall, a floor, a ceiling or a piece of
+ * furniture in the 3D view.
+ *
+ * These are *named finishes*, not colours: each one carries a roughness, a
+ * metalness and a real-world tile size (see `MATERIAL_TILE_FT`), because a
+ * 600mm ceramic tile and a 4-foot plank have to repeat at their true size or
+ * the room reads at the wrong scale. Purely a 3D concern — the 2D drawing keeps
+ * using the room-type tints it always has.
+ */
+export enum PlanMaterial {
+  PLASTER = "PLASTER",
+  WARM_WHITE = "WARM_WHITE",
+  CONCRETE = "CONCRETE",
+  BRICK = "BRICK",
+  OAK = "OAK",
+  WALNUT = "WALNUT",
+  MARBLE = "MARBLE",
+  CERAMIC_TILE = "CERAMIC_TILE",
+  TERRACOTTA = "TERRACOTTA",
+  GRASS = "GRASS",
+  DECK = "DECK",
+  MOSAIC = "MOSAIC",
+  GLASS = "GLASS",
+  MATTE_BLACK = "MATTE_BLACK",
+  BRUSHED_STEEL = "BRUSHED_STEEL",
+  FABRIC_GREY = "FABRIC_GREY",
+  FABRIC_BEIGE = "FABRIC_BEIGE",
+  OAK_FURNITURE = "OAK_FURNITURE",
+}
+
+/** Which jamb a door is hinged on, looking along the wall from its start point. */
+export enum HingeSide {
+  LEFT = "LEFT",
+  RIGHT = "RIGHT",
+}
+
+/** Which way a door leaf swings. Only meaningful in 3D and on the 2D swing arc. */
+export enum DoorSwing {
+  IN = "IN",
+  OUT = "OUT",
+}
+
+/** Cross-section of a structural column. */
+export enum ColumnShape {
+  SQUARE = "SQUARE",
+  ROUND = "ROUND",
+}
+
+/** Which side(s) of a stair run carry a railing. */
+export enum StairRailSide {
+  BOTH = "BOTH",
+  LEFT = "LEFT",
+  RIGHT = "RIGHT",
+  NONE = "NONE",
 }
 
 /** Filing category for the project document archive. */
