@@ -252,6 +252,9 @@ export function StudioShell({ projectId }: { projectId: string }) {
           <button className="sb-btn on" id="sbSnapPoint" title="Snap to wall endpoints">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4" strokeLinecap="round"/></svg> Endpoint
           </button>
+          <button className="sb-btn on" id="sbSnapWall" title="Seat furniture against walls — hold Shift while dragging to place it freely">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M3 4v16"/><rect x="6" y="9" width="13" height="9" rx="1"/></svg> Wall
+          </button>
           <div className="sb-sep"></div>
           <button className="sb-btn" id="sbUnit">Units: <b id="unitLbl">ft</b></button>
           <div className="sb-sep"></div>

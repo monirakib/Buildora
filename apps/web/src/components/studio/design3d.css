@@ -393,6 +393,53 @@
 #bds-root .tile .tnm{font-size:10.5px;font-weight:700;line-height:1.25}
 #bds-root .tile .tsz{font-size:9.5px;color:var(--muted)}
 #bds-root .tile .tico{color:var(--text2);height:30px;display:flex;align-items:center}
+
+/* ── Library: the model kits ─────────────────────────────────────────
+   Kenney's four kits, which the catalogue above does not cover. Every colour
+   here is one of the names defined at the top, so night mode needs nothing
+   added — the `.dark` block re-points them along with everything else. */
+#bds-root .kit-tabs{display:flex;gap:5px;margin-bottom:8px;flex-wrap:wrap}
+#bds-root .kit-tab{flex:1 1 auto;min-width:0;border:1px solid var(--line);border-radius:9px;padding:6px 7px;
+  background:var(--card);font-size:10.5px;font-weight:700;color:var(--text2);transition:.12s;
+  display:flex;align-items:center;justify-content:center;gap:4px;white-space:nowrap}
+#bds-root .kit-tab:hover{border-color:var(--accent-line);background:var(--accent-soft)}
+#bds-root .kit-tab.on{border-color:var(--accent-line);background:var(--accent-soft);color:var(--accent2)}
+#bds-root .kit-tab i{font-style:normal;font-size:9px;font-weight:800;color:var(--muted)}
+#bds-root .kit-tab.on i{color:var(--accent)}
+#bds-root .kit-search{margin-bottom:10px}
+/* A <search> input paints its own clear button; let it follow the theme. */
+#bds-root .kit-search::-webkit-search-cancel-button{filter:grayscale(1);opacity:.5;cursor:pointer}
+#bds-root .kit-msg{font-size:11px;color:var(--muted);padding:10px 2px;text-align:center;line-height:1.5}
+/* A superclass: a header that is always shown, and the tiles it opens onto.
+   Collapsed by default — one of these holds nearly five hundred models. */
+#bds-root .kit-class{border-bottom:1px solid var(--line)}
+#bds-root .kit-class-h{width:100%;display:flex;align-items:center;gap:7px;padding:8px 2px;
+  background:none;font-size:11.5px;font-weight:700;color:var(--text2);text-align:left;transition:.12s}
+#bds-root .kit-class-h:hover{color:var(--accent2)}
+#bds-root .kit-class.on .kit-class-h{color:var(--accent2)}
+#bds-root .kit-class-h .kit-caret{width:10px;flex-shrink:0;color:var(--muted);font-size:9px}
+#bds-root .kit-class-h .kit-class-n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#bds-root .kit-class-h b{font-size:9.5px;font-weight:800;color:var(--muted)}
+#bds-root .kit-class.on .kit-class-h b{color:var(--accent)}
+#bds-root .kit-class .kit-grid{padding:2px 0 10px}
+#bds-root .kit-grid{gap:6px}
+#bds-root .kit-tile{padding:6px 4px;gap:4px}
+/* The pictures are Kenney's own renders, and they arrive at every shape and
+   size — 42x67 for a chair, 512x512 for a tree — so they are fitted into one
+   box rather than stretched to it. */
+#bds-root .kit-tile .kthumb{width:100%;height:38px;object-fit:contain;display:block}
+#bds-root .kit-tile .tnm{font-size:9.5px;font-weight:700;line-height:1.2;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+#bds-root .kit-tile .tsz{font-size:8.5px}
+/* ── Furnishing schedule ──────────────────────────────────────────── */
+#bds-root .fsch{margin-bottom:9px}
+#bds-root .fsch-r{display:flex;justify-content:space-between;align-items:baseline;gap:8px;
+  font-size:11px;font-weight:800;color:var(--text);padding-bottom:3px;border-bottom:1px solid var(--line)}
+#bds-root .fsch-r b{color:var(--muted);font-size:10px}
+#bds-root .fsch-i{display:flex;justify-content:space-between;gap:8px;
+  font-size:11px;color:var(--text2);padding:3px 0 0 8px}
+#bds-root .fsch-i b{font-weight:700;color:var(--muted)}
+
 #bds-root .note{background:var(--accent-soft);border:1px solid var(--accent-line);border-radius:12px;padding:10px;display:flex;gap:8px;
   font-size:11.5px;color:var(--note-fg);line-height:1.5}
 #bds-root .note .i{flex-shrink:0;color:var(--accent)}

@@ -27,6 +27,8 @@ export interface StudioDesignDoc {
   floors: StudioFloor[];
   active: number;
   v: number;
+  /** Hour of day the 3D sun is set to. Absent means the studio's default. */
+  sunHour?: number;
   /** Who last saved — the studio only lets the project's architect write. */
   updatedBy: Types.ObjectId;
   createdAt: Date;
@@ -68,6 +70,9 @@ const studioDesignSchema = new Schema<StudioDesignDoc>(
     floors: { type: [floorSchema], default: [] },
     active: { type: Number, default: 0, min: 0, max: 50 },
     v: { type: Number, default: 1 },
+    // Hour of day for the 3D sun. No default: an absent value means "the
+    // studio's own", which keeps designs saved before this existed unchanged.
+    sunHour: { type: Number, min: 0, max: 24 },
     updatedBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
   },
   { timestamps: true }

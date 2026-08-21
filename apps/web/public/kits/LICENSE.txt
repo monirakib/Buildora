@@ -1,0 +1,11 @@
+Kenney model kits — Building, Furniture, Nature and Prototype.
+
+Created by Kenney (kenney.nl) and released under Creative Commons CC0 1.0:
+https://creativecommons.org/publicdomain/zero/1.0/
+
+CC0 waives all copyright, so these models may be used, changed and
+redistributed for any purpose without permission or attribution. Buildora
+credits Kenney in the Design Studio's Library anyway.
+
+The originals are kept in Essentials/Kits; this folder is generated from
+them by apps/web/scripts/import-kits.mjs.

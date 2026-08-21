@@ -92,6 +92,13 @@ export interface StudioStairs {
   mat?: string;
   /** Absent counts as railed — the 3D builder tests `rail !== false`. */
   rail?: boolean;
+  /**
+   * Whether this flight cuts a stairwell opening through the slab above it.
+   * Absent counts as yes, so a stair drawn before the opening existed keeps
+   * one. Turned off for a mezzanine flight, or for a top-floor stair that
+   * should not go through the roof.
+   */
+  cut?: boolean;
   /** Which side carries the rail. Read by the 3D builder, not yet written. */
   railSide?: "left" | "right";
 }
@@ -156,6 +163,16 @@ export interface StudioDesign {
   active: number;
   /** Format version, for future migrations. */
   v: number;
+  /**
+   * Hour of the day the sun is set to, 6–18. Drives the light's direction,
+   * colour and strength in the 3D view.
+   *
+   * Saved with the drawing rather than kept as a viewer preference: which way
+   * the light falls is a decision about the building, and a room that only
+   * works at nine in the morning is worth being able to show again. Absent on
+   * designs saved before it existed, which read as the studio's default.
+   */
+  sunHour?: number;
 }
 
 /** A saved snapshot, listed in the studio's Layers tab. */
