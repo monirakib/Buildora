@@ -29,6 +29,9 @@
  *     changed — see `design3d.css` for the same treatment applied to the
  *     chrome, which is the other half of the same switch.
  *
+ *  9. Kenney's four model kits in the Library, alongside the parametric
+ *     catalogue rather than in place of it — see the KIT MODELS block.
+ *
  * Everything above the horizontal rule below is new. Under it is the original
  * file, with the colour and font literals of point 8 replaced by `PAL.*` and
  * `UI_FONT` in place — plus `buildGrids()`, `applyTheme()` and `onDayPaper()`,
@@ -44,6 +47,7 @@ import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js";
 import { OBJExporter } from "three/examples/jsm/exporters/OBJExporter.js";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 
 /**
  * Start the studio inside `root` and return the function that shuts it down.
@@ -197,7 +201,21 @@ const DEF = {
   doorW: 3.0, doorH: 7.0,
   winW: 4.0, winH: 4.0, winSill: 3.0,
   slabT: 0.5,
-  floorH: 10.5       // floor-to-floor
+  floorH: 10.5,      // floor-to-floor
+  // Where the plan is cut. A floor plan is a horizontal slice about four feet
+  // up, so anything mounted above that line — wall cabinets, a mirror, a
+  // ceiling fan — is overhead rather than underfoot, and is drawn dashed.
+  cutY: 4.0,
+  // How far a stairwell opening stands off the flight on every side. Three
+  // inches keeps the cut edge off the stringer instead of exactly on it, and
+  // leaves the top newel post standing in the void rather than through the
+  // slab. Do not raise it much: the opening still has to fit inside one room,
+  // and room polygons run along wall *centrelines*, so a stair pushed flush to
+  // a 5" wall only has about 2.5" of margin to give away.
+  stairGap: 0.25,
+  // Mid-afternoon. High enough to light the building properly, far enough off
+  // noon that the shadows have a direction and the massing reads.
+  sunHour: 14
 };
 
 function newFloor(i){
@@ -216,7 +234,7 @@ function newFloor(i){
 }
 
 function newProject(name){
-  return { name: name || 'Modern Villa', unit: 'ft', floors: [newFloor(0)], active: 0, v: 1 };
+  return { name: name || 'Modern Villa', unit: 'ft', floors: [newFloor(0)], active: 0, v: 1, sunHour: DEF.sunHour };
 }
 
 let P = newProject();                 // the project
@@ -224,7 +242,7 @@ let sel = null;                       // selected element id
 let hover = null;                     // hovered element id (2D)
 let tool = 'select';
 let viewMode = '3d';                  // 2d | split | 3d
-const snapCfg = { grid: true, ortho: true, point: true, size: 1 };
+const snapCfg = { grid: true, ortho: true, point: true, wall: true, size: 1 };
 const showCfg = { grid: true, dims: true, ceilings: false, shadows: true, above: false };
 
 const floor  = () => P.floors[P.active];
@@ -373,7 +391,15 @@ function sendMirror(){
         height: f.height,
         floorMat: f.floorMat,
         ceilMat: f.ceilMat,
-        showCeiling: showCfg.ceilings,
+        // Not `showCfg.ceilings`. That is the 3D pane's own view switch, and
+        // sending it wrote a viewer's preference into every level of a saved
+        // plan — so tapping "show ceilings" changed persisted data for the
+        // whole building. Worse, StudioShell only skips a level whose payload
+        // is byte-identical to the last one, so the toggle also forced a
+        // needless rewrite of every floor plan the project has. The flag is a
+        // render preference belonging to the old 2D editor's document, so it
+        // is sent as that schema's own default and left alone.
+        showCeiling: false,
         gridStepFt: snapCfg.size,
         elements: f.elements,
         rooms: detectRooms(f).map(r => ({ poly: r.poly, area: r.area, name: r.name }))
@@ -533,6 +559,74 @@ function wallHit(p, maxD){
     if (r.d < lim && (!best || r.d < best.d)) best = { wall: w, t: r.t, d: r.d, pt: r.pt };
   }
   return best;
+}
+
+// How close an object's back has to get before a wall takes hold of it.
+const WALL_SNAP = 1.2;
+
+/**
+ * Park an object with its back against the nearest wall.
+ *
+ * `c` is where the drag would like the centre to be. What comes back is the
+ * centre and the rotation that stand the object on the wall's face — on
+ * whichever side of the wall the cursor is — or null when no wall is close
+ * enough to bother.
+ *
+ * The geometry rests on one identity worth stating plainly. An object's local
+ * +Z is its front: the bed's headboard sits at -d/2, the sofa's back at -d/2,
+ * the wardrobe's doors at +d/2, and `drawObject2D` points its facing arrow at
+ * +d. A wall's local +X is its own direction. Both are placed with the same
+ * `rotation.y = -angle` convention, so **setting `rot` to `wallAngle(w)` lines
+ * the object's width up with the wall and leaves its front pointing along
+ * `V.perp(wallDir(w))`** — which is why the only two candidate angles are that
+ * one and its opposite, and why picking the side picks the angle at the same
+ * time. Flipping the side flips the front by exactly 180°, so it is one
+ * decision, not two.
+ */
+function wallSnap(el, c){
+  const back = (el.d || 2) / 2;
+  let best = null;
+  for (const w of walls()){
+    const r = projSeg(c, w.a, w.b);
+    // Measure the gap from the object's back face to the wall's face, not from
+    // its centre to the centreline — otherwise a deep sofa would grab a wall
+    // from much further away than a shallow shelf.
+    if (r.d - (w.t/2 + back) > WALL_SNAP) continue;
+    if (!best || r.d < best.r.d) best = { w, r };
+  }
+  if (!best) return null;
+
+  const w = best.w, r = best.r;
+  let n = V.perp(wallDir(w));
+  let rot = wallAngle(w);
+  if (V.dot(V.sub(c, r.pt), n) < 0){        // the cursor is on the other face
+    n = V.mul(n, -1);
+    rot += Math.PI;
+  }
+  // Slide along the wall, but keep the object's whole width on it. On a wall
+  // shorter than the object both bounds collapse to the midpoint, so it simply
+  // centres instead of needing a special case.
+  const L = wallLen(w);
+  const along = clamp(r.t * L, Math.min(el.w/2, L/2), Math.max(L - el.w/2, L/2));
+  const q = V.add(V.lerp(w.a, w.b, along/L), V.mul(n, w.t/2 + back));
+  return { x: q[0], z: q[1], rot, wall: w.id };
+}
+
+/**
+ * Whether this object is the sort of thing that belongs against a wall.
+ *
+ * Stairs and columns drag through the same code but are not furniture: a
+ * stair's -Z face is its bottom step, so backing one onto a wall is simply
+ * wrong, and a column has a size rather than a front. A rug belongs under the
+ * furniture in the middle of the room, and at five and a half feet deep its
+ * catch radius would cover most of a Dhaka bedroom.
+ *
+ * Deliberately *not* excluded by mount height: a mirror, a split AC and a wall
+ * cabinet are exactly the things that are fiddly to place by hand, and they
+ * are the ones this helps most.
+ */
+function wallSnappable(el){
+  return el.type === 'furniture' && el.sub !== 'rug' && !catItem(el.sub).ceiling;
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -749,6 +843,38 @@ function stats(){
   const rs = rooms();
   const area = rs.reduce((s,r) => s + r.area, 0);
   return { area, vol: area * floor().height, count: rs.length };
+}
+
+/**
+ * What has actually been placed on this level, room by room.
+ *
+ * The Schedule block above counts elements; this says what they *are* and
+ * where they went — the thing an architect reads back to a client, and the
+ * start of a furnishing take-off. Rooms are derived from the walls, so an
+ * object is assigned to whichever room polygon contains its centre; anything
+ * that is not inside one is grouped at the end rather than dropped, because
+ * furniture sitting outside the walls is usually a mistake worth seeing.
+ *
+ * Identical items are counted together by catalogue name, so twelve dining
+ * chairs read as one line rather than twelve.
+ */
+function furnishings(){
+  const groups = new Map();
+  const add = (key, name) => {
+    if (!groups.has(key)) groups.set(key, new Map());
+    const g = groups.get(key);
+    g.set(name, (g.get(name) || 0) + 1);
+  };
+  for (const e of els()){
+    if (e.type !== 'furniture') continue;
+    const r = roomAt([e.x, e.z]);
+    add(r ? r.name : '— Outside the walls', catItem(e.sub).name);
+  }
+  return [...groups].map(([room, items]) => ({
+    room,
+    total: [...items.values()].reduce((a, b) => a + b, 0),
+    items: [...items].map(([name, n]) => ({ name, n })).sort((a, b) => a.name.localeCompare(b.name))
+  })).sort((a, b) => a.room.localeCompare(b.room));
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -998,6 +1124,261 @@ function cyl(rTop, rBot, h, mat, x, y, z, seg){
   return m;
 }
 
+// ══════════════════════════════════════════════════════════════════
+//  KIT MODELS — Kenney's four kits, loaded from /public/kits
+//
+//  Everything below the CATALOG is generated from numbers, which is what
+//  lets the panel reshape it. A kit model is the opposite: an artist's
+//  mesh, downloaded and fitted to the box the element already has. The two
+//  share one element type all the same — a kit item is a `furniture`
+//  element whose `sub` carries a slash ("fur/chair"), and nothing about
+//  selecting, rotating, saving or undoing it needed to learn a new case.
+//
+//  Sizes come from `public/kits/manifest.json`, measured out of the GLB
+//  headers by `scripts/import-kits.mjs` and already corrected to building
+//  scale there. Measuring at import rather than on load is what lets the
+//  plan view draw an item the instant it is placed, with no download in
+//  the way.
+// ══════════════════════════════════════════════════════════════════
+const KIT_BASE = '/kits';
+const kitLoader = new GLTFLoader();
+
+/**
+ * The ghost an item stands in as while its model downloads.
+ *
+ * One shared material, recoloured by `applyTheme()` alongside the selection
+ * handles — the same arrangement `HANDLE_E` and `SEL_FILL` use further down,
+ * and for the same reason: a material minted per rebuild would never be freed.
+ */
+const KIT_PENDING_M = new THREE.MeshStandardMaterial({
+  color: PAL.sel3d, transparent: true, opacity: .18, roughness: .9
+});
+
+/** Manifest rows by id, filled in by `loadKitManifest()`. Empty until then. */
+const KIT_ITEMS = new Map();
+/** The four kit headings for the Library, in manifest order. */
+let KIT_LIST = [];
+let kitManifestState = 'idle';   // idle | loading | ready | failed
+
+/** True for a kit id — the slash is what separates "fur/chair" from "sofa". */
+const isKitSub = sub => typeof sub === 'string' && sub.includes('/');
+
+/**
+ * A kit item's catalogue row, or a usable stand-in.
+ *
+ * A saved design can be opened before the manifest arrives, and an id could
+ * outlive a kit being re-imported, so this never returns nothing: it falls
+ * back to a title-cased version of the id and a 2 ft cube. The element carries
+ * its own w/d/h anyway, so the fallback only ever shows in a label.
+ */
+function kitItem(sub){
+  const row = KIT_ITEMS.get(sub);
+  if (row) return row;
+  const stem = sub.slice(sub.indexOf('/') + 1);
+  const name = stem.replace(/([a-z0-9])([A-Z])/g, '$1 $2').split(/[-_]+/)
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  return { id: sub, name, cat: 'Kit', w: 2, d: 2, h: 2, kit: sub.slice(0, sub.indexOf('/')) };
+}
+
+/**
+ * Fetch the manifest once. `onReady` re-renders whatever is waiting on it.
+ *
+ * Only `idle` starts a request. That matters because a failure calls `onReady`
+ * too, which re-renders the Library, which asks for the manifest again — so
+ * anything looser than this turns one 404 into an endless retry loop. The
+ * failure message carries a button that puts the state back to `idle`, which
+ * is the one way a second attempt happens.
+ */
+function loadKitManifest(onReady){
+  if (kitManifestState !== 'idle') return;
+  kitManifestState = 'loading';
+  fetch(KIT_BASE + '/manifest.json')
+    .then(r => r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)))
+    .then(m => {
+      if (disposed) return;
+      KIT_LIST = m.kits || [];
+      // The manifest's keys are short because it ships 693 of these; they are
+      // widened here so a kit row reads like a CATALOG row everywhere else.
+      // `m` is the one that is not a straight rename: a number is a mount
+      // height in feet, and "ceiling" means the height depends on the storey
+      // and has to wait until the thing is actually placed.
+      for (const it of m.items || []){
+        KIT_ITEMS.set(it.id, {
+          id: it.id, name: it.n, cat: it.g, w: it.w, d: it.d, h: it.h,
+          kit: it.id.slice(0, it.id.indexOf('/')),
+          type: it.t, room: it.r,          // the Library's two superclass axes
+          mountY: typeof it.m === 'number' ? it.m : undefined,
+          ceiling: it.m === 'ceiling'
+        });
+      }
+      kitManifestState = 'ready';
+      onReady && onReady();
+    })
+    .catch(() => { kitManifestState = 'failed'; onReady && onReady(); });
+}
+
+/** Where a kit id's model and its Library picture live. */
+const kitModelUrl = sub => KIT_BASE + '/' + sub.slice(0, sub.indexOf('/')) + '/models/' +
+  sub.slice(sub.indexOf('/') + 1) + '.glb';
+const kitThumbUrl = sub => KIT_BASE + '/' + sub.slice(0, sub.indexOf('/')) + '/thumbs/' +
+  sub.slice(sub.indexOf('/') + 1) + '.png';
+
+/**
+ * Downloads in flight or already done, keyed by kit id.
+ *
+ * One download serves every copy of a model, so placing thirty trees fetches
+ * one tree. What is cached is a prepared *template* — `prepareKit()` fixes it
+ * up once, `instanceKit()` hands out copies.
+ */
+const kitCache = new Map();
+
+/**
+ * Settle a freshly downloaded model into this scene's lighting, once.
+ *
+ * Two things need correcting, and both are properties of the *model*, so they
+ * are done here on the template rather than per copy. `rebuild3D()` rebuilds
+ * the whole scene on every edit, and `disposeTree()` frees geometry but not
+ * materials — so anything done per copy would be redone on every keystroke and
+ * never released.
+ *
+ *  1. **Metalness.** Every one of the nature kit's 688 materials is exported
+ *     with `metallicFactor: 1` — bark, leaves and stone alike. That is
+ *     harmless in the unlit renderer Kenney drew it for, and the files still
+ *     carry a stale `KHR_materials_unlit` flag from it, but this scene is lit
+ *     and has an environment map, so a fully metallic leaf comes out as grey
+ *     chrome with its colour gone. A material claiming to be solid metal while
+ *     carrying no metalness map is an export artefact rather than a decision,
+ *     so it is read as the paint it plainly is.
+ *
+ *  2. **Environment intensity.** The studio's own materials sit at .62 (see
+ *     `getMat`). Leaving Kenney's at the default 1 would light one bookshelf
+ *     differently from the one beside it.
+ *
+ * The bounding box is measured here for the same "once per model" reason.
+ */
+function prepareKit(root){
+  root.traverse(o => {
+    if (!o.isMesh) return;
+    for (const m of Array.isArray(o.material) ? o.material : [o.material]){
+      if (!m || !m.isMeshStandardMaterial) continue;
+      if (!m.metalnessMap && m.metalness > .5) m.metalness = 0;
+      m.envMapIntensity = .62;
+    }
+    o.castShadow = o.receiveShadow = true;
+  });
+  return { root, bb: new THREE.Box3().setFromObject(root) };
+}
+
+function loadKitModel(sub){
+  let p = kitCache.get(sub);
+  if (!p){
+    p = new Promise((res, rej) => kitLoader.load(kitModelUrl(sub), g => res(prepareKit(g.scene)), undefined, rej));
+    // A download that failed must not stay in the cache. Caching the rejection
+    // would leave that model showing its placeholder for the rest of the
+    // session over one dropped request; forgetting it means the next rebuild
+    // simply tries again. The caller still sees the rejection — this handler
+    // only clears the entry.
+    p.catch(() => kitCache.delete(sub));
+    kitCache.set(sub, p);
+  }
+  return p;
+}
+
+/**
+ * A copy of a prepared template that is safe to put in the scene.
+ *
+ * `disposeTree()` frees the geometry of everything under a group, and
+ * `rebuild3D()` disposes and rebuilds on every single edit. A plain clone
+ * shares its geometry with the template it came from, so the first edit after
+ * placing a model would free those buffers out from under the cache and every
+ * later copy would come back empty. Cloning the geometry per copy is what
+ * makes a cached template safe to hand out. Materials stay shared —
+ * disposeTree does not touch those, and the studio's own materials are shared
+ * exactly the same way.
+ */
+function instanceKit(template){
+  const g = template.clone(true);
+  g.traverse(o => { if (o.isMesh) o.geometry = o.geometry.clone(); });
+  return g;
+}
+
+/**
+ * Release a cached template's GPU memory.
+ *
+ * `disposeTree()` handles the copies in the scene, but a template is never in
+ * the scene — it is the thing copies are made from — so nothing else would
+ * ever reach it. Its materials and their textures go too: those are shared
+ * with the copies rather than cloned, and the two textured kits each carry
+ * their own colormap. Called only from `dispose()`, once the studio is closing
+ * and there is nothing left to copy for.
+ */
+function disposeKitTemplate(root){
+  root.traverse(o => {
+    if (!o.isMesh) return;
+    o.geometry && o.geometry.dispose();
+    for (const m of Array.isArray(o.material) ? o.material : [o.material]){
+      if (!m) continue;
+      if (m.map) m.map.dispose();
+      m.dispose();
+    }
+  });
+}
+
+/** Still hanging off the scene? A group cut loose by a rebuild is not. */
+function attached(o){
+  for (let p = o; p; p = p.parent) if (p === scene) return true;
+  return false;
+}
+
+/**
+ * A kit model sized and seated into the element's own box.
+ *
+ * The group comes back straight away holding a faint placeholder, and the mesh
+ * drops into it when the download lands — the render loop runs continuously,
+ * so the swap needs no invalidation, and a model already in the cache resolves
+ * before the next paint rather than flashing its placeholder.
+ *
+ * The model is scaled to the element's w/d/h, so the panel's Width / Depth /
+ * Height fields resize a kit model exactly as they resize a generated one,
+ * then centred on x/z and stood on the floor — the frame every other builder
+ * in this file works in.
+ */
+function buildKitModel(el){
+  const g = new THREE.Group();
+  const w = el.w || 2, d = el.d || 2, h = el.h || 2;
+
+  const placeholder = new THREE.Mesh(
+    new RoundedBoxGeometry(w, h, d, 2, Math.min(.12, Math.min(w, h, d) / 2.05)),
+    KIT_PENDING_M
+  );
+  placeholder.position.y = h / 2;
+  g.add(placeholder);
+
+  loadKitModel(el.sub).then(({ root, bb }) => {
+    // The studio may have moved on while this was in the air: torn down, or
+    // this element deleted and its group cut out of the scene by a rebuild.
+    if (disposed || !attached(g)) return;
+
+    const size = bb.getSize(new THREE.Vector3());
+    const ctr = bb.getCenter(new THREE.Vector3());
+    const m = instanceKit(root);
+    m.scale.set(
+      size.x > 1e-4 ? w / size.x : 1,
+      size.y > 1e-4 ? h / size.y : 1,
+      size.z > 1e-4 ? d / size.z : 1
+    );
+    m.position.set(-ctr.x * m.scale.x, -bb.min.y * m.scale.y, -ctr.z * m.scale.z);
+
+    disposeTree(g);   // takes the placeholder away
+    g.add(m);
+  }).catch(() => {
+    // A missing or broken model leaves the placeholder standing, rather than
+    // dropping the object out of the drawing without saying so.
+  });
+
+  return g;
+}
+
 // ── Catalogue (sizes in feet, tuned to BD apartment furniture) ─────
 const CATALOG = [
   { id:'bed-king',   name:'King Bed',      cat:'Bedroom', w:6.6, d:7.0,  h:2.3 },
@@ -1024,9 +1405,56 @@ const CATALOG = [
   { id:'plant',      name:'Planter',       cat:'Decor',   w:1.8, d:1.8,  h:4.5 },
   { id:'ac',         name:'Split AC',      cat:'Decor',   w:3.0, d:0.8,  h:1.1, mountY:7.2 }
 ];
-const catItem = id => CATALOG.find(c => c.id === id) || CATALOG[0];
+// A kit id carries a slash, so it never collides with a CATALOG id and both
+// kinds of item can be looked up through the one call the rest of the file
+// already makes.
+const catItem = id => isKitSub(id) ? kitItem(id) : (CATALOG.find(c => c.id === id) || CATALOG[0]);
+
+/**
+ * How high off the floor a catalogue item starts.
+ *
+ * Most things stand on it. A few hang — a wall cabinet, a mirror, the split AC
+ * — and carry the height they hang at. A ceiling fan or a pendant lamp is the
+ * awkward case: it belongs against the ceiling, and how high that is depends
+ * on the storey, so it is worked out here rather than baked into the
+ * catalogue. Clamped at 0 so a model taller than the room lands on the floor
+ * instead of underneath it.
+ *
+ * Whatever this returns is only a starting point — "Mount height" in the
+ * Placement panel edits it on every object.
+ */
+function startMountY(c){
+  if (c.ceiling) return Math.max(0, floor().height - c.h);
+  return c.mountY || 0;
+}
+
+/**
+ * The height of the surface at (x, z), for something about to be put down.
+ *
+ * Drop a table lamp on a desk and it should sit on the desk, not sink into it.
+ * So the things already on this floor are checked for one whose footprint
+ * covers the point, and the tallest qualifying top wins.
+ *
+ * "Qualifying" is a height band rather than a list of which items are tables.
+ * Below about ten inches is a rug or a low platform, and putting things on
+ * those is just the floor; above four feet is a wardrobe top, which is not
+ * where anyone means to drop something by clicking the plan. Between the two
+ * sit the desks, dining tables, counters, islands, nightstands and benches —
+ * which is exactly the set worth catching.
+ */
+function surfaceUnder(x, z, skipId){
+  let top = 0;
+  for (const e of els()){
+    if (e.type !== 'furniture' || e.id === skipId) continue;
+    const t = (e.mountY || 0) + (e.h || 0);
+    if (t < 0.8 || t > 4.0 || t <= top) continue;
+    if (pointInPoly([x, z], rectAt(e.x, e.z, e.w || 2, e.d || 2, e.rot))) top = t;
+  }
+  return top;
+}
 
 function buildFurniture(el){
+  if (isKitSub(el.sub)) return buildKitModel(el);
   const g = new THREE.Group();
   const w = el.w, d = el.d, h = el.h;
   const wood   = getMat(el.mat && MATS[el.mat] ? el.mat : 'wood');
@@ -1457,8 +1885,67 @@ function buildWall(w, elev, f){
 }
 
 // Floor slab + optional ceiling from a detected room polygon
-function buildSlab(room, elev, matId, thick, isCeiling){
+// ── Stairwell openings ────────────────────────────────────────────
+// A stair has to leave a hole behind it, or it climbs into the underside of
+// the floor above. The rectangle is worked out here once and used by three
+// different things — the slab cutter below, the plan's "void from below", and
+// nothing else is allowed to invent its own.
+
+/**
+ * The four plan corners of the opening a stair needs, in feet.
+ *
+ * Local corners are ±half-width by ±half-run, then turned by `rot` using the
+ * same mapping both renderers already use: the 3D group sets
+ * `rotation.y = -rot` and the 2D canvas calls `g2.rotate(rot)`, which work out
+ * to the same thing in the plan frame. Width runs along local X, the flight
+ * climbs along local +Z.
+ *
+ * The run comes from `el.run || 8` rather than from the tread count
+ * `buildStairs()` works back to, because that is the depth the selection box,
+ * the rotate handle and the plan symbol all use. The hole has to match the box
+ * the architect is looking at, not a second opinion about it.
+ */
+function rectAt(x, z, w, d, rot){
+  const hw = w/2, hd = d/2;
+  const c = Math.cos(rot || 0), s = Math.sin(rot || 0);
+  return [[-hw,-hd],[hw,-hd],[hw,hd],[-hw,hd]]
+    .map(p => [x + p[0]*c - p[1]*s, z + p[0]*s + p[1]*c]);
+}
+function stairRect(el){
+  return rectAt(el.x, el.z, (el.w || 3.6) + DEF.stairGap*2, (el.run || 8) + DEF.stairGap*2, el.rot);
+}
+
+/**
+ * Every opening the stairs on one level ask for.
+ *
+ * Read straight off the project rather than off what is currently drawn. A
+ * hole is a fact about the building: hiding the level below, or editing a
+ * level with "show levels above" switched off, must not seal the floor you are
+ * standing on. Out-of-range levels come back empty, which is what makes the
+ * ground floor's `fi - 1` lookup harmless.
+ */
+function stairRects(fi){
+  const f = P.floors[fi];
+  if (!f) return [];
+  return f.elements.filter(e => e.type === 'stairs' && e.cut !== false).map(stairRect);
+}
+
+function buildSlab(room, elev, matId, thick, isCeiling, cuts){
   const shape = new THREE.Shape(room.poly.map(p => new THREE.Vector2(p[0], -p[1])));
+  // An opening belongs to this slab only if this room holds the whole of it.
+  // Half a hole reaching across a wall would hand the triangulator a hole that
+  // crosses its own outer ring, and it answers with a torn-up slab rather than
+  // an error — so a stair straddling two rooms deliberately cuts neither.
+  //
+  // Winding is left alone on purpose. ExtrudeGeometry normalises it: it flips
+  // the outer contour if it is counter-clockwise and then flips any hole that
+  // ended up the same way round. `detectRooms()` only keeps faces whose
+  // shoelace area is positive in this very frame, so the outer ring is always
+  // counter-clockwise here and that normalisation always runs.
+  for (const c of (cuts || [])){
+    if (!c.every(p => pointInPoly(p, room.poly))) continue;
+    shape.holes.push(new THREE.Path(c.map(p => new THREE.Vector2(p[0], -p[1]))));
+  }
   const geo = new THREE.ExtrudeGeometry(shape, { depth: thick, bevelEnabled: false });
   geo.rotateX(-Math.PI/2);
   const mat = getMat(matId);
@@ -1503,9 +1990,16 @@ function rebuild3D(){
 
     const rs = fi === activeIdx ? rooms() : detectRooms(f);
 
+    // A stair climbs out through the ceiling of its own level and arrives
+    // through the floor of the one above, so the same opening has to be cut
+    // twice — and the two slabs are drawn by two different passes of this
+    // loop. Worked out once per level rather than once per room.
+    const ceilCuts  = stairRects(fi);
+    const floorCuts = stairRects(fi - 1);
+
     for (const r of rs){
-      grp.add(buildSlab(r, elev, r.mat || f.floorMat, DEF.slabT, false));
-      if (showCfg.ceilings) grp.add(buildSlab(r, elev + f.height, f.ceilMat, .35, true));
+      grp.add(buildSlab(r, elev, r.mat || f.floorMat, DEF.slabT, false, floorCuts));
+      if (showCfg.ceilings) grp.add(buildSlab(r, elev + f.height, f.ceilMat, .35, true, ceilCuts));
       if (isActive && showCfg.dims){
         const lb = makeLabel(r.name + '\n' + U.fmtArea(r.area),
           { bg:PAL.labelBg, fg:PAL.labelFg, size:1.5, border:PAL.labelLine });
@@ -1531,11 +2025,52 @@ function bounds(){
   if (!isFinite(b.min.x)) b.set(new THREE.Vector3(-10,0,-10), new THREE.Vector3(10,10,10));
   return b;
 }
+/**
+ * Where the sun stands, and what colour it is, at a given hour.
+ *
+ * Not an ephemeris — Dhaka's real solar position needs a date and a latitude,
+ * and the studio has neither. What this does is give the architect the thing
+ * they actually want from a sun control: a low warm light that swings from one
+ * side of the building to the other across the day, and stands high and white
+ * at noon. Shadows sweep the way they should, which is what makes a massing
+ * study read.
+ *
+ * `hour` is 6..18. It travels east to west, so the morning sun comes from -x
+ * and the evening sun from +x, and the altitude is a half-sine peaking at noon.
+ */
+/** "2:30 pm" — the slider's readout. */
+function fmtHour(h){
+  const whole = Math.floor(h), mins = Math.round((h - whole) * 60);
+  const ampm = whole >= 12 ? 'pm' : 'am';
+  const h12 = whole % 12 === 0 ? 12 : whole % 12;
+  return h12 + (mins ? ':' + String(mins).padStart(2, '0') : '') + ' ' + ampm;
+}
+
+function sunAt(hour){
+  const t = clamp((hour - 6) / 12, 0, 1);        // 0 at 6am, 1 at 6pm
+  const alt = Math.sin(t * Math.PI);             // 0 at the ends, 1 at noon
+  const az = (t - .5) * Math.PI * 1.35;          // swings east → west
+  // Warm and dim near the horizon, white and strong overhead.
+  const warmth = 1 - alt;
+  return {
+    dir: [Math.sin(az) * (1 - alt*.55), Math.max(.14, alt), Math.cos(az) * .55 * (1 - alt*.35)],
+    color: new THREE.Color(1, 0.96 - warmth*0.19, 0.90 - warmth*0.36),
+    power: 0.55 + alt * 1.15
+  };
+}
+
 function fitSun(){
   const b = bounds();
   const c = b.getCenter(new THREE.Vector3());
   const r = Math.max(14, b.getSize(new THREE.Vector3()).length() * .62);
-  sun.position.set(c.x + r*.75, c.y + r*1.25, c.z + r*.55);
+  // Direction comes from the time of day; distance comes from the model, so
+  // the shadow camera stays wrapped tightly around whatever is being drawn.
+  const s0 = sunAt(P.sunHour === undefined ? DEF.sunHour : P.sunHour);
+  const d = new THREE.Vector3(s0.dir[0], s0.dir[1], s0.dir[2]).normalize();
+  sun.position.copy(c).addScaledVector(d, r * 1.6);
+  sun.color.copy(s0.color);
+  sun.intensity = s0.power;
+  hemi.intensity = showCfg.shadows ? 0.5 : 0.85;
   sun.target.position.copy(c);
   sun.target.updateMatrixWorld();
   const s = sun.shadow.camera;
@@ -1803,7 +2338,11 @@ rafId = requestAnimationFrame(loop);
 const cv2 = $('#c2d'), g2 = cv2.getContext('2d');
 const cam2 = { s: 15, x: 0, y: 0 };        // s = px per foot
 let selRoom = null;                         // {c:[x,z]} — rooms are derived, matched by centroid
-let cursor = null, snapMark = null, measure = null;
+// `snapWall` is the wall a dragged object has taken hold of, drawn as a halo
+// under the plan's linework. It is deliberately not `snapMark`: that one is
+// cleared on every move while the select tool is active, which is exactly when
+// an object is being dragged.
+let cursor = null, snapMark = null, snapWall = null, measure = null;
 
 const w2s = p => [p[0]*cam2.s + cam2.x, p[1]*cam2.s + cam2.y];
 const s2w = (px, py) => [(px - cam2.x)/cam2.s, (py - cam2.y)/cam2.s];
@@ -1842,6 +2381,25 @@ function draw2D(){
     g2.fillStyle = isSel ? PAL.roomSel : tintFor(r.name);
     g2.fill();
     if (isSel){ g2.strokeStyle = PAL.sel; g2.lineWidth = 2; g2.stroke(); }
+  }
+
+  // ── the stairwell arriving from the level below, under the wall linework
+  drawStairVoid2D();
+
+  // ── the wall a dragged object has taken hold of, painted underneath it so
+  //    the wall's own linework still reads on top
+  if (snapWall){
+    const w = byId(snapWall);
+    if (w){
+      const a = w2s(w.a), b = w2s(w.b);
+      g2.save();
+      g2.globalAlpha = .35;
+      g2.strokeStyle = PAL.sel;
+      g2.lineWidth = Math.max(6, (w.t || DEF.wallT) * cam2.s + 6);
+      g2.lineCap = 'round';
+      g2.beginPath(); g2.moveTo(a[0], a[1]); g2.lineTo(b[0], b[1]); g2.stroke();
+      g2.restore();
+    }
   }
 
   // ── walls
@@ -2009,7 +2567,14 @@ function drawObject2D(e){
   g2.strokeStyle = isSel ? PAL.sel : (isHov ? PAL.hov : PAL.furn);
   g2.fillStyle = isSel ? PAL.selFill : PAL.furnFill;
   g2.lineWidth = isSel ? 2 : 1.3;
+  // Anything hung above the cut plane is drawn dashed, which is how a plan
+  // shows what is overhead. Without it a wall cabinet at 4.6 ft would sit on
+  // top of the base unit below it in one solid outline, and the drawing would
+  // read as two cabinets fighting over the same foot of floor. Cleared again
+  // straight after, so the facing arrow below stays solid.
+  if ((e.mountY || 0) >= DEF.cutY) g2.setLineDash([5, 3]);
   icon2D(e, -w/2, -d/2, w, d);
+  g2.setLineDash([]);
   // small arrow marking which way the object faces
   if (isSel || isHov){
     g2.strokeStyle = isSel ? PAL.sel : PAL.faint;
@@ -2243,6 +2808,40 @@ function drawMeasure2D(){
   badge2D((a[0]+b[0])/2, (a[1]+b[1])/2 - 14, U.fmt(V.dist(measure.a, measure.b), 2), PAL.measure);
 }
 
+/**
+ * The stairwell coming up from the level below.
+ *
+ * The 2D canvas only ever draws the active floor, so a flight on the storey
+ * underneath is invisible here even though it now punches a hole through the
+ * slab you are standing on. A plan that does not show its own stairwell is
+ * simply wrong, so the opening is drawn: dashed, because you are looking down
+ * through a void rather than at an object, and marked DN for the direction of
+ * travel. The flight itself carries the UP arrow on the plan of the level it
+ * belongs to.
+ *
+ * The rectangle comes from `stairRect()` — the same one the slab is cut with,
+ * so the drawing and the geometry can never disagree.
+ */
+function drawStairVoid2D(){
+  const below = P.floors[P.active - 1];
+  if (!below) return;
+  for (const e of below.elements){
+    if (e.type !== 'stairs' || e.cut === false) continue;
+    const pts = stairRect(e).map(w2s);
+    g2.save();
+    g2.setLineDash([6, 4]);
+    g2.strokeStyle = PAL.faint;
+    g2.lineWidth = 1.4;
+    g2.beginPath();
+    pts.forEach((s, i) => i ? g2.lineTo(s[0], s[1]) : g2.moveTo(s[0], s[1]));
+    g2.closePath();
+    g2.stroke();
+    g2.restore();
+    const c = w2s([e.x, e.z]);
+    badge2D(c[0], c[1], 'DN', PAL.faint);
+  }
+}
+
 function drawGhost2D(){
   if (!draft) return;
   if (draft.kind === 'wall' && draft.pts.length){
@@ -2316,6 +2915,9 @@ function fit2D(){
 let draft = null;          // in-progress geometry
 let pendingSub = 'sofa';   // catalogue item armed for placement
 let drag = null;           // active drag operation
+let kitAxis = 'type';      // how the Library files its models: type | room | kit
+let kitOpen = null;        // the one superclass currently expanded
+let kitQuery = '';         // its search box, which searches across every kit
 
 const TOOLS = [
   { id:'select', key:'V', name:'Select', hint:'Click to select · drag to move · drag empty space or hold <kbd>Space</kbd> to pan · <kbd>Del</kbd> to remove',
@@ -2367,7 +2969,11 @@ function setTool(t){
   $('#hint').innerHTML = d ? d.hint : '';
   cv2.style.cursor = t === 'select' ? 'default' : 'crosshair';
   cv3.style.cursor = t === 'select' ? 'default' : 'crosshair';
-  if (t === 'furniture'){ switchTab('lib'); }
+  // Arming an item shows the Library — but only when the panel is not already
+  // on it. switchTab re-renders the tab, and re-rendering it under someone who
+  // just clicked a tile in it would throw away their scroll position and what
+  // they had typed in the kit search.
+  if (t === 'furniture' && activeTab !== 'lib'){ switchTab('lib'); }
   applyControlMode();
   draw2D();
 }
@@ -2418,7 +3024,11 @@ function addObject(kind, sub, x, z){
   let e;
   if (kind === 'furniture'){
     const c = catItem(sub);
-    e = { id: uid(), type:'furniture', sub, x, z, rot: 0, w: c.w, d: c.d, h: c.h, mat: null, mountY: c.mountY || 0 };
+    // Something that hangs keeps the height it hangs at. Everything else looks
+    // for a surface first, so a lamp dropped on a desk lands on the desk.
+    let mountY = startMountY(c);
+    if (mountY === 0 && c.id !== 'rug') mountY = surfaceUnder(x, z, null);
+    e = { id: uid(), type:'furniture', sub, x, z, rot: 0, w: c.w, d: c.d, h: c.h, mat: null, mountY };
   } else if (kind === 'stairs'){
     const rise = nextElevGap();
     e = { id: uid(), type:'stairs', x, z, rot: 0, w: 3.6, rise, run: Math.max(6, Math.round(rise/0.62)*0.92), mat:'oak', rail: true };
@@ -2553,7 +3163,9 @@ function onPointerDown(p, is3D, ev, pickInfo){
         beginChange();
         if (el.type === 'wall')       drag = { kind:'wall', id: el.id, grab: p, a: el.a.slice(), b: el.b.slice() };
         else if (el.type === 'door' || el.type === 'window') drag = { kind:'opening', id: el.id };
-        else                          drag = { kind:'move', id: el.id, dx: el.x - p[0], dz: el.z - p[1] };
+        // rot0 is kept so a drag that ends away from a wall hands the object
+        // back at the angle it was picked up at — see the move branch below.
+        else                          drag = { kind:'move', id: el.id, dx: el.x - p[0], dz: el.z - p[1], rot0: el.rot || 0 };
       } else if (h.room){
         sel = null; selRoom = { c: h.room.c.slice() };
       } else { sel = null; selRoom = null; }
@@ -2619,8 +3231,22 @@ function onPointerMove(p, is3D, ev){
     const el = byId(drag.id);
     if (!el) return;
     if (drag.kind === 'move'){
-      const q = snapPoint([p[0] + drag.dx, p[1] + drag.dz], null).p;
-      el.x = q[0]; el.z = q[1];
+      const c = [p[0] + drag.dx, p[1] + drag.dz];
+      // A wall beats the grid outright rather than combining with it: rounding
+      // the centre to the grid afterwards would push the back face off the
+      // wall by up to half a grid step, and touching the wall is the whole
+      // point. Hold Shift to keep an object off the wall and place it by eye —
+      // not Alt, which this canvas already uses to start a pan.
+      const s = (snapCfg.wall && !(ev && ev.shiftKey) && wallSnappable(el)) ? wallSnap(el, c) : null;
+      if (s){
+        el.x = s.x; el.z = s.z; el.rot = s.rot;
+        snapWall = s.wall;
+      } else {
+        const q = snapPoint(c, null).p;
+        el.x = q[0]; el.z = q[1];
+        el.rot = drag.rot0;        // let go of the wall and you get your angle back
+        snapWall = null;
+      }
     } else if (drag.kind === 'wallEnd'){
       const skip = new Set(drag.group.map(g => g.id));
       const q = snapPoint(p, el[drag.end === 'a' ? 'b' : 'a'], skip).p;
@@ -2665,7 +3291,9 @@ function onPointerMove(p, is3D, ev){
 }
 
 function onPointerUp(p, is3D){
-  if (drag){ drag = null; commit(); return; }
+  // The halo is cleared before commit(), not after: commit() repaints, and
+  // clearing afterwards would leave it on screen for one last frame.
+  if (drag){ drag = null; snapWall = null; commit(); return; }
   if (draft && draft.kind === 'rect' && draft.a && draft.cur){
     beginChange();
     const c = addRoomRect(draft.a, draft.cur);
@@ -2817,14 +3445,30 @@ cv3.addEventListener('pointermove', e => {
     const el = byId(down3.info.elId);
     if (el && el.x !== undefined){
       sel = el.id; selRoom = null; beginChange();
-      drag = { kind:'move', id: el.id, dx: el.x - p[0], dz: el.z - p[1] };
+      drag = { kind:'move', id: el.id, dx: el.x - p[0], dz: el.z - p[1], rot0: el.rot || 0 };
       controls.enabled = false;
       buildGizmos(); renderProps();
     }
     return;
   }
   if (tool !== 'select' || draft) onPointerMove(p, true, e);
-  else if (p) cursorReadout(p);
+  else if (p){
+    cursorReadout(p);
+    // Feedback before the click in the 3D pane. `selectAt` can only resolve a
+    // 3D hit from a real pick, and the shared move handler always passed it
+    // null — so `hover` could only ever be set from the plan, and sweeping the
+    // model told you nothing about what was under the cursor.
+    //
+    // What this lights up is the object's symbol *in the plan*, which is what
+    // `hover` draws, plus the cursor. In split view that reads well: run the
+    // mouse over the model and the matching thing lights up on the drawing. A
+    // highlight on the mesh itself would mean rebuilding the gizmo group on
+    // every mouse move, which is not worth it.
+    const h = selectAt(p, true, pick3D(e));
+    const id = (h && h.id) || null;
+    if (id !== hover){ hover = id; draw2D(); }
+    cv3.style.cursor = id ? 'pointer' : 'default';
+  }
 });
 on(window, 'pointerup', e => {
   if (!down3) return;
@@ -2839,6 +3483,60 @@ on(window, 'pointerup', e => {
 });
 cv3.addEventListener('dblclick', () => endDraft());
 cv3.addEventListener('contextmenu', e => e.preventDefault());
+
+// ── Dragging an item out of the Library ───────────────────────────
+// Click-to-arm then click-to-place stays exactly as it was — it is still the
+// better way to put down six dining chairs. This is the other half people
+// reach for: pick the thing up and drop it where it goes.
+//
+// The catalogue id rides in `dataTransfer` so the browser treats it as a real
+// drag, but the drop reads `dragSub` instead. Firefox will not let you read
+// dataTransfer's contents during `dragover`, and the id is needed there to
+// decide whether to accept the drop at all.
+let dragSub = null;
+
+function wireLibDrag(scope){
+  scope.querySelectorAll('[data-item], [data-kititem]').forEach(t => {
+    t.ondragstart = e => {
+      dragSub = t.dataset.item || t.dataset.kititem;
+      e.dataTransfer.setData('text/plain', dragSub);
+      e.dataTransfer.effectAllowed = 'copy';
+    };
+    t.ondragend = () => { dragSub = null; };
+  });
+}
+
+/** Drop an armed catalogue item at a plan point, snapped like a click would be. */
+function dropAt(p){
+  if (!p || !dragSub) return;
+  const sub = dragSub;
+  dragSub = null;
+  const q = snapPoint(p, null).p;
+  beginChange();
+  const e = addObject('furniture', sub, q[0], q[1]);
+  sel = e.id; selRoom = null;
+  commit();
+  renderProps();
+  toast(catItem(sub).name + ' placed');
+}
+
+for (const cv of [cv2, cv3]){
+  cv.addEventListener('dragover', e => {
+    if (!dragSub) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+  });
+  cv.addEventListener('drop', e => {
+    if (!dragSub) return;
+    e.preventDefault();
+    if (cv === cv2){
+      const r = cv2.getBoundingClientRect();
+      dropAt(s2w(e.clientX - r.left, e.clientY - r.top));
+    } else {
+      dropAt(groundPoint(e));
+    }
+  });
+}
 
 // ── Keyboard ──────────────────────────────────────────────────────
 on(window, 'keydown', e => {
@@ -2956,17 +3654,26 @@ function mountFields(){
     }
   }
 }
-function matGrid(cat, get, apply){
+/**
+ * A grid of finishes.
+ *
+ * `for` names which grid this is, and is only needed where one panel shows two
+ * of them — the Level panel has a floor grid and a ceiling grid, and a single
+ * handler wires every tile in the panel, so without it the ceiling tiles would
+ * repaint the floor. Everywhere else there is exactly one grid and the handler
+ * works the target out from what is selected.
+ */
+function matGrid(cat, get, forWhat){
   const ids = cat ? Object.keys(MATS).filter(id => MATS[id].cat === cat) : Object.keys(MATS);
   const cur = get();
   return `<div class="grid3">${ids.map(id => `
-    <button class="tile${id === cur ? ' on' : ''}" data-mat="${id}" title="${MATS[id].name}">
+    <button class="tile${id === cur ? ' on' : ''}" data-mat="${id}"${forWhat ? ` data-mat-for="${forWhat}"` : ''} title="${MATS[id].name}">
       <span class="tsw" style="background-image:url(${swatch(id)})"></span>
       <span class="tnm">${MATS[id].name}</span></button>`).join('')}</div>`;
 }
 function mountMatGrid(root, apply){
   root.querySelectorAll('[data-mat]').forEach(b => b.onclick = () => {
-    beginChange(); apply(b.dataset.mat); commit(); renderProps(true);
+    beginChange(); apply(b.dataset.mat, b.dataset.matFor || ''); commit(); renderProps(true);
   });
 }
 
@@ -3051,9 +3758,19 @@ function renderProps(force){
     h += fNum('Rotation', ICO.rot, () => (el.rot || 0)*180/Math.PI, v => el.rot = v*Math.PI/180, { raw:true, unit:'°', step:15, dp:0 });
     h += fNum('X', ICO.pos, () => el.x, v => el.x = v);
     h += fNum('Y', ICO.pos, () => el.z, v => el.z = v);
-    if (c.mountY !== undefined || el.mountY) h += fNum('Mount height', ICO.hgt, () => el.mountY || 0, v => el.mountY = clamp(v, 0, 20));
+    // Shown on every object, not just the ones that hang by default. The
+    // catalogue cannot know what goes on a wall — a mirror and a wall cabinet
+    // are meshes with names, and among the kits' 693 there is no telling which
+    // an architect means to lift. Anything can sit on a ledge, a counter or a
+    // bracket, so the third axis is always there to be typed into rather than
+    // appearing only for the handful the catalogue guessed about.
+    h += fNum('Mount height', ICO.hgt, () => el.mountY || 0, v => el.mountY = clamp(v, 0, 20));
     h += `</div>`;
-    h += `<div class="sec"><div class="sec-t">Material</div>${matGrid(null, () => el.mat || 'wood')}</div>`;
+    // A kit model arrives painted by the artist who made it, so there is no
+    // material to swap — showing the picker would be offering a control that
+    // does nothing. The generated items below the kits still get it.
+    if (!isKitSub(el.sub))
+      h += `<div class="sec"><div class="sec-t">Material</div>${matGrid(null, () => el.mat || 'wood')}</div>`;
     h += `<div class="grid2"><button class="btn sm" id="dupBtn">Duplicate</button><button class="btn sm" id="resetSize">Reset size</button></div>`;
     h += delBtn();
   }
@@ -3069,7 +3786,21 @@ function renderProps(force){
     h += fRead('Steps', n + ' × ' + U.fmt(el.run/n) + ' tread');
     h += fNum('Rotation', ICO.rot, () => (el.rot||0)*180/Math.PI, v => el.rot = v*Math.PI/180, { raw:true, unit:'°', step:15, dp:0 });
     h += fToggle('Railing', () => el.rail !== false, v => el.rail = v);
+    // `buildStairs` has always honoured railSide; nothing ever wrote it, so a
+    // one-sided rail was unreachable. The renderer needs no change — the two
+    // `continue` lines in its rail loop were already waiting for this.
+    if (el.rail !== false)
+      h += fSel('Rail side', ICO.len, [['both','Both sides'],['left','Left only'],['right','Right only']],
+        () => el.railSide || 'both',
+        v => el.railSide = v === 'both' ? undefined : v);
+    // Absent means on, the same way `rail` reads. The opt-out is for the two
+    // cases the geometry cannot judge: a short flight up to a mezzanine that
+    // should not perforate the slab, and a stair on the top storey, whose rise
+    // falls back to a whole floor height when there is no level above it and
+    // would otherwise cut a hole straight through the roof.
+    h += fToggle('Cut opening above', () => el.cut !== false, v => el.cut = v);
     h += `</div><div class="sec"><div class="sec-t">Material</div>${matGrid('floor', () => el.mat || 'oak')}</div>`;
+    h += stairCutNote(el);
     h += delBtn();
   }
   else if (el && el.type === 'column'){
@@ -3107,8 +3838,13 @@ function renderProps(force){
     h += fNum('Ceiling height', ICO.hgt, () => f.height, v => { f.height = clamp(v, 6, 25); });
     h += fNum('Elevation', ICO.pos, () => f.elevation, v => f.elevation = v);
     h += `</div>`;
+    // The ceiling finish was stored, rendered and mirrored from the day the
+    // studio landed, but nothing ever offered a way to change it — so every
+    // ceiling in every project was plaster. Both grids live in one panel, so
+    // the ceiling one is tagged; see `matGrid`.
     h += `<div class="sec"><div class="sec-t">Default finishes</div>
-      <div style="font-size:10.5px;color:var(--muted);margin-bottom:6px">Floor</div>${matGrid('floor', () => f.floorMat)}</div>`;
+      <div style="font-size:10.5px;color:var(--muted);margin-bottom:6px">Floor</div>${matGrid('floor', () => f.floorMat)}
+      <div style="font-size:10.5px;color:var(--muted);margin:10px 0 6px">Ceiling</div>${matGrid('wall', () => f.ceilMat, 'ceil')}</div>`;
     h += `<div class="sec"><div class="sec-t">Schedule</div>
       ${fRead('Walls', walls(f).length)}
       ${fRead('Doors', els().filter(e => e.type==='door').length)}
@@ -3116,14 +3852,23 @@ function renderProps(force){
       ${fRead('Furniture', els().filter(e => e.type==='furniture').length)}
       ${fRead('Built area', U.fmtArea(st.area))}
       ${fRead('Volume', U.fmtVol(st.vol))}</div>`;
+    const fs = furnishings();
+    if (fs.length){
+      h += `<div class="sec"><div class="sec-t">Furnishings</div>` +
+        fs.map(g => `<div class="fsch">
+          <div class="fsch-r"><span>${g.room}</span><b>${g.total}</b></div>
+          ${g.items.map(i => `<div class="fsch-i"><span>${i.name}</span><b>${i.n}</b></div>`).join('')}
+        </div>`).join('') + `</div>`;
+    }
     h += `<div class="empty" style="padding:12px 0">
       <div class="et">Nothing selected</div>
       <div class="es">Pick a tool on the left, or click any wall, room or object to edit it.</div></div>`;
   }
   b.innerHTML = h;
   mountFields();
-  mountMatGrid(b, id => {
-    if (el){ el.mat = id; }
+  mountMatGrid(b, (id, forWhat) => {
+    if (forWhat === 'ceil'){ floor().ceilMat = id; }
+    else if (el){ el.mat = id; }
     else if (selRoom){ const r = rooms().find(r => V.dist(r.c, selRoom.c) < 1.5); if (r) setRoomMeta(r, { mat: id }); }
     else { floor().floorMat = id; }
   });
@@ -3161,6 +3906,27 @@ function roomJump(el){
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="1"/><path d="M3 10h9v10"/></svg>
     Edit floor of ${r.name}</button>`;
 }
+/**
+ * Say so when a stair is asking for an opening it cannot have.
+ *
+ * `buildSlab` only cuts a hole a single room contains outright, because one
+ * reaching past its own outer edge tears the slab apart when it is
+ * triangulated. Silently doing nothing would leave the architect staring at a
+ * stair running into a solid floor with no idea why, so the panel explains it.
+ *
+ * The level above is what gets tested, because that is the slab anyone
+ * notices; on the top storey there is none, so the stair's own ceiling stands
+ * in for it.
+ */
+function stairCutNote(el){
+  if (el.cut === false) return '';
+  const fi = P.floors.indexOf(floorOf(el));
+  const target = P.floors[fi + 1] || P.floors[fi];
+  const rect = stairRect(el);
+  if (detectRooms(target).some(r => rect.every(p => pointInPoly(p, r.poly)))) return '';
+  return `<div class="note"><span class="i">i</span><div>No opening is being cut: this stair crosses a wall on the level above, and an opening has to sit inside one room. Nudge it clear of the wall.</div></div>`;
+}
+
 function phead(t, s, ico){
   return `<div class="phead"><div class="ico">${ico}</div><div><div class="tt">${t}</div><div class="st">${s}</div></div></div>`;
 }
@@ -3184,12 +3950,15 @@ function renderLib(){
   for (const c of cats){
     h += `<div class="sec"><div class="sec-t">${c}</div><div class="grid2">` +
       CATALOG.filter(i => i.cat === c).map(i => `
-        <button class="tile${i.id === pendingSub ? ' on' : ''}" data-item="${i.id}">
+        <button class="tile${i.id === pendingSub ? ' on' : ''}" data-item="${i.id}" draggable="true">
           <span class="tico">${libIcon(i.id)}</span>
           <span class="tnm">${i.name}</span>
           <span class="tsz">${U.fmt(i.w)} × ${U.fmt(i.d)}</span></button>`).join('') + `</div></div>`;
   }
+  h += kitSectionHTML();
   b.innerHTML = h;
+  wireKitSection(b);
+  wireLibDrag(b);
   b.querySelectorAll('[data-item]').forEach(x => x.onclick = () => {
     pendingSub = x.dataset.item;
     setTool('furniture');
@@ -3208,6 +3977,190 @@ function renderLib(){
     toast(MATS[id].name + ' applied' + (el ? '' : selRoom ? ' to room floor' : ' as floor default'));
   });
 }
+
+// ── Library: the model kits ───────────────────────────────────────
+// Nearly seven hundred models, which is far too many for the flat grid the
+// catalogue above uses. They get a kit at a time, grouped by what the model is
+// (the manifest's `g`), with a search box that cuts across all four kits at
+// once — because "table" is a reasonable thing to look for without first
+// knowing which kit Kenney put tables in.
+
+/** How many search hits to draw before asking for a narrower search. */
+const KIT_HITS = 200;
+
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
+
+function kitSectionHTML(){
+  // The manifest is fetched the first time the Library is opened, and this
+  // same function runs again when it lands.
+  if (kitManifestState !== 'ready'){
+    loadKitManifest(() => { if (!disposed && $('#tab-lib')) renderLib(); });
+    return `<div class="sec"><div class="sec-t">Model kits</div>
+      <div class="kit-msg">${kitManifestState === 'failed'
+        ? 'The model kits could not be loaded.<br><button class="btn sm" id="kitRetry" style="margin-top:8px">Try again</button>'
+        : 'Loading model kits…'}</div></div>`;
+  }
+
+  const total = KIT_LIST.reduce((n, k) => n + k.count, 0);
+  const axes = [['type','Type','What the thing is — seating, storage, lighting…'],
+                ['room','Room','Where it goes — bedroom, kitchen, outdoor…'],
+                ['kit','Kit','Which pack it came from']];
+
+  return `<div class="sec">
+    <div class="sec-t">Model library <span class="act" id="kitCredit" title="Kenney model kits, released under CC0">${total} models · CC0</span></div>
+    <div class="kit-tabs">${axes.map(a => `<button class="kit-tab${a[0] === kitAxis ? ' on' : ''}"
+      data-kitaxis="${a[0]}" title="${esc(a[2])}">${a[1]}</button>`).join('')}</div>
+    <input class="inp full kit-search" id="kitSearch" type="search" autocomplete="off"
+      placeholder="Search ${total} models…" value="${esc(kitQuery)}">
+    <div id="kitResults">${kitResultsHTML()}</div>
+  </div>`;
+}
+/**
+ * The tiles under the search box.
+ *
+ * Three ways in, because "where is the thing I want" has three honest answers
+ * across fifteen hundred models:
+ *
+ *   type — what it is.   Seating, Storage, Lighting, Structure…
+ *   room — where it goes. Bedroom, Kitchen, Outdoor, Site…
+ *   kit  — which pack it came from, for anyone who thinks in Kenney's terms.
+ *
+ * The first two are the axes HomeByMe splits between its Decorate and Furnish
+ * tabs, and both come straight from the manifest's `t` and `r`.
+ *
+ * Superclasses are collapsed by default and opened one at a time. That is not
+ * decoration: "Outdoor & Garden" alone holds nearly five hundred models, and
+ * laying every one of them out at once is what would make this tab crawl.
+ * A search ignores all of it and goes flat across every kit.
+ */
+function kitResultsHTML(){
+  const q = kitQuery.trim().toLowerCase();
+
+  if (q){
+    const hits = [];
+    for (const it of KIT_ITEMS.values()){
+      if (it.name.toLowerCase().includes(q) || it.id.toLowerCase().includes(q)) hits.push(it);
+      if (hits.length > KIT_HITS) break;
+    }
+    if (!hits.length) return `<div class="kit-msg">Nothing matches “${esc(kitQuery)}”.</div>`;
+    const more = hits.length > KIT_HITS ? `<div class="kit-msg">Showing the first ${KIT_HITS}. Keep typing to narrow it down.</div>` : '';
+    return `<div class="grid3 kit-grid">${hits.slice(0, KIT_HITS).map(kitTileHTML).join('')}</div>${more}`;
+  }
+
+  // Bucket every model by whichever axis is showing.
+  const key = kitAxis === 'kit' ? (i => i.kit) : kitAxis === 'room' ? (i => i.room) : (i => i.type);
+  const label = kitAxis === 'kit' ? (k => (KIT_LIST.find(x => x.id === k) || {}).name || k) : (k => k);
+  const buckets = new Map();
+  for (const it of KIT_ITEMS.values()){
+    const k = key(it) || '—';
+    if (!buckets.has(k)) buckets.set(k, []);
+    buckets.get(k).push(it);
+  }
+  // Biggest first on the two content axes; kits keep the manifest's own order.
+  const names = [...buckets.keys()];
+  if (kitAxis !== 'kit') names.sort((a, b) => buckets.get(b).length - buckets.get(a).length || a.localeCompare(b));
+
+  return names.map(n => {
+    const items = buckets.get(n);
+    const open = n === kitOpen;
+    return `<div class="kit-class${open ? ' on' : ''}">
+      <button class="kit-class-h" data-class="${esc(n)}">
+        <span class="kit-caret">${open ? '▾' : '▸'}</span>
+        <span class="kit-class-n">${esc(label(n))}</span>
+        <b>${items.length}</b></button>
+      ${open ? `<div class="grid3 kit-grid">${items.map(kitTileHTML).join('')}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+/**
+ * One tile, with Kenney's own render of the model as its picture — shipped
+ * beside the .glb by `scripts/import-kits.mjs`. `loading="lazy"` is what keeps
+ * a 329-tile kit cheap: the browser fetches only the rows actually scrolled to.
+ */
+function kitTileHTML(i){
+  return `<button class="tile kit-tile${i.id === pendingSub ? ' on' : ''}" data-kititem="${i.id}" draggable="true"
+    title="${esc(i.name)} — ${U.fmt(i.w)} × ${U.fmt(i.d)} × ${U.fmt(i.h)}">
+    <img class="kthumb" src="${kitThumbUrl(i.id)}" alt="" loading="lazy" decoding="async">
+    <span class="tnm">${esc(i.name)}</span>
+    <span class="tsz">${U.fmt(i.w)} × ${U.fmt(i.d)}</span></button>`;
+}
+
+/**
+ * Hide a picture that will not load, so the tile stays a named, clickable
+ * thing rather than a broken-image icon.
+ *
+ * Done here rather than with an `onerror` attribute on the tag: an inline
+ * handler is the first thing a Content-Security-Policy switches off, and it
+ * would take the Library's pictures with it silently. The `complete` test
+ * covers the race where an image already failed before this ran.
+ */
+function wireKitThumbs(scope){
+  scope.querySelectorAll('.kthumb').forEach(img => {
+    const hide = () => { img.style.visibility = 'hidden'; };
+    img.onerror = hide;
+    if (img.complete && img.naturalWidth === 0) hide();
+  });
+}
+
+/**
+ * Wire the kit section up.
+ *
+ * Everything here repaints `#kitResults` alone rather than calling
+ * `renderLib()`, so typing in the search box does not tear out the input the
+ * caret is sitting in.
+ */
+function wireKitSection(b){
+  const retry = b.querySelector('#kitRetry');
+  if (retry) retry.onclick = () => { kitManifestState = 'idle'; renderLib(); };
+
+  const results = b.querySelector('#kitResults');
+  if (!results) return;
+
+  const repaint = () => {
+    results.innerHTML = kitResultsHTML();
+    wireKitTiles(results);
+    wireKitClasses(results, repaint);
+  };
+
+  b.querySelectorAll('[data-kitaxis]').forEach(t => t.onclick = () => {
+    kitAxis = t.dataset.kitaxis;
+    kitOpen = null;          // the old superclass has no meaning on a new axis
+    b.querySelectorAll('[data-kitaxis]').forEach(o => o.classList.toggle('on', o === t));
+    repaint();
+  });
+
+  const search = b.querySelector('#kitSearch');
+  if (search) search.oninput = () => { kitQuery = search.value; repaint(); };
+
+  wireKitTiles(results);
+  wireKitClasses(results, repaint);
+}
+
+/** Expand one superclass, closing whichever was open. */
+function wireKitClasses(scope, repaint){
+  scope.querySelectorAll('[data-class]').forEach(h => h.onclick = () => {
+    kitOpen = kitOpen === h.dataset.class ? null : h.dataset.class;
+    repaint();
+  });
+}
+
+function wireKitTiles(scope){
+  wireKitThumbs(scope);
+  wireLibDrag(scope);      // the grid is repainted on search and tab changes
+  scope.querySelectorAll('[data-kititem]').forEach(x => x.onclick = () => {
+    pendingSub = x.dataset.kititem;
+    setTool('furniture');
+    // Only the highlight moves, so the grid keeps its scroll position and the
+    // search box keeps what was typed into it.
+    $$('#tab-lib .tile').forEach(t => t.classList.toggle('on',
+      t.dataset.kititem === pendingSub || t.dataset.item === pendingSub));
+    const name = catItem(pendingSub).name;
+    $('#hint').innerHTML = 'Click in the plan or the 3D view to place <b>' + name + '</b>';
+    toast(name + ' armed — click to place');
+  });
+}
+
 function libIcon(id){
   const s = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round">';
   const M = {
@@ -3291,6 +4244,16 @@ function renderLayers(){
     ${fToggle('Show ceilings / roof slab', () => showCfg.ceilings, v => { showCfg.ceilings = v; $('#btnCeil').classList.toggle('on', v); })}
     ${fToggle('Show levels above', () => showCfg.above, v => showCfg.above = v)}</div>`;
 
+  // The sun. Saved with the drawing rather than kept as a viewer preference,
+  // because which way the light falls is a decision about the building — a
+  // room that only works at 9am is worth being able to show someone again.
+  const hr = P.sunHour === undefined ? DEF.sunHour : P.sunHour;
+  h += `<div class="sec"><div class="sec-t">Sun <span class="act" id="sunLbl">${fmtHour(hr)}</span></div>
+    <input type="range" id="sunHour" min="6" max="18" step="0.5" value="${hr}"
+      style="width:100%;accent-color:var(--accent-fill);cursor:pointer">
+    <div style="display:flex;justify-content:space-between;font-size:9.5px;color:var(--muted);margin-top:2px">
+      <span>6 am</span><span>noon</span><span>6 pm</span></div></div>`;
+
   const vs = versions();
   h += `<div class="sec"><div class="sec-t">Versions <span class="act" id="saveVer">+ Save version</span></div>`;
   h += vs.length ? vs.map(v => `
@@ -3317,6 +4280,18 @@ function renderLayers(){
     P.floors[+x.dataset.eye].visible = !P.floors[+x.dataset.eye].visible;
     commit(); renderLayers();
   });
+  // The slider moves the light live while it is dragged, but only writes an
+  // undo step when it is let go — otherwise dragging it once would bury the
+  // history under a hundred identical entries.
+  const sunEl = $('#sunHour');
+  if (sunEl){
+    sunEl.oninput = () => {
+      P.sunHour = +sunEl.value;
+      $('#sunLbl').textContent = fmtHour(P.sunHour);
+      fitSun();
+    };
+    sunEl.onchange = () => { beginChange(); P.sunHour = +sunEl.value; commit(); };
+  }
   $('#addFloorBtn').onclick = addFloor;
   $('#dupFloor').onclick = duplicateFloor;
   $('#delFloor').onclick = () => {
@@ -3368,12 +4343,32 @@ function refreshAll(){
 // ══════════════════════════════════════════════════════════════════
 //  IMPORT · EXPORT · SAMPLE · AI
 // ══════════════════════════════════════════════════════════════════
+/**
+ * The picture beside a saved version.
+ *
+ * The 3D view, not the plan. A column of squashed floor plans all look like
+ * the same grey smudge at 132×100, which made the version list nearly useless
+ * for finding the snapshot you wanted — whereas the building is recognisable
+ * even that small.
+ *
+ * The 2D canvas is the fallback, for the case where the 3D pane has never been
+ * laid out (the studio can be opened straight into 2D view, and a canvas with
+ * no size draws nothing). Kept at the same size and quality, well under the
+ * 200 KB the server allows for it.
+ */
 function thumbnail(){
   try {
     const c = document.createElement('canvas'); c.width = 132; c.height = 100;
     const x = c.getContext('2d');
     x.fillStyle = PAL.paper; x.fillRect(0,0,132,100);
-    if (cv2.width) x.drawImage(cv2, 0, 0, cv2.width, cv2.height, 0, 0, 132, 100);
+    // `preserveDrawingBuffer` is on, so the 3D canvas can be read at any time —
+    // but only re-render when the pane is actually sized, or the grab is blank.
+    if (cv3.width && cv3.height){
+      renderer.render(scene, cam);
+      x.drawImage(cv3, 0, 0, cv3.width, cv3.height, 0, 0, 132, 100);
+    } else if (cv2.width){
+      x.drawImage(cv2, 0, 0, cv2.width, cv2.height, 0, 0, 132, 100);
+    }
     return c.toDataURL('image/jpeg', .55);
   } catch(e){ return ''; }
 }
@@ -3392,9 +4387,87 @@ function exportOBJ(){
   download(fileBase() + '.obj', new Blob([txt], { type:'text/plain' }));
   toast('Exported .obj');
 }
+/**
+ * Render the 3D view at a chosen size and hand it over as a PNG.
+ *
+ * The old version grabbed the canvas at whatever size the pane happened to be,
+ * so the picture you got depended on the width of the browser window. This
+ * renders at a size you pick instead — a 4K frame off a 900-pixel pane — which
+ * is the difference between a screenshot and something you can put in front of
+ * a client.
+ *
+ * It is a bigger, sharper version of what is already on screen, not a
+ * different renderer: no ambient occlusion, no accumulated soft shadows. The
+ * one quality dial that is worth turning is the shadow map, which at 4096 stops
+ * the shadows going blocky once the image is four times wider.
+ *
+ * Everything is put back with `resize3D()`, which reads the pane and fixes up
+ * whichever camera is live — the perspective one needs its aspect, the
+ * orthographic one needs its frustum, and the view can be in either.
+ */
+function renderImage(w, h){
+  const shadow = sun.shadow.mapSize.clone();
+  try {
+    // A very wide frame can be more than the GPU will allocate; ask for what
+    // it will actually give us rather than failing at the last step.
+    const cap = renderer.capabilities.maxTextureSize || 4096;
+    w = Math.min(w, cap); h = Math.min(h, cap);
+
+    if (sun.shadow.mapSize.width < 4096){
+      sun.shadow.mapSize.set(4096, 4096);
+      if (sun.shadow.map){ sun.shadow.map.dispose(); sun.shadow.map = null; }
+    }
+    renderer.setPixelRatio(1);         // w and h are already real pixels
+    renderer.setSize(w, h, false);
+    if (cam.isPerspectiveCamera){
+      cam.aspect = w / h;
+    } else {
+      const half = (cam.top - cam.bottom)/2 || 30;
+      cam.left = -half*(w/h); cam.right = half*(w/h);
+    }
+    cam.updateProjectionMatrix();
+    renderer.render(scene, cam);
+    cv3.toBlob(b => {
+      download(fileBase() + '-3d.png', b);
+      toast(w + '×' + h + ' image saved');
+    });
+  } catch (err){
+    toast('That size was too large to render');
+  } finally {
+    sun.shadow.mapSize.copy(shadow);
+    if (sun.shadow.map){ sun.shadow.map.dispose(); sun.shadow.map = null; }
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    resize3D();
+  }
+}
+
 function exportPNG3D(){
-  renderer.render(scene, cam);
-  cv3.toBlob(b => { download(fileBase() + '-3d.png', b); toast('3D image saved'); });
+  const r = $('#pane3d').getBoundingClientRect();
+  const vw = Math.round(r.width), vh = Math.round(r.height);
+  const sizes = [
+    ['This view', vw, vh, 'exactly what is on screen'],
+    ['Full HD', 1920, 1080, 'for a document or an email'],
+    ['4K', 3840, 2160, 'for print, or a client presentation']
+  ];
+  openModal(`<div class="modal-h"><div class="mt">Render image</div>
+    <button class="icon-btn" data-close>✕</button></div>
+    <div class="modal-b">
+      <div style="font-size:11.5px;color:var(--muted);line-height:1.55;margin-bottom:12px">
+        Renders the 3D view at full size from the camera you are looking through now.
+        Move the camera first — this captures the current angle.</div>
+      ${sizes.map((s, i) => `<button class="btn${i === 2 ? ' primary' : ''}" data-size="${i}"
+        style="width:100%;justify-content:space-between;margin-bottom:7px">
+        <span>${s[0]} — ${s[3]}</span><b style="opacity:.75">${s[1]}×${s[2]}</b></button>`).join('')}
+    </div>`, m => {
+    m.querySelectorAll('[data-size]').forEach(b => b.onclick = () => {
+      const s = sizes[+b.dataset.size];
+      closeModal();
+      toast('Rendering…');
+      // Next frame, so the modal is gone before the canvas is resized —
+      // otherwise the scrim is what gets captured behind a stalled UI.
+      requestAnimationFrame(() => requestAnimationFrame(() => renderImage(s[1], s[2])));
+    });
+  });
 }
 /**
  * Runs `fn` with the plan drawn in day colours, then puts the canvas back.
@@ -3429,9 +4502,31 @@ function exportJSON(){
 function fileBase(){
   return ($('#projName').value || 'design').replace(/[^\w\-]+/g,'-').toLowerCase() + '-' + floor().name.replace(/\s+/g,'').toLowerCase();
 }
+/**
+ * The drawing sheet.
+ *
+ * It carries three things now instead of one: the plan, a view of the model
+ * beside it, and the room and furnishing schedules — which is what an
+ * architect actually hands to a client or takes into a RAJUK meeting. The plan
+ * alone was a picture; this is a sheet.
+ *
+ * Still a print window rather than a generated PDF file. Nothing here needs a
+ * PDF library: the browser's own "Save as PDF" produces the same A3, and
+ * adding a bundled writer to a course project is a lot of dependency for a
+ * button.
+ */
 function exportPDF(){
   const st = stats();
+  const rs = rooms();
   const img = onDayPaper(() => cv2.toDataURL('image/png'));
+  // The model, rendered fresh so the sheet does not depend on the 3D pane
+  // happening to be visible.
+  let shot = '';
+  try {
+    if (cv3.width && cv3.height){ renderer.render(scene, cam); shot = cv3.toDataURL('image/png'); }
+  } catch(e){ /* a sheet without the render is still a sheet */ }
+  const fs = furnishings();
+
   const w = open('', '_blank');
   if (!w){ toast('Allow pop-ups to print the sheet'); return; }
   w.document.write(`<!DOCTYPE html><html><head><title>${P.name} — ${floor().name}</title>
@@ -3440,9 +4535,21 @@ function exportPDF(){
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:Inter,system-ui,sans-serif;color:#1c1917;padding:10px}
     .sheet{border:1.5px solid #1c1917;height:calc(100vh - 40px);display:flex;flex-direction:column}
-    .plan{flex:1;display:flex;align-items:center;justify-content:center;padding:14px;overflow:hidden}
+    .body{flex:1;display:flex;min-height:0;border-bottom:1.5px solid #1c1917}
+    .plan{flex:1.55;display:flex;align-items:center;justify-content:center;padding:14px;overflow:hidden}
     .plan img{max-width:100%;max-height:100%;object-fit:contain}
-    .tb{border-top:1.5px solid #1c1917;display:flex}
+    .side{flex:1;border-left:1px solid #1c1917;display:flex;flex-direction:column;min-width:0}
+    .shot{flex:0 0 44%;border-bottom:1px solid #1c1917;padding:8px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+    .shot img{max-width:100%;max-height:100%;object-fit:contain}
+    .sched{flex:1;padding:9px 12px;overflow:hidden;font-size:9.5px;line-height:1.5}
+    .sh{font-size:8px;letter-spacing:.12em;text-transform:uppercase;color:#78716c;margin:0 0 4px}
+    .row{display:flex;justify-content:space-between;gap:8px}
+    .row.tot{font-weight:700;border-top:1px solid #d6d3d1;margin-top:3px;padding-top:3px}
+    .grp{font-weight:700;margin-top:6px}
+    .sub{padding-left:9px;color:#57534e}
+    .cols{display:flex;gap:16px}
+    .cols>div{flex:1;min-width:0}
+    .tb{display:flex}
     .cell{padding:8px 14px;border-right:1px solid #1c1917;font-size:11px}
     .cell:last-child{border-right:none}
     .k{font-size:8px;letter-spacing:.12em;text-transform:uppercase;color:#78716c;margin-bottom:3px}
@@ -3451,7 +4558,26 @@ function exportPDF(){
     @media print{body{padding:0}}
   </style></head><body>
   <div class="sheet">
-    <div class="plan"><img src="${img}"></div>
+    <div class="body">
+      <div class="plan"><img src="${img}"></div>
+      <div class="side">
+        ${shot ? `<div class="shot"><img src="${shot}"></div>` : ''}
+        <div class="sched"><div class="cols">
+          <div>
+            <div class="sh">Room schedule</div>
+            ${rs.map(r => `<div class="row"><span>${r.name}</span><b>${U.fmtArea(r.area)}</b></div>`).join('')}
+            <div class="row tot"><span>Total</span><b>${U.fmtArea(st.area)}</b></div>
+          </div>
+          <div>
+            <div class="sh">Furnishings</div>
+            ${fs.length
+              ? fs.map(g => `<div class="grp row"><span>${g.room}</span><b>${g.total}</b></div>` +
+                  g.items.map(i => `<div class="row sub"><span>${i.name}</span><b>${i.n}</b></div>`).join('')).join('')
+              : '<div class="sub">Nothing placed on this level.</div>'}
+          </div>
+        </div></div>
+      </div>
+    </div>
     <div class="tb">
       <div class="cell big"><div class="k">Project</div><div class="v">${P.name}</div></div>
       <div class="cell"><div class="k">Level</div><div class="v">${floor().name}</div></div>
@@ -3593,7 +4719,13 @@ function loadSample(){
   const W2_ = (a, b, t) => f2.elements.push({ id: uid(), type:'wall', a, b, t: t || DEF.wallT, h: f2.height, mat: t ? 'concrete' : 'plaster' });
   W2_([0,0],[44,0], DEF.extWallT); W2_([44,0],[44,20], DEF.extWallT);
   W2_([44,20],[0,20], DEF.extWallT); W2_([0,20],[0,0], DEF.extWallT);
-  W2_([22,0],[22,20]);
+  // The divider stands at 28 rather than 22 so the stairwell has somewhere to
+  // arrive. The flight below runs from x 21.65 to 25.55, and a wall at 22 cut
+  // straight through it — which meant no single room on this level contained
+  // the opening, and `buildSlab` refuses to cut a hole it cannot fit inside
+  // one polygon. Both room centroids, the door offset and every piece of
+  // furniture up here still land on the same side of the wall as before.
+  W2_([28,0],[28,20]);
   f2.roomMeta = [{ c:[11,10], name:'Master Suite', mat:'oak' }, { c:[33,10], name:'Bedroom 3', mat:'oak' }];
   const w2walls = f2.elements.filter(e => e.type === 'wall');
   f2.elements.push({ id: uid(), type:'window', host: w2walls[0].id, off: 10, w: 7, h: 5, sill: 2.8, mat:'metal' });
@@ -3730,6 +4862,7 @@ function applyTheme(mode){
   HANDLE_E.color.set(PAL.sel3d);
   SEL_FILL.color.set(PAL.sel3d);
   SEL_LINE.color.set(PAL.sel3d);
+  KIT_PENDING_M.color.set(PAL.sel3d);
   buildGrids();
   syncThemeBtn();
   refreshAll();          // repaints the 2D plan and rebuilds the 3D labels
@@ -3820,6 +4953,7 @@ $('#btnFull').onclick = () => setView(viewMode === '3d' ? 'split' : '3d');
 $('#sbSnapGrid').onclick  = e => { snapCfg.grid  = !snapCfg.grid;  e.currentTarget.classList.toggle('on', snapCfg.grid); draw2D(); };
 $('#sbSnapOrtho').onclick = e => { snapCfg.ortho = !snapCfg.ortho; e.currentTarget.classList.toggle('on', snapCfg.ortho); };
 $('#sbSnapPoint').onclick = e => { snapCfg.point = !snapCfg.point; e.currentTarget.classList.toggle('on', snapCfg.point); };
+$('#sbSnapWall').onclick  = e => { snapCfg.wall  = !snapCfg.wall;  e.currentTarget.classList.toggle('on', snapCfg.wall); };
 $('#gridLbl').parentElement.onclick = () => {
   const sizes = [0.5, 1, 2, 5];
   snapCfg.size = sizes[(sizes.indexOf(snapCfg.size) + 1) % sizes.length];
@@ -3930,7 +5064,12 @@ return function dispose(){
       delete cache[id];
     }
   }
-  for (const m of [HANDLE_M, HANDLE_E, SEL_FILL, SEL_LINE]) m.dispose();
+  for (const m of [HANDLE_M, HANDLE_E, SEL_FILL, SEL_LINE, KIT_PENDING_M]) m.dispose();
+  // The kit templates sit outside the scene, so nothing above reaches them.
+  // A download still in the air is waited out rather than abandoned — it lands
+  // on a torn-down studio either way, and this is what frees it.
+  for (const p of kitCache.values()) p.then(t => disposeKitTemplate(t.root)).catch(() => {});
+  kitCache.clear();
   if (scene.environment) scene.environment.dispose();
   pmrem.dispose();
   renderer.dispose();

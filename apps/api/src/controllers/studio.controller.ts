@@ -95,7 +95,12 @@ const openingEl = z.object({
 const furnitureEl = z.object({
   id: z.string().max(40),
   type: z.literal("furniture"),
-  sub: z.string().max(40),
+  // A catalogue id ("sofa", "bed-king") or a kit model's ("fur/chair",
+  // "pro/shape-hollow-cylinder-half-detailed" — the longest of the 693 at 39
+  // characters). The room above that is deliberate: a kit id is a filename
+  // Kenney chose, so a future kit could ship a longer one, and the cost of
+  // being wrong here is an architect staring at "Autosave failed".
+  sub: z.string().max(80),
   x: coord.optional(),
   z: coord.optional(),
   rot: z.number().finite().optional(),
@@ -117,6 +122,12 @@ const stairsEl = z.object({
   run: size.optional(),
   mat: matName.optional(),
   rail: z.boolean().optional(),
+  // Whether this flight cuts a stairwell opening through the slab above it.
+  // Absent counts as yes, so every stair drawn before this existed keeps its
+  // opening. This line is not optional housekeeping: a zod object *strips*
+  // keys it does not name rather than rejecting them, so without it the
+  // studio's toggle would save without complaint and come back missing.
+  cut: z.boolean().optional(),
   // Read by the 3D builder but not written by any control yet. Kept so a plan
   // imported from a file that has it survives a round trip.
   railSide: z.enum(["left", "right"]).optional(),
@@ -176,6 +187,9 @@ const designSchema = z.object({
   floors: z.array(floorSchema).min(1).max(50),
   active: z.number().int().min(0).max(49),
   v: z.number().int().min(1).max(100),
+  // Hour of day for the 3D sun. Optional so a design saved before this
+  // existed still validates; the studio falls back to its own default.
+  sunHour: z.number().min(0).max(24).optional(),
 });
 
 const versionSchema = z.object({
@@ -229,6 +243,7 @@ export async function loadStudioDesign(req: Request, res: Response) {
           floors: doc.floors,
           active: doc.active,
           v: doc.v,
+          sunHour: doc.sunHour,
         }
       : null,
     versions: versions.map(toSummary),

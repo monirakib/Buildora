@@ -269,6 +269,12 @@ export function studioFloorToPlanInput(floor: StudioMirrorFloor): FloorPlanInput
 
   for (const el of floor.elements) {
     if (el.type === "furniture" && furniture.length < CAP.furniture) {
+      // Kit models (a `sub` with a slash — "fur/chair", "nat/tree_default")
+      // have no `FurnitureKind`, so they fall out here along with any other
+      // unknown catalogue id. That is the right outcome and not a gap: a plan
+      // is what the FAR check, the estimate and the BOQ measure, and none of
+      // the three prices a tree or a crate. What they measure is the rooms,
+      // which the walls above already carried across.
       const kind = FURNITURE[el.sub];
       if (!kind) continue;
       const w = num(el.w, 2);
