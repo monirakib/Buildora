@@ -13,8 +13,8 @@ import { Schema, model } from "mongoose";
  *      it would anchor every bid to it.
  *
  * Construction rates move with the market and vary by city. Hardcoding them
- * would mean a redeploy every time cement moves, which is exactly the rule
- * CLAUDE.md sets for DAP zones and RAJUK fees.
+ * would mean a redeploy every time cement moves, which is the same reason
+ * DAP zones and RAJUK fees live in the database instead of in code.
  */
 export interface BoqRateDoc {
   description: string;

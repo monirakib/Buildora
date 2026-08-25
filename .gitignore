@@ -30,3 +30,10 @@ Essentials/
 
 # Duplicate nested copy of the project
 Buildora/
+
+# Local planning doc, not source code
+live-coding-features.md
+
+# AI tooling config/instructions — not part of the shipped project
+.claude/
+CLAUDE.md
