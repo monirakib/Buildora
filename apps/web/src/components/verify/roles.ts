@@ -157,7 +157,7 @@ const LAND_OWNER: RoleWizard = {
 
 /**
  * The verification wizard for a role, or undefined for roles that have nothing
- * to verify (ADMIN, SUPER_ADMIN).
+ * to verify (ADMIN).
  *
  * Architect used to be the `default:` branch, which meant any role without a
  * case of its own was handed an architect's IAB-membership wizard. That was

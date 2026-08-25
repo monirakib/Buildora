@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Sparkles, TrendingDown, TrendingUp } from "lucide-react";
+import { AlertTriangle, Sparkles, TrendingDown, TrendingUp } from "lucide-react";
 import { EstimateTier, type CostEstimate, type EstimateSnapshot } from "@buildora/shared";
 import { estimateProject } from "@/lib/apiEstimator";
 import { formatBdt } from "@/components/app/projectStatus";
@@ -17,8 +17,10 @@ const cardClass =
  *
  * **The numbers are not written by the AI.** Quantities and rates come from the
  * same admin-maintained BOQ table a contractor's tender is priced from, so the
- * estimate and the eventual bids are speaking about the same materials. The AI
- * only writes the explanation, and every figure stands without it.
+ * estimate and the eventual bids are speaking about the same materials. Those
+ * rates are then moved to today's real material prices in TypeScript, one slice
+ * of a rate at a time — see services/repricing. The AI only writes the
+ * explanation, and every figure stands without it.
  *
  * **It is shown as a range, never as one number.** How much the figure is worth
  * depends entirely on what it was calculated from — a guess off the plot size
@@ -165,9 +167,75 @@ export function EstimateSection({ projectId, token }: { projectId: string; token
                     ))}
                 </div>
                 <p className="mt-2 text-xs text-stone-500 dark:text-slate-500">
-                  Median listing prices since your last estimate. Shown as a signal only, and not
-                  applied to the figures above: a bag of cement and a rate for finished concrete
-                  work are different things.
+                  How median listing prices have moved since your last estimate. This panel is a
+                  trend, not an input — the figures above are adjusted from the specific prices
+                  listed under &ldquo;priced from live material data&rdquo;, and only ever on the
+                  material share of a rate.
+                </p>
+              </div>
+            )}
+
+            {/*
+              The prices this figure was actually built from.
+
+              Unlike the drift panel below-left, these HAVE been applied — each
+              rate was split into material, labour and fixed slices and only the
+              material slices were moved, so a cement rise touches the cement
+              share of a concrete rate and nothing else. The fallback badge is
+              the important part: an estimate that quietly substituted a stale
+              price for a live one would be worse than one that admits it.
+            */}
+            {estimate.pricing && estimate.pricing.prices.length > 0 && (
+              <div className="rounded-xl border border-black/10 px-4 py-3 dark:border-white/10">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-xs font-bold tracking-wider text-stone-500 uppercase dark:text-slate-400">
+                    Priced from live material data
+                  </p>
+                  {estimate.pricing.usedFallback ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2.5 py-1 text-xs font-semibold text-amber-800 dark:text-amber-300">
+                      <AlertTriangle className="h-3 w-3" />
+                      {estimate.pricing.linesWithFallback} line
+                      {estimate.pricing.linesWithFallback === 1 ? "" : "s"} on a fallback price
+                    </span>
+                  ) : (
+                    <span className="rounded-full bg-emerald-500/15 px-2.5 py-1 text-xs font-semibold text-emerald-800 dark:text-emerald-300">
+                      All prices current
+                    </span>
+                  )}
+                </div>
+
+                <ul className="mt-2.5 space-y-1.5">
+                  {estimate.pricing.prices.slice(0, 6).map((p) => (
+                    <li
+                      key={p.priceId}
+                      className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 text-sm"
+                    >
+                      <span className="text-stone-700 dark:text-slate-300">
+                        {p.itemLabel}
+                        {p.resolution === "STALE_FALLBACK" && (
+                          <span className="ml-1.5 text-xs font-semibold text-amber-700 dark:text-amber-400">
+                            stale
+                          </span>
+                        )}
+                      </span>
+                      <span className="text-stone-600 dark:text-slate-400">
+                        {formatBdt(p.priceBdt)}/{p.unit}
+                        <span className="ml-2 text-xs text-stone-500 dark:text-slate-500">
+                          {p.sourceName} · {p.ageDays}d
+                        </span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+
+                <p className="mt-2 text-xs text-stone-500 dark:text-slate-500">
+                  {estimate.pricing.linesRepriced} of the line items were adjusted from these
+                  prices. Only the material share of each rate moves — wages and plant are costed
+                  separately
+                  {estimate.pricing.labourBasis
+                    ? `, and wages were indexed over ${estimate.pricing.labourBasis}`
+                    : ""}
+                  .
                 </p>
               </div>
             )}

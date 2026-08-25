@@ -329,7 +329,12 @@ export async function listVerificationRequests(req: Request, res: Response) {
     .limit(100)
     .populate<{ professional: HydratedDocument<UserDoc> }>("professional");
 
-  return res.json({ data: { requests: docs.map(toVerificationRequest) } });
+  // A request whose professional account has since been deleted (e.g. a
+  // cleaned-up test account) populates as null — skip it rather than let
+  // toVerificationRequest crash the whole list on one stale row.
+  return res.json({
+    data: { requests: docs.filter((d) => d.professional).map(toVerificationRequest) },
+  });
 }
 
 /**

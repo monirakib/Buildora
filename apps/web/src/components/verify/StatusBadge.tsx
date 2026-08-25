@@ -24,8 +24,8 @@ function stagesFor(role: UserRole) {
     { status: VerificationStatus.UNDER_REVIEW, label: "Supervisor Review", icon: ShieldCheck },
     {
       status: VerificationStatus.APPROVED,
-      // Roles with no wizard (admin, key custodian) never reach this screen;
-      // the fallback only keeps the badge readable if one somehow does.
+      // Roles with no wizard (admin) never reach this screen; the fallback
+      // only keeps the badge readable if one somehow does.
       label: wizardFor(role)?.verifiedLabel ?? "Verified",
       icon: BadgeCheck,
     },

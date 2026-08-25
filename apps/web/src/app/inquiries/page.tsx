@@ -7,6 +7,7 @@ import { InquiryStatus, UserRole, type Inquiry } from "@buildora/shared";
 import { listMyInquiries } from "@/lib/api";
 import { useSession } from "@/store/useSession";
 import { Navbar } from "@/components/landing/Navbar";
+import { professionalCopy } from "@/components/professionals/roleCopy";
 
 const statusStyles: Record<InquiryStatus, string> = {
   [InquiryStatus.SENT]: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
@@ -71,7 +72,7 @@ export default function InquiriesPage() {
             {isLandOwner ? "Your requests" : "Client requests"}
           </p>
           <h1 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">
-            {isLandOwner ? "Architects you've contacted" : "Land owners who reached out"}
+            {isLandOwner ? "Professionals you've contacted" : "Land owners who reached out"}
           </h1>
 
           <div className="mt-8">
@@ -84,25 +85,37 @@ export default function InquiriesPage() {
             ) : inquiries.length === 0 ? (
               <div className="rounded-2xl border border-white/50 bg-white/55 p-8 text-center backdrop-blur-xl dark:border-white/10 dark:bg-white/5">
                 <p className="text-stone-600 dark:text-slate-400">
-                  {isLandOwner
-                    ? "You haven't contacted any architects yet."
-                    : "No client requests yet."}
+                  {isLandOwner ? "You haven't contacted anyone yet." : "No client requests yet."}
                 </p>
                 {isLandOwner && (
-                  <Link
-                    href="/architects"
-                    className="mt-5 inline-block rounded-full bg-amber-400 px-6 py-2.5 text-sm font-bold text-stone-950 transition hover:bg-amber-300"
-                  >
-                    Find an architect
-                  </Link>
+                  <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+                    <Link
+                      href="/architects"
+                      className="rounded-full bg-amber-400 px-6 py-2.5 text-sm font-bold text-stone-950 transition hover:bg-amber-300"
+                    >
+                      Find an architect
+                    </Link>
+                    <Link
+                      href="/engineers"
+                      className="rounded-full border border-stone-300/80 px-6 py-2.5 text-sm font-bold text-stone-700 transition hover:border-amber-500 hover:text-amber-600 dark:border-white/15 dark:text-slate-300 dark:hover:text-amber-400"
+                    >
+                      Find an engineer
+                    </Link>
+                    <Link
+                      href="/contractors"
+                      className="rounded-full border border-stone-300/80 px-6 py-2.5 text-sm font-bold text-stone-700 transition hover:border-amber-500 hover:text-amber-600 dark:border-white/15 dark:text-slate-300 dark:hover:text-amber-400"
+                    >
+                      Find a contractor
+                    </Link>
+                  </div>
                 )}
               </div>
             ) : (
               <ul className="flex flex-col gap-4">
                 {inquiries.map((q) => {
                   // Land owner sees who they contacted; professional sees who contacted them.
-                  const other = isLandOwner ? q.architect : q.landOwner;
-                  const otherCompany = isLandOwner ? q.architect.company : undefined;
+                  const other = isLandOwner ? q.professional : q.landOwner;
+                  const otherCompany = isLandOwner ? q.professional.company : undefined;
                   return (
                     <li
                       key={q.id}
@@ -132,7 +145,7 @@ export default function InquiriesPage() {
                           <>
                             {" · "}
                             <Link
-                              href={`/architects/${q.architect.id}`}
+                              href={`/${professionalCopy(q.professional.role).basePath}/${q.professional.id}`}
                               className="font-semibold text-amber-600 underline underline-offset-2 dark:text-amber-400"
                             >
                               View profile

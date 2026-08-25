@@ -56,6 +56,8 @@ const megaMenu = [
         desc: "Land, budget and floors in minutes",
       },
       { href: "/architects", label: "Find architects", desc: "Browse verified portfolios" },
+      { href: "/engineers", label: "Find engineers", desc: "Browse verified structural engineers" },
+      { href: "/contractors", label: "Find contractors", desc: "Browse verified contractors" },
       { href: "/marketplace", label: "Marketplace", desc: "Order materials straight to your site" },
       { href: "/permits", label: "Permit tools", desc: "DAP zone checks & RAJUK fees" },
       { href: "/dashboard", label: "Your dashboard", desc: "Projects, messages, requests" },
@@ -555,6 +557,8 @@ function SideMenu({
         // Only contractors bid — a supplier sells materials, they don't build.
         ...(role === UserRole.CONTRACTOR ? [{ href: "/tenders", label: "Tenders to bid on" }] : []),
         ...(isLandOwner ? [{ href: "/architects", label: "Find an architect" }] : []),
+        ...(isLandOwner ? [{ href: "/engineers", label: "Find an engineer" }] : []),
+        ...(isLandOwner ? [{ href: "/contractors", label: "Find a contractor" }] : []),
         ...(isSeller ? [{ href: "/marketplace/sell", label: "My listings" }] : []),
         ...(isLandOwner || isSeller
           ? [{ href: "/marketplace/orders", label: "Market orders" }]

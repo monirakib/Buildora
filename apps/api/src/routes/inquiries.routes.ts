@@ -8,8 +8,8 @@ import { UserRole } from "@buildora/shared";
 export const inquiriesRouter = Router();
 
 // Only land owners send inquiries; anyone signed in can list their own.
-// Approaching an architect is verified-only — this is the step that puts an
-// unknown person in a professional's inbox asking them to work.
+// Approaching a professional is verified-only — this is the step that puts an
+// unknown person in their inbox asking them to work.
 inquiriesRouter.post(
   "/",
   requireAuth,

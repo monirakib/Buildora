@@ -23,7 +23,15 @@
  * mesh's min/max corner, and the node tree above it stores the transforms, so
  * measuring is a walk of the tree rather than a render.
  */
-import { readFileSync, writeFileSync, readdirSync, mkdirSync, copyFileSync, rmSync, existsSync } from "node:fs";
+import {
+  readFileSync,
+  writeFileSync,
+  readdirSync,
+  mkdirSync,
+  copyFileSync,
+  rmSync,
+  existsSync,
+} from "node:fs";
 import { join, dirname, basename } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -80,11 +88,11 @@ const MAX_ID = 80;
  * feet.
  */
 const MOUNTS = [
-  [/^fur\/kitchenCabinetUpper/, 4.6],   // above the 3.07 ft base cabinets
-  [/^fur\/hood(Large|Modern)$/, 4.8],   // over a stove of the same height
-  [/^fur\/bathroomMirror$/, 3.4],       // above the basin, top at eye level
-  [/^fur\/lampWall$/, 5.5],             // sconce
-  [/^fur\/coatRack$/, 4.5],             // the wall-hung one; coatRackStanding is not
+  [/^fur\/kitchenCabinetUpper/, 4.6], // above the 3.07 ft base cabinets
+  [/^fur\/hood(Large|Modern)$/, 4.8], // over a stove of the same height
+  [/^fur\/bathroomMirror$/, 3.4], // above the basin, top at eye level
+  [/^fur\/lampWall$/, 5.5], // sconce
+  [/^fur\/coatRack$/, 4.5], // the wall-hung one; coatRackStanding is not
   [/^fur\/ceilingFan$/, "ceiling"],
   [/^fur\/lampSquareCeiling$/, "ceiling"],
 ];
@@ -125,37 +133,58 @@ const TYPE_RULES = [
   [/^car\/(wheel|debris|tire)/, "Tools & Equipment"],
   [/^car\//, "Vehicles"],
   [/^food\//, "Food & Tableware"],
-  [/\/(ambulance|tractor|kart|firetruck|police|taxi|van|sedan|suv|hatchback|truck|delivery|race)/, "Vehicles"],
+  [
+    /\/(ambulance|tractor|kart|firetruck|police|taxi|van|sedan|suv|hatchback|truck|delivery|race)/,
+    "Vehicles",
+  ],
 
   // structure
   [/\/(stairs|staircase|ramp|ladder)/, "Structure"],
-  [/\/(wall|window|door|doorway|roof|floor|column|border|gutter|plating|railing|pillar|scaffolding|panel|planks|beam|arch)/, "Structure"],
+  [
+    /\/(wall|window|door|doorway|roof|floor|column|border|gutter|plating|railing|pillar|scaffolding|panel|planks|beam|arch)/,
+    "Structure",
+  ],
   [/^mod\//, "Buildings"],
   [/\/building/, "Buildings"],
 
   // ground, roads and the site
-  [/\/(road|path|driveway|pavement|kerb|curb|crossing|traffic|construction|bridge|electricity|streetlight|signpost|sign)/, "Roads & Site"],
+  [
+    /\/(road|path|driveway|pavement|kerb|curb|crossing|traffic|construction|bridge|electricity|streetlight|signpost|sign)/,
+    "Roads & Site",
+  ],
   [/\/(ground|terrain|cliff|tile|snow|water|sand|dirt|hill|slope)/, "Terrain"],
   [/\/(rock|stone|log|stump|mushroom|cactus|bush|hedge)/, "Outdoor & Garden"],
   [/\/(tree|plant|flower|grass|crop|planter|potted|garden|leaf|leaves)/, "Outdoor & Garden"],
   [/\/(fence|gate|canoe|tent|campfire|bedroll|firewood)/, "Outdoor & Garden"],
 
   // fittings — kitchen and bath before the generic furniture words
-  [/\/(kitchen|hood|stove|oven|cooker|cooking|pot|pan|utensil|toaster|blender|microwave|fridge|freezer)/, "Kitchen"],
+  [
+    /\/(kitchen|hood|stove|oven|cooker|cooking|pot|pan|utensil|toaster|blender|microwave|fridge|freezer)/,
+    "Kitchen",
+  ],
   [/\/(bathroom|toilet|shower|bathtub|bidet|basin|washbasin)/, "Bathroom"],
-  [/\/(washer|dryer|laundry|television|computer|laptop|monitor|screen|radio|speaker|keyboard|mouse|console|ceiling-fan)/, "Appliances & Electronics"],
+  [
+    /\/(washer|dryer|laundry|television|computer|laptop|monitor|screen|radio|speaker|keyboard|mouse|console|ceiling-fan)/,
+    "Appliances & Electronics",
+  ],
 
   // furniture proper
   [/\/(sofa|couch|chair|stool|bench|lounge|seat|ottoman|armchair)/, "Seating"],
   [/\/(table|desk|workbench|counter|island|bar)/, "Tables & Desks"],
   [/\/(bed|mattress|pillow|cushion|blanket|cot|crib|bunk)/, "Beds & Bedding"],
-  [/\/(wardrobe|closet|cabinet|bookcase|shelf|shelving|drawer|dresser|sideboard|crate|barrel|box|chest|locker|pallet|dumpster|bin|trashcan)/, "Storage"],
+  [
+    /\/(wardrobe|closet|cabinet|bookcase|shelf|shelving|drawer|dresser|sideboard|crate|barrel|box|chest|locker|pallet|dumpster|bin|trashcan)/,
+    "Storage",
+  ],
   [/\/(lamp|light|lantern|candle|chandelier|sconce|torch)/, "Lighting"],
 
   // consumables, tools and props
   [/\/(plate|bowl|cup|mug|glass|cutlery|fork|knife|spoon|bottle|jar|tray)/, "Food & Tableware"],
   [/\/(tool|hammer|saw|axe|shovel|wrench|drill|toolbox|metal|resource)/, "Tools & Equipment"],
-  [/\/(rug|carpet|doormat|curtain|mirror|picture|frame|painting|clock|vase|book|statue|figurine|present|gift|wreath|sock|snowflake|ornament|decor|coat|hat|flag|banner|toy|ball)/, "Decor & Accessories"],
+  [
+    /\/(rug|carpet|doormat|curtain|mirror|picture|frame|painting|clock|vase|book|statue|figurine|present|gift|wreath|sock|snowflake|ornament|decor|coat|hat|flag|banner|toy|ball)/,
+    "Decor & Accessories",
+  ],
 
   // ── looser tier: the leading word meant nothing, so look anywhere ──
   [/-(stairs|ramp|ladder|door|window|wall|roof|column)/, "Structure"],
@@ -173,8 +202,14 @@ const ROOM_RULES = [
   // things that are not in a room at all
   [/^chr\//, "Site & Context"],
   [/^(sub|road|mod)\//, "Site & Context"],
-  [/(^|\/|-)(road|driveway|pavement|kerb|curb|traffic|construction|bridge|electricity|signpost)/, "Site & Context"],
-  [/(^|\/|-)(stairs|staircase|ramp|ladder|doorway|column|border|gutter|plating|scaffolding|beam)/, "Structure"],
+  [
+    /(^|\/|-)(road|driveway|pavement|kerb|curb|traffic|construction|bridge|electricity|signpost)/,
+    "Site & Context",
+  ],
+  [
+    /(^|\/|-)(stairs|staircase|ramp|ladder|doorway|column|border|gutter|plating|scaffolding|beam)/,
+    "Structure",
+  ],
   [/^(bld|pro)\//, "Structure"],
   // Anchored the same way the type rules are: a bookcase with doors is still a
   // bookcase, and a wall lamp is still a lamp.
@@ -182,13 +217,22 @@ const ROOM_RULES = [
 
   // outside
   [/^(nat|sur)\//, "Outdoor & Garden"],
-  [/(^|\/|-)(tree|plant|flower|grass|crop|planter|garden|fence|gate|rock|stone|cliff|ground|terrain|tent|campfire|canoe|bush|hedge|mushroom|log|stump)/, "Outdoor & Garden"],
+  [
+    /(^|\/|-)(tree|plant|flower|grass|crop|planter|garden|fence|gate|rock|stone|cliff|ground|terrain|tent|campfire|canoe|bush|hedge|mushroom|log|stump)/,
+    "Outdoor & Garden",
+  ],
   [/^car\//, "Garage & Driveway"],
-  [/(^|\/|-)(ambulance|tractor|kart|firetruck|police|taxi|van|sedan|suv|hatchback|truck|delivery|race|wheel)/, "Garage & Driveway"],
+  [
+    /(^|\/|-)(ambulance|tractor|kart|firetruck|police|taxi|van|sedan|suv|hatchback|truck|delivery|race|wheel)/,
+    "Garage & Driveway",
+  ],
 
   // inside, most specific first
   // `pan` needs its ending pinned down or it swallows "paneling".
-  [/(^|[/-])(kitchen|hood|stove|oven|cooker|cooking|pot|pans?|utensil|toaster|blender|microwave|fridge|freezer)([/-]|$)/, "Kitchen"],
+  [
+    /(^|[/-])(kitchen|hood|stove|oven|cooker|cooking|pot|pans?|utensil|toaster|blender|microwave|fridge|freezer)([/-]|$)/,
+    "Kitchen",
+  ],
   [/^food\//, "Kitchen"],
   [/(^|\/|-)(plate|bowl|cup|mug|cutlery|fork|knife|spoon|tray)/i, "Dining"],
   [/(^|\/|-)(bathroom|toilet|shower|bathtub|bidet|basin|washbasin|towel)/i, "Bathroom"],
@@ -225,7 +269,10 @@ const ROOM_RULES = [
  * camelCase name.
  */
 const flatten = (id) =>
-  id.replace(/([a-z0-9])([A-Z])/g, "$1-$2").replace(/_/g, "-").toLowerCase();
+  id
+    .replace(/([a-z0-9])([A-Z])/g, "$1-$2")
+    .replace(/_/g, "-")
+    .toLowerCase();
 
 const classify = (rules, id) => {
   const flat = flatten(id);
@@ -444,7 +491,10 @@ function multiply(a, b) {
   for (let c = 0; c < 4; c++) {
     for (let r = 0; r < 4; r++) {
       out[c * 4 + r] =
-        a[r] * b[c * 4] + a[4 + r] * b[c * 4 + 1] + a[8 + r] * b[c * 4 + 2] + a[12 + r] * b[c * 4 + 3];
+        a[r] * b[c * 4] +
+        a[4 + r] * b[c * 4 + 1] +
+        a[8 + r] * b[c * 4 + 2] +
+        a[12 + r] * b[c * 4 + 3];
     }
   }
   return out;
@@ -455,17 +505,33 @@ function compose(t, q, s) {
   const [x, y, z, w] = q;
   const [sx, sy, sz] = s;
   return [
-    (1 - 2 * (y * y + z * z)) * sx, (2 * (x * y + z * w)) * sx, (2 * (x * z - y * w)) * sx, 0,
-    (2 * (x * y - z * w)) * sy, (1 - 2 * (x * x + z * z)) * sy, (2 * (y * z + x * w)) * sy, 0,
-    (2 * (x * z + y * w)) * sz, (2 * (y * z - x * w)) * sz, (1 - 2 * (x * x + y * y)) * sz, 0,
-    t[0], t[1], t[2], 1,
+    (1 - 2 * (y * y + z * z)) * sx,
+    2 * (x * y + z * w) * sx,
+    2 * (x * z - y * w) * sx,
+    0,
+    2 * (x * y - z * w) * sy,
+    (1 - 2 * (x * x + z * z)) * sy,
+    2 * (y * z + x * w) * sy,
+    0,
+    2 * (x * z + y * w) * sz,
+    2 * (y * z - x * w) * sz,
+    (1 - 2 * (x * x + y * y)) * sz,
+    0,
+    t[0],
+    t[1],
+    t[2],
+    1,
   ];
 }
 
 function localMatrix(node) {
   if (node.matrix) return node.matrix;
   if (!node.translation && !node.rotation && !node.scale) return IDENTITY;
-  return compose(node.translation || [0, 0, 0], node.rotation || [0, 0, 0, 1], node.scale || [1, 1, 1]);
+  return compose(
+    node.translation || [0, 0, 0],
+    node.rotation || [0, 0, 0, 1],
+    node.scale || [1, 1, 1]
+  );
 }
 
 function applyPoint(m, p) {
@@ -568,12 +634,15 @@ function main() {
     const root = join(SRC, kit.dir);
     const modelDir = join(root, kit.models);
     const thumbDir = join(root, kit.thumbs);
-    const files = readdirSync(modelDir).filter((f) => f.endsWith(".glb")).sort();
+    const files = readdirSync(modelDir)
+      .filter((f) => f.endsWith(".glb"))
+      .sort();
 
     // The two textured kits point at "Textures/colormap.png" beside the models
     // rather than embedding it, so that folder has to travel with them.
     const textures = join(modelDir, "Textures");
-    if (existsSync(textures)) copyDir(textures, join(OUT, kit.id, "models", "Textures"), (f) => f.endsWith(".png"));
+    if (existsSync(textures))
+      copyDir(textures, join(OUT, kit.id, "models", "Textures"), (f) => f.endsWith(".png"));
 
     mkdirSync(join(OUT, kit.id, "models"), { recursive: true });
     mkdirSync(join(OUT, kit.id, "thumbs"), { recursive: true });
@@ -584,7 +653,8 @@ function main() {
     for (const file of files) {
       const stem = basename(file, ".glb");
       const id = `${kit.id}/${stem}`;
-      if (id.length > MAX_ID) throw new Error(`id too long for the API (${id.length} > ${MAX_ID}): ${id}`);
+      if (id.length > MAX_ID)
+        throw new Error(`id too long for the API (${id.length} > ${MAX_ID}): ${id}`);
       const size = measure(readGlbJson(join(modelDir, file)), kit.scale);
       const parts = words(stem);
       const group = titleCase(parts[0] || "misc");
@@ -601,10 +671,14 @@ function main() {
       counts.set(group, (counts.get(group) || 0) + 1);
       const mount = mountOf(id);
       rows.push({
-        id, n: parts.map(titleCase).join(" "), g: group,
-        t: classify(TYPE_RULES, id),      // what it is
-        r: classify(ROOM_RULES, id),      // where it goes
-        w: size.w, d: size.d, h: size.h,
+        id,
+        n: parts.map(titleCase).join(" "),
+        g: group,
+        t: classify(TYPE_RULES, id), // what it is
+        r: classify(ROOM_RULES, id), // where it goes
+        w: size.w,
+        d: size.d,
+        h: size.h,
         ...(mount === undefined ? {} : { m: mount }),
       });
     }

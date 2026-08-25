@@ -1,38 +1,24 @@
-/**
- * The six platform actors defined in the product plan (§3.1), plus one operator
- * role that is not an actor in the product at all.
- */
+/** The six platform actors defined in the product plan (§3.1). */
 export enum UserRole {
   LAND_OWNER = "LAND_OWNER",
   ARCHITECT = "ARCHITECT",
   STRUCTURAL_ENGINEER = "STRUCTURAL_ENGINEER",
   CONTRACTOR = "CONTRACTOR",
   SUPPLIER = "SUPPLIER",
-  ADMIN = "ADMIN",
   /**
-   * Holds one power and no others: rotating the encryption and signing keys.
-   *
-   * Deliberately a **sibling of ADMIN, not a superset of it.** Every permission
-   * check in the API is an exact match on the role, so a SUPER_ADMIN satisfies
-   * `requireRole(ADMIN)` nowhere — no user list, no verification queue, no
-   * disputes, no broadcasts. It can reach `/api/keys/*` and nothing else.
-   *
-   * That is the point. Key rotation needs the ability to re-encrypt every
-   * record, which is the most dangerous capability on the platform; pairing it
-   * with routine day-to-day administration would mean the account used for
-   * ordinary supervision also carries it. Splitting them means compromising the
-   * admin console does not hand over the keys, and vice versa.
-   *
-   * Not self-assignable and not grantable from the admin console — it exists
-   * only via `pnpm seed:superadmin`. See controllers/admin.controller.ts.
+   * The platform supervisor. Besides the day-to-day console (users, marketplace
+   * moderation, verification, disputes, broadcasts), ADMIN also holds key
+   * rotation — see `/api/keys/*` and `services/rotation.ts` — the ability to
+   * re-encrypt every record onto a new key if one is ever suspected compromised.
    */
-  SUPER_ADMIN = "SUPER_ADMIN",
+  ADMIN = "ADMIN",
 }
 
 /**
  * The roles that are actual product actors — everything a normal screen should
- * offer. Excludes SUPER_ADMIN, which is an operator account and has no profile,
- * no verification path and no place in a role picker.
+ * offer. Currently identical to every UserRole; kept as its own list so a
+ * future operator-only role (no profile, no verification path) can be added to
+ * UserRole without silently appearing in a role picker.
  */
 export const ACTOR_ROLES: UserRole[] = [
   UserRole.LAND_OWNER,
@@ -47,6 +33,29 @@ export const ACTOR_ROLES: UserRole[] = [
 export enum VerificationStatus {
   PENDING_VERIFICATION = "PENDING_VERIFICATION",
   DOCUMENTS_SUBMITTED = "DOCUMENTS_SUBMITTED",
+  UNDER_REVIEW = "UNDER_REVIEW",
+  APPROVED = "APPROVED",
+  REJECTED = "REJECTED",
+}
+
+/**
+ * RAJUK requires two separate approvals for a build. Planning Permit (formerly
+ * called Land Use Clearance) confirms the plot's zoning/use; Construction
+ * Permit is the actual building approval and normally comes after it.
+ */
+export enum PermitType {
+  PLANNING_PERMIT = "PLANNING_PERMIT",
+  CONSTRUCTION_PERMIT = "CONSTRUCTION_PERMIT",
+}
+
+/**
+ * Status of a user's real-world RAJUK permit application, as they report it.
+ * Buildora has no RAJUK integration — this tracks progress the user tells us
+ * about, optionally confirmed by an admin.
+ */
+export enum PermitApplicationStatus {
+  NOT_STARTED = "NOT_STARTED",
+  SUBMITTED = "SUBMITTED",
   UNDER_REVIEW = "UNDER_REVIEW",
   APPROVED = "APPROVED",
   REJECTED = "REJECTED",
@@ -643,4 +652,61 @@ export enum EstimateTier {
   BOQ = "BOQ",
   /** What contractors really bid, once bidding has closed. */
   BID_BACKED = "BID_BACKED",
+}
+
+/**
+ * Where one observed material price came from.
+ *
+ * Every stored price carries this, because "cement is 520 a bag" means very
+ * different things depending on who said so, and an owner reading an estimate is
+ * entitled to know which. It is also what the staleness fallback keys off: a
+ * MARKETPLACE price that has gone quiet falls back to a CURATED one, and the
+ * estimate says out loud that it did.
+ */
+export enum PriceSource {
+  /**
+   * Typed in by an admin from a published figure — a TCB bulletin, the PWD rate
+   * schedule, a manufacturer's own list. Slowest to move, never wrong by
+   * accident, and the floor everything else falls back to.
+   */
+  CURATED = "CURATED",
+  /**
+   * The median of live supplier listings on Buildora's own marketplace. This is
+   * first-party data: real sellers, real prices, no scraping and no third-party
+   * terms of service in the way. It is the freshest source we have and the only
+   * one that moves on its own.
+   */
+  MARKETPLACE = "MARKETPLACE",
+  /**
+   * Read by the weekly job from a manufacturer's public price page. Always
+   * lands unapproved — a parser breaking on a redesigned page must never be
+   * able to move an owner's estimate on its own.
+   */
+  FETCHED = "FETCHED",
+}
+
+/**
+ * What one slice of a composite work rate actually pays for.
+ *
+ * This is the distinction that makes live pricing honest. A BoqRate line like
+ * "RCC works (1:1.5:3) including shuttering" is not a material price — it
+ * bundles cement, sand, labour and formwork into one figure. Multiplying the
+ * whole thing by a cement price movement would be nonsense, which is exactly why
+ * services/marketDrift refused to apply drift at all.
+ *
+ * Splitting the rate into kinds fixes that: a cement move repriced only the
+ * MATERIAL slice that is actually cement, LABOUR moves on its own curated
+ * index, and FIXED does not move at all.
+ */
+export enum CostComponentKind {
+  /** Tracks a ProductCategory, so a live price movement can reprice it. */
+  MATERIAL = "MATERIAL",
+  /**
+   * Wages. No Bangladeshi labour-rate feed is publicly automatable, so this is
+   * admin-curated — but naming it at least makes it visible, where before it was
+   * buried inside a composite rate with no way to see or adjust it.
+   */
+  LABOUR = "LABOUR",
+  /** Plant, formwork, overhead — moves with neither materials nor wages. */
+  FIXED = "FIXED",
 }

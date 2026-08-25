@@ -2,7 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { LandUse, UserRole, type DapZone, type EcpsStep, type FeeRule } from "@buildora/shared";
+import {
+  LandUse,
+  UserRole,
+  type DapZone,
+  type EcpsStep,
+  type FeeRule,
+  type PermitApplicationAdminView,
+} from "@buildora/shared";
 import {
   deleteDapZone,
   deleteEcpsStep,
@@ -14,9 +21,13 @@ import {
   saveEcpsStep,
   saveFeeRule,
 } from "@/lib/apiPermits";
+import {
+  listPendingPermitApplications,
+  verifyPermitApplication,
+} from "@/lib/apiPermitApplications";
 import { useSession } from "@/store/useSession";
 import { Navbar } from "@/components/landing/Navbar";
-import { formatBdt, landUseLabels } from "@/components/app/projectStatus";
+import { formatBdt, formatDate, landUseLabels } from "@/components/app/projectStatus";
 
 const inputClass =
   "block w-full rounded-xl border border-stone-300/80 bg-white/70 px-4 py-2.5 text-sm text-stone-900 placeholder-stone-400 backdrop-blur transition outline-none focus:border-amber-500 focus:bg-white/90 focus:ring-2 focus:ring-amber-400/30 dark:border-white/15 dark:bg-white/5 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:bg-white/10";
@@ -29,7 +40,7 @@ const cardClass =
 const smallButton =
   "rounded-full border border-stone-300 px-3 py-1 text-xs font-bold text-stone-700 transition hover:bg-stone-100 disabled:opacity-60 dark:border-white/20 dark:text-slate-200 dark:hover:bg-white/10";
 
-type Tab = "dap" | "fees" | "ecps";
+type Tab = "dap" | "fees" | "ecps" | "applications";
 
 /**
  * Supervisor console for the permit reference data. Everything the public
@@ -66,6 +77,7 @@ export default function AdminPermitsPage() {
     { id: "dap", label: "DAP zones" },
     { id: "fees", label: "Fee rates" },
     { id: "ecps", label: "ECPS steps" },
+    { id: "applications", label: "Pending confirmations" },
   ];
 
   return (
@@ -105,6 +117,7 @@ export default function AdminPermitsPage() {
             {tab === "dap" && <DapZonesAdmin token={token} />}
             {tab === "fees" && <FeeRulesAdmin token={token} />}
             {tab === "ecps" && <EcpsStepsAdmin token={token} />}
+            {tab === "applications" && <PermitApplicationsAdmin token={token} />}
           </div>
         </div>
       </main>
@@ -702,6 +715,119 @@ function EcpsStepsAdmin({ token }: { token: string }) {
           )}
         </div>
       </form>
+    </div>
+  );
+}
+
+// ---------- Permit application confirmations ----------
+
+/**
+ * The queue of self-reported permit applications waiting on a manual
+ * confirmation. Confirming only means "an admin checked this against what the
+ * applicant showed them" — it is not a RAJUK lookup, Buildora has no access
+ * to RAJUK's system.
+ */
+function PermitApplicationsAdmin({ token }: { token: string }) {
+  const [applications, setApplications] = useState<PermitApplicationAdminView[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [notes, setNotes] = useState<Record<string, string>>({});
+
+  function load() {
+    setLoading(true);
+    listPendingPermitApplications(token)
+      .then(setApplications)
+      .catch((err) => setError(err instanceof Error ? err.message : "Couldn't load the queue"))
+      .finally(() => setLoading(false));
+  }
+
+  useEffect(load, [token]);
+
+  async function confirm(id: string) {
+    setBusyId(id);
+    setError(null);
+    try {
+      await verifyPermitApplication(token, id, notes[id]);
+      setApplications((list) => list.filter((a) => a.id !== id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't confirm this application");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      {error && (
+        <p className="rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-medium text-rose-800 dark:bg-rose-400/15 dark:text-rose-300">
+          {error}
+        </p>
+      )}
+
+      {loading ? (
+        <p className="text-sm text-stone-500 dark:text-slate-500">Loading…</p>
+      ) : applications.length === 0 ? (
+        <div className={`${cardClass} text-sm text-stone-600 dark:text-slate-400`}>
+          Nothing waiting on confirmation.
+        </div>
+      ) : (
+        applications.map((a) => (
+          <div key={a.id} className={cardClass}>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="font-bold">{a.project.title}</p>
+                <p className="mt-0.5 text-sm text-stone-600 dark:text-slate-400">
+                  {a.project.address} · {a.permitType.replace(/_/g, " ")} ·{" "}
+                  {a.status.replace(/_/g, " ").toLowerCase()}
+                </p>
+              </div>
+              {a.referenceNumber && (
+                <span className="rounded-full bg-amber-500/15 px-3 py-1 text-xs font-bold text-amber-700 dark:text-amber-300">
+                  Ref: {a.referenceNumber}
+                </span>
+              )}
+            </div>
+
+            {a.documents.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {a.documents.map((d) => (
+                  <a
+                    key={d.key}
+                    href={d.fileUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-full border border-stone-300/60 px-3 py-1 text-xs font-semibold text-amber-600 dark:border-white/15 dark:text-amber-400"
+                  >
+                    {d.name}
+                  </a>
+                ))}
+              </div>
+            )}
+
+            <p className="mt-2 text-xs text-stone-500 dark:text-slate-500">
+              Submitted {a.submittedDate ? formatDate(a.submittedDate) : "date not given"}
+            </p>
+
+            <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+              <input
+                className={inputClass}
+                placeholder="Confirmation note (optional)"
+                value={notes[a.id] ?? ""}
+                onChange={(e) => setNotes((m) => ({ ...m, [a.id]: e.target.value }))}
+              />
+              <button
+                type="button"
+                disabled={busyId === a.id}
+                onClick={() => confirm(a.id)}
+                className="shrink-0 rounded-full bg-emerald-500 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-400 disabled:opacity-60"
+              >
+                {busyId === a.id ? "Confirming…" : "Confirm"}
+              </button>
+            </div>
+          </div>
+        ))
+      )}
     </div>
   );
 }

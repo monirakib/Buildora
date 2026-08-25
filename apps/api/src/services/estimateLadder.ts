@@ -11,8 +11,10 @@ import { FloorPlan } from "../models/FloorPlan";
 import { Tender } from "../models/Tender";
 import { Bid } from "../models/Bid";
 import { BoqRate } from "../models/BoqRate";
-import type { ProjectDoc } from "../models/Project";
+import { Project, type ProjectDoc } from "../models/Project";
 import { currentCategoryMedians } from "./marketDrift";
+import { lastSuccessfulRun } from "./priceRefresh";
+import { loadRepricingContext, repriceLines, type RepricingSummary } from "./repricing";
 
 /**
  * The estimate that keeps up with the project.
@@ -62,6 +64,34 @@ async function priceArea(areaSqft: number): Promise<CostLine[]> {
 }
 
 /**
+ * Moves rate-table lines to today's material prices.
+ *
+ * Only the two lower rungs go through here, and the reason is worth stating: a
+ * BOQ tier is priced from quantities and guide rates the owner published, and a
+ * bid-backed tier is priced from what contractors actually offered. Both are
+ * already *real prices for this building*. Adjusting them by a market index
+ * would be second-guessing a firm number with a general one — repricing exists
+ * to sharpen a guess, not to overrule a quote.
+ *
+ * Never throws: a pricing layer that isn't seeded yet leaves the lines exactly
+ * as they were, which is precisely how this behaved before phase 3.
+ */
+async function applyLivePrices(
+  lines: CostLine[]
+): Promise<{ lines: CostLine[]; summary: RepricingSummary | null }> {
+  try {
+    const context = await loadRepricingContext();
+    if (context.compositions.size === 0) return { lines, summary: null };
+
+    const result = repriceLines(lines, context);
+    return { lines: result.lines, summary: result.summary };
+  } catch (err) {
+    console.error("[estimate] repricing skipped:", err instanceof Error ? err.message : err);
+    return { lines, summary: null };
+  }
+}
+
+/**
  * Works out the best tier this project currently supports, and the priced lines
  * for it. Each rung is tried from the most trustworthy downwards.
  */
@@ -70,6 +100,8 @@ async function resolveTier(project: HydratedDocument<ProjectDoc>): Promise<{
   areaSqft: number;
   areaSource: string;
   lines: CostLine[];
+  /** Set only on the rungs that are repriced from live data — see applyLivePrices. */
+  pricing: RepricingSummary | null;
 }> {
   // Floor area is still wanted for the per-sqft figure even on the top rungs.
   const plans = await FloorPlan.find({ project: project._id });
@@ -128,6 +160,8 @@ async function resolveTier(project: HydratedDocument<ProjectDoc>): Promise<{
         areaSqft: drawnSqft || estimateAreaFromPlot(project),
         areaSource: `the median of ${bids.length} contractor bid${bids.length === 1 ? "" : "s"}`,
         lines,
+        // Real bids for this building beat any market index — see applyLivePrices.
+        pricing: null,
       };
     }
 
@@ -146,6 +180,7 @@ async function resolveTier(project: HydratedDocument<ProjectDoc>): Promise<{
         areaSqft: drawnSqft || estimateAreaFromPlot(project),
         areaSource: "the quantities in your published Bill of Quantities",
         lines,
+        pricing: null,
       };
     }
   }
@@ -154,21 +189,62 @@ async function resolveTier(project: HydratedDocument<ProjectDoc>): Promise<{
   // is the same function the FAR check uses, so the estimate and the permit
   // tools can never disagree about how big the building is.
   if (drawnSqft > 0) {
+    const priced = await applyLivePrices(await priceArea(drawnSqft));
     return {
       tier: EstimateTier.FLOOR_PLAN,
       areaSqft: drawnSqft,
       areaSource: "your drawn floor plans",
-      lines: await priceArea(drawnSqft),
+      lines: priced.lines,
+      pricing: priced.summary,
     };
   }
 
   // Rung 1: nothing but the brief.
   const areaSqft = estimateAreaFromPlot(project);
+  const priced = await applyLivePrices(await priceArea(areaSqft));
   return {
     tier: EstimateTier.PLOT_ONLY,
     areaSqft,
     areaSource: "your plot size and floor count, before anything is drawn",
-    lines: await priceArea(areaSqft),
+    lines: priced.lines,
+    pricing: priced.summary,
+  };
+}
+
+/**
+ * Turns a repricing summary into the block stored on the snapshot.
+ *
+ * The refresh run is looked up here so the snapshot names the *version* of the
+ * price data it used, not merely the day it ran. That pointer is what makes an
+ * old estimate reproducible: the run says what was gathered and from where, and
+ * the append-only price rows it wrote are all still there.
+ */
+async function toProvenance(summary: RepricingSummary) {
+  const run = await lastSuccessfulRun();
+
+  return {
+    priceRun: run?._id,
+    pricedAt: run?.finishedAt,
+    prices: summary.pricesUsed.map((p) => ({
+      priceId: p.priceId,
+      category: p.category,
+      itemLabel: p.itemLabel,
+      unit: p.unit,
+      priceBdt: p.priceBdt,
+      source: p.source,
+      sourceName: p.sourceName,
+      sourceUrl: p.sourceUrl,
+      resolution: p.resolution,
+      similarity: p.similarity,
+      // Frozen at calculation time — "14 days old when this was worked out",
+      // not "14 days old whenever you happen to read this".
+      ageDays: p.ageDays,
+      effectiveFrom: p.effectiveFrom,
+    })),
+    linesRepriced: summary.linesRepriced,
+    linesWithFallback: summary.linesWithFallback,
+    originalTotalBdt: summary.originalTotalBdt,
+    labourBasis: summary.labourBasis,
   };
 }
 
@@ -189,7 +265,7 @@ export async function refreshEstimate(
   project: HydratedDocument<ProjectDoc>
 ): Promise<LadderResult | null> {
   try {
-    const { tier, areaSqft, areaSource, lines } = await resolveTier(project);
+    const { tier, areaSqft, areaSource, lines, pricing } = await resolveTier(project);
     if (lines.length === 0) return null;
 
     const totalBdt = lines.reduce((sum, l) => sum + l.totalBdt, 0);
@@ -235,6 +311,10 @@ export async function refreshEstimate(
       // baseline to measure movement against.
       categoryMedians: await currentCategoryMedians(),
       ratesFrom: lines.length,
+      // Phase 4: which prices produced this figure, frozen at the moment it was
+      // calculated. Copied rather than referenced so this stays readable even if
+      // a price row is later corrected — see PricingProvenanceDoc.
+      ...(pricing ? { pricing: await toProvenance(pricing) } : {}),
     });
 
     return { snapshot, isNew: true };
@@ -242,4 +322,30 @@ export async function refreshEstimate(
     console.error("[estimate] refresh failed:", err instanceof Error ? err.message : err);
     return null;
   }
+}
+
+/**
+ * Re-runs the ladder for every project in the platform — every land owner's
+ * estimate, checked against whatever prices are current right now.
+ *
+ * This is deliberately not something the lazy or cron triggers do. Those exist
+ * to keep the *price data* fresh without anyone noticing; walking every
+ * project's estimate is real work (a handful of Mongo round trips each) that
+ * is only worth paying for when someone has actually asked for it — the admin
+ * pressing "Refresh prices now". `refreshEstimate` already does the useful
+ * thing here for free: a project whose tier is BOQ or BID_BACKED, or whose
+ * repriced total didn't move, is left exactly as it was — see the dedupe note
+ * on refreshEstimate. So this is safe to run on everything without it turning
+ * every project's history into noise.
+ */
+export async function recalculateAllEstimates(): Promise<{ checked: number; updated: number }> {
+  const projects = await Project.find();
+
+  let updated = 0;
+  for (const project of projects) {
+    const result = await refreshEstimate(project);
+    if (result?.isNew) updated += 1;
+  }
+
+  return { checked: projects.length, updated };
 }

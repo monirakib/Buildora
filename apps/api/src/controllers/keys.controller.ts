@@ -12,12 +12,11 @@ import {
 import { safeIssues } from "../utils/validation";
 
 /**
- * Key management, restricted to SUPER_ADMIN.
+ * Key management, restricted to ADMIN (see routes/keys.routes.ts).
  *
- * The whole surface is four endpoints and none of them read user data: this
- * role can move records between keys and see counts, but has no route that
- * returns anyone's NID, email or payment details. That separation is the reason
- * the role exists — see UserRole.SUPER_ADMIN.
+ * The whole surface is four endpoints and none of them read user data: it can
+ * move records between keys and see counts, but has no route that returns
+ * anyone's NID, email or payment details.
  */
 
 const startSchema = z.object({

@@ -7,6 +7,7 @@ import type {
   NotificationType,
   OrderStatus,
   Paginated,
+  PriceRefreshRunSummary,
   Product,
   UserRole,
 } from "@buildora/shared";
@@ -135,4 +136,31 @@ export async function listBroadcasts(
     headers: auth(token),
   });
   return res.data;
+}
+
+/** GET /api/pricing/status — recent refresh runs, for the pricing console. */
+export async function getPricingStatus(
+  token: string
+): Promise<{ lastSuccessfulAt: string | null; runs: PriceRefreshRunSummary[] }> {
+  const res = await request<{
+    data: { lastSuccessfulAt: string | null; runs: PriceRefreshRunSummary[] };
+  }>("/api/pricing/status", { headers: auth(token) });
+  return res.data;
+}
+
+/**
+ * POST /api/pricing/refresh/admin — "Refresh prices now". Fetches the latest
+ * material prices and recalculates every land owner's estimate against them,
+ * and only resolves once all of that is done — see the note on the route for
+ * why this one, unlike the scheduled triggers, is worth waiting on.
+ */
+export async function triggerPriceRefresh(token: string): Promise<PriceRefreshRunSummary> {
+  const res = await request<{ data: { run: PriceRefreshRunSummary } }>(
+    "/api/pricing/refresh/admin",
+    {
+      method: "POST",
+      headers: auth(token),
+    }
+  );
+  return res.data.run;
 }

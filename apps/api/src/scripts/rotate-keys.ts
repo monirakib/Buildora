@@ -1,7 +1,7 @@
 /**
  * Runs a key rotation from the command line.
  *
- * The same `runRotation` the SUPER_ADMIN endpoints drive, exposed as a script
+ * The same `runRotation` the /api/keys/* endpoints drive, exposed as a script
  * so it can be run from a laptop against Atlas directly. That matters on a free
  * tier: the API instance sleeps after fifteen minutes idle, so "start it
  * through the API and poll" only works if something keeps the instance awake.

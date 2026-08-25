@@ -81,10 +81,6 @@ const ROLE_LABELS: Record<UserRole, string> = {
   [UserRole.CONTRACTOR]: "Contractor",
   [UserRole.SUPPLIER]: "Supplier",
   [UserRole.ADMIN]: "Admin",
-  // Present so the map is exhaustive. It should never appear in a chart: the
-  // account is an operator, not a platform actor, and the breakdowns below are
-  // about who uses Buildora.
-  [UserRole.SUPER_ADMIN]: "Key custodian",
 };
 
 /**
@@ -177,22 +173,25 @@ export async function getOverview(_req: Request, res: Response) {
   const activity: AdminActivityItem[] = [
     ...recentUsers.map((u) => ({
       kind: "signup" as const,
-      text: `${u.name} joined as ${ROLE_LABELS[u.role].toLowerCase()}`,
+      text: `${u.name} joined as ${(ROLE_LABELS[u.role] ?? u.role).toLowerCase()}`,
       at: u.createdAt.toISOString(),
     })),
+    // A populated reference is null when the account it pointed to has since
+    // been deleted (e.g. a cleaned-up test account) — the row itself is still
+    // real activity, so it's shown with a placeholder rather than dropped.
     ...recentOrders.map((o) => ({
       kind: "order" as const,
-      text: `${(o.buyer as unknown as { name: string }).name} ordered ${o.quantity}× ${o.productSnapshot.name}`,
+      text: `${(o.buyer as unknown as { name?: string } | null)?.name ?? "A removed account"} ordered ${o.quantity}× ${o.productSnapshot.name}`,
       at: o.createdAt.toISOString(),
     })),
     ...recentProjects.map((p) => ({
       kind: "project" as const,
-      text: `${(p.owner as unknown as { name: string }).name} posted “${p.title}”`,
+      text: `${(p.owner as unknown as { name?: string } | null)?.name ?? "A removed account"} posted “${p.title}”`,
       at: p.createdAt.toISOString(),
     })),
     ...recentVerifications.map((v) => ({
       kind: "verification" as const,
-      text: `${(v.professional as unknown as { name: string }).name} requested verification`,
+      text: `${(v.professional as unknown as { name?: string } | null)?.name ?? "A removed account"} requested verification`,
       at: v.createdAt.toISOString(),
     })),
   ]
@@ -377,30 +376,6 @@ export async function updateUserRole(req: Request, res: Response) {
   const user = await User.findById(id);
   if (!user) {
     return res.status(404).json({ error: { message: "User not found" } });
-  }
-
-  /**
-   * SUPER_ADMIN is off-limits from this console, in both directions.
-   *
-   * Granting it here would undo the separation the role exists for: any admin
-   * could hand themselves the encryption keys through a second account, so
-   * compromising one admin login would be enough to reach the keys after all.
-   * Removing it would be just as bad in the other direction — one compromised
-   * admin could strip the only account able to rotate keys, exactly when you
-   * would most need it.
-   *
-   * So the role is granted in one place only: `pnpm seed:superadmin`, which
-   * needs the server environment, not a session.
-   */
-  if (parsed.data.role === UserRole.SUPER_ADMIN || user.role === UserRole.SUPER_ADMIN) {
-    return res.status(403).json({
-      error: {
-        code: "SUPER_ADMIN_IMMUTABLE",
-        message:
-          "The super admin role can't be granted or removed from the console. " +
-          "It is set on the server with 'pnpm seed:superadmin'.",
-      },
-    });
   }
 
   user.role = parsed.data.role;

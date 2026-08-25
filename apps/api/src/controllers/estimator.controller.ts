@@ -4,11 +4,15 @@ import {
   EstimateTier,
   type CostEstimate,
   type EstimateSnapshot,
+  type PriceResolution,
+  type PriceSource,
+  type PricingProvenance,
 } from "@buildora/shared";
 import { askAi, isAiConfigured } from "../services/ai";
 import { refreshEstimate } from "../services/estimateLadder";
 import { compareMedians, currentCategoryMedians } from "../services/marketDrift";
-import { CostEstimateSnapshot } from "../models/CostEstimateSnapshot";
+import { refreshInBackgroundIfDue } from "../services/priceRefresh";
+import { CostEstimateSnapshot, type PricingProvenanceDoc } from "../models/CostEstimateSnapshot";
 import { findProjectOr404 } from "./projects.controller";
 
 /**
@@ -51,6 +55,44 @@ function toSnapshotDto(doc: {
   };
 }
 
+/**
+ * The stored provenance, as the browser sees it.
+ *
+ * Embeddings are conspicuously not here, and never should be: they are 384
+ * floats per row that no human can read, they would dwarf the rest of the
+ * payload, and the browser has nothing to do with them. The similarity *score*
+ * goes over, because "matched at 0.71" is something a person can weigh.
+ */
+function toProvenanceDto(pricing: PricingProvenanceDoc): PricingProvenance {
+  return {
+    priceRunId: pricing.priceRun ? String(pricing.priceRun) : undefined,
+    pricedAt: pricing.pricedAt?.toISOString(),
+    prices: pricing.prices.map((p) => ({
+      priceId: p.priceId,
+      category: p.category,
+      itemLabel: p.itemLabel,
+      unit: p.unit,
+      priceBdt: p.priceBdt,
+      source: p.source as PriceSource,
+      sourceName: p.sourceName,
+      sourceUrl: p.sourceUrl,
+      resolution: p.resolution as PriceResolution,
+      similarity: p.similarity,
+      ageDays: p.ageDays,
+      effectiveFrom: p.effectiveFrom.toISOString(),
+    })),
+    linesRepriced: pricing.linesRepriced,
+    linesWithFallback: pricing.linesWithFallback,
+    originalTotalBdt: pricing.originalTotalBdt,
+    labourBasis: pricing.labourBasis,
+    // Derived here rather than stored, so the rule for "is this degraded?" lives
+    // in one place and old snapshots answer it the same way new ones do.
+    usedFallback:
+      pricing.linesWithFallback > 0 ||
+      pricing.prices.some((p) => p.resolution === "STALE_FALLBACK"),
+  };
+}
+
 /** Asks the model to explain the figures. Returns undefined when it can't. */
 async function narrate(estimate: CostEstimate): Promise<string | undefined> {
   if (!isAiConfigured()) return undefined;
@@ -70,6 +112,33 @@ async function narrate(estimate: CostEstimate): Promise<string | undefined> {
     )
     .join("\n");
 
+  /*
+   * The retrieved prices, handed over as grounding.
+   *
+   * This is the whole point of the RAG work: before, the model was told the
+   * totals and asked to speculate about "what could push the figure up or down",
+   * which is how you get plausible sentences about materials nobody priced. Now
+   * it is given the actual rows the arithmetic used — the label, the figure, the
+   * publisher and the age — and told to write about *those*.
+   *
+   * It still recalculates nothing. Retrieval grounds the prose; the numbers were
+   * settled in services/repricing before this function was called.
+   */
+  const priceLines = estimate.pricing?.prices
+    .slice(0, 8)
+    .map(
+      (p) =>
+        `${p.itemLabel}: ${p.priceBdt} BDT per ${p.unit}, from ${p.sourceName}, ${p.ageDays} day(s) old${
+          p.resolution === "STALE_FALLBACK" ? " — STALE, used as a fallback" : ""
+        }`
+    )
+    .join("\n");
+
+  const fallbackNote =
+    estimate.pricing && estimate.pricing.linesWithFallback > 0
+      ? `${estimate.pricing.linesWithFallback} of the line items could not be matched to a current price and fell back to the platform's stored rate.`
+      : "";
+
   const prompt = `You are a quantity surveyor in Bangladesh writing a short note for a land owner.
 
 These figures are already calculated and are NOT to be recalculated or corrected:
@@ -78,12 +147,24 @@ This estimate is based on ${estimate.areaSource}.
 ${table}
 TOTAL: ${estimate.totalBdt} BDT
 Read it as a range: ${estimate.rangeLowBdt} to ${estimate.rangeHighBdt} BDT.
-${driftLines ? `\nLive supplier listings on the platform have moved:\n${driftLines}` : ""}
+${priceLines ? `\nThese are the real material prices the figures above were adjusted to. They have ALREADY been applied:\n${priceLines}` : ""}
+${fallbackNote ? `\n${fallbackNote}` : ""}
+${driftLines ? `\nSeparately, median supplier listings have moved:\n${driftLines}` : ""}
 
 Write three short paragraphs, plain English, no markdown and no headings:
 1. What this estimate covers, roughly what it works out to per square foot, and — importantly — why it is a range rather than one number, given what it was based on.
 2. The two or three line items that dominate the cost, and why.
-${driftLines ? "3. What the supplier price movement above suggests, and be explicit that it has NOT been applied to the figures — material listing prices and composite work rates are different things." : "3. What could push the real figure up or down: soil conditions, finish quality, material price movement. Be specific to Bangladesh."}
+${
+  priceLines
+    ? `3. Which of the material prices listed above are doing the most to move this estimate, naming the source and how old the price is. ${
+        fallbackNote
+          ? "Say plainly that some items had no current price and fell back to a stored rate, so those parts of the estimate are less current than the rest."
+          : ""
+      }`
+    : driftLines
+      ? "3. What the supplier price movement above suggests, and be explicit that it has NOT been applied to the figures — material listing prices and composite work rates are different things."
+      : "3. What could push the real figure up or down: soil conditions, finish quality, material price movement. Be specific to Bangladesh."
+}
 
 Do not invent numbers that are not above. Do not give advice about hiring. Never use the words "quote", "final" or "guaranteed" — this is an estimate, not an offer.`;
 
@@ -108,6 +189,13 @@ export async function estimateProject(req: Request, res: Response) {
   if (String(project.owner) !== req.auth!.sub) {
     return res.status(404).json({ error: { message: "Project not found" } });
   }
+
+  // The lazy refresh trigger. Render's free tier spins this instance down when
+  // idle, so an in-process weekly timer cannot be relied on — reading an
+  // estimate is the one moment we know the process is awake. It returns
+  // immediately and refreshes in the background; this request is never made to
+  // wait for a scrape. See services/priceRefresh for the other two triggers.
+  refreshInBackgroundIfDue();
 
   // Make sure the stored figure reflects whatever the project looks like now.
   const result = await refreshEstimate(project);
@@ -145,6 +233,7 @@ export async function estimateProject(req: Request, res: Response) {
       previous?.categoryMedians,
       previous ? previous.createdAt.toISOString() : null
     ),
+    ...(snapshot.pricing ? { pricing: toProvenanceDto(snapshot.pricing) } : {}),
   };
 
   // The narrative is written once per snapshot and cached on it. Re-opening the

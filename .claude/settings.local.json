@@ -1,6 +1,0 @@
-{
-  "permissions": {
-    "allow": ["PowerShell(pnpm --filter web typecheck)", "Bash", "PowerShell"],
-    "defaultMode": "dontAsk"
-  }
-}

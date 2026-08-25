@@ -401,7 +401,7 @@ export async function runNidCheck(token: string): Promise<NidCheck> {
 }
 
 /** GET /api/professionals/:id/reviews — public, newest first. */
-export async function listArchitectReviews(id: string): Promise<Review[]> {
+export async function listProfessionalReviews(id: string): Promise<Review[]> {
   const res = await request<{ data: { reviews: Review[] } }>(`/api/professionals/${id}/reviews`);
   return res.data.reviews;
 }
@@ -429,10 +429,10 @@ export async function submitReview(
   return res.data.review;
 }
 
-/** POST /api/inquiries — a land owner contacts an architect. */
+/** POST /api/inquiries — a land owner contacts a professional. */
 export async function createInquiry(
   token: string,
-  input: { architectId: string; message: string }
+  input: { professionalId: string; message: string }
 ): Promise<Inquiry> {
   const res = await request<{ data: { inquiry: Inquiry } }>("/api/inquiries", {
     method: "POST",
@@ -502,6 +502,23 @@ export async function uploadModel(token: string, file: File): Promise<string> {
   const form = new FormData();
   form.append("model", file);
   const res = await fetch(`${API_BASE_URL}/api/uploads/model`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: form,
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
+    throw new Error(body?.error?.message ?? `Upload failed: ${res.status}`);
+  }
+  const body = (await res.json()) as { data: { url: string } };
+  return body.data.url;
+}
+
+/** POST /api/uploads/document — upload a PDF or image permit document, get its URL. */
+export async function uploadDocument(token: string, file: File): Promise<string> {
+  const form = new FormData();
+  form.append("document", file);
+  const res = await fetch(`${API_BASE_URL}/api/uploads/document`, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}` },
     body: form,

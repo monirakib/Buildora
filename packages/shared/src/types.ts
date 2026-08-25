@@ -13,6 +13,8 @@ import type {
   OrderStatus,
   PaymentKind,
   PaymentMethod,
+  PermitApplicationStatus,
+  PermitType,
   ProductCategory,
   ProjectStatus,
   ProposalStatus,
@@ -679,7 +681,7 @@ export interface VerificationRequest {
 export interface Inquiry {
   id: string;
   landOwner: { id: string; name: string; username: string };
-  architect: { id: string; name: string; username: string; company?: string };
+  professional: { id: string; name: string; username: string; role: UserRole; company?: string };
   message: string;
   status: InquiryStatus;
   createdAt: string;
@@ -1042,6 +1044,40 @@ export interface EcpsStep {
   title: string;
   description: string;
   requiredDocuments: string[];
+}
+
+/** One document attached to a permit application, matched to a checklist item by `key`. */
+export interface PermitDocument {
+  key: string;
+  name: string;
+  fileUrl: string;
+  uploadedAt: string;
+}
+
+/**
+ * A user's self-reported RAJUK permit application, optionally confirmed by an
+ * admin. This tracks progress the user tells us about — Buildora has no
+ * RAJUK integration and does not check RAJUK's system directly.
+ */
+export interface PermitApplication {
+  id: string;
+  projectId: string;
+  permitType: PermitType;
+  status: PermitApplicationStatus;
+  referenceNumber?: string;
+  submittedDate?: string;
+  approvedDate?: string;
+  verifiedByAdmin: boolean;
+  verifiedAt?: string;
+  verificationNote?: string;
+  documents: PermitDocument[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Admin review-queue row: a permit application plus a minimal project summary. */
+export interface PermitApplicationAdminView extends PermitApplication {
+  project: { id: string; title: string; address: string };
 }
 
 /** A project's progress through the ECPS steps. */
