@@ -45,6 +45,51 @@ export async function uploadImage(req: Request, res: Response) {
 }
 
 /**
+ * Multer for permit paperwork — RAJUK documents are typically scanned PDFs or
+ * photographed pages. 10 MB cap.
+ */
+export const documentUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype === "application/pdf" || file.mimetype.startsWith("image/")) {
+      return cb(null, true);
+    }
+    cb(new Error("Only PDF or image files can be uploaded"));
+  },
+});
+
+/**
+ * POST /api/uploads/document — authenticated users upload one PDF or image
+ * (form field "document") and get back its hosted URL, which they then
+ * attach to a PermitApplication's document list.
+ */
+export async function uploadDocument(req: Request, res: Response) {
+  if (!isCloudinaryConfigured()) {
+    return res.status(503).json({
+      error: { message: "Document uploads aren't configured (missing Cloudinary keys)" },
+    });
+  }
+  if (!req.file) {
+    return res.status(400).json({ error: { message: "Attach a PDF or image file" } });
+  }
+
+  const result = await new Promise<{ secure_url: string }>((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      // "auto" lets Cloudinary route PDFs and images correctly. Note: some
+      // Cloudinary accounts restrict public delivery of raw PDF/ZIP files by
+      // default (security setting) — enable "Allow delivery of PDF and ZIP
+      // files" in the account's security settings if links 401.
+      { folder: `buildora/${req.auth!.sub}/documents`, resource_type: "auto" },
+      (error, uploaded) => (uploaded ? resolve(uploaded) : reject(error))
+    );
+    stream.end(req.file!.buffer);
+  });
+
+  return res.status(201).json({ data: { url: result.secure_url } });
+}
+
+/**
  * Multer for 3D design models. GLB is binary (no reliable mimetype across
  * browsers), so the filter goes by extension. 15 MB cap — enough for an
  * architectural model exported from SketchUp/Revit/Blender.

@@ -46,10 +46,6 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   [UserRole.CONTRACTOR]: "Contractor",
   [UserRole.SUPPLIER]: "Supplier",
   [UserRole.ADMIN]: "Admin",
-  // Exhaustive by requirement, not because it belongs on screen. A key
-  // custodian has no profile and never appears in the directory or the charts;
-  // this is only here so a stray value renders as a name rather than a blank.
-  [UserRole.SUPER_ADMIN]: "Key custodian",
 };
 
 /** "UNDER_CONSTRUCTION" → "Under construction" — for any status enum. */

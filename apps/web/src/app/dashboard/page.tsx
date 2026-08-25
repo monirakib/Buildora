@@ -187,6 +187,63 @@ export default function DashboardPage() {
               </Link>
             )}
 
+            {isLandOwner && (
+              <Link href="/engineers" className={cardClass}>
+                <span className="grid h-11 w-11 place-items-center rounded-2xl bg-amber-400 text-stone-950">
+                  {/* Ruler — structural / drafting */}
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="h-5.5 w-5.5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M3 17 17 3l4 4L7 21H3v-4Z" />
+                    <path d="m14 6 4 4" />
+                    <path d="m11 9 2 2" />
+                    <path d="m8 12 2 2" />
+                  </svg>
+                </span>
+                <h2 className="mt-4 text-lg font-bold">Find an engineer</h2>
+                <p className="mt-1 text-sm text-stone-600 dark:text-slate-400">
+                  Browse verified structural engineers and see their completed work.
+                </p>
+                <span className="mt-4 inline-block text-sm font-bold text-amber-600 dark:text-amber-400">
+                  Browse engineers →
+                </span>
+              </Link>
+            )}
+
+            {isLandOwner && (
+              <Link href="/contractors" className={cardClass}>
+                <span className="grid h-11 w-11 place-items-center rounded-2xl bg-amber-400 text-stone-950">
+                  {/* House — construction */}
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="h-5.5 w-5.5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M3 21h18" />
+                    <path d="M5 21V7l7-4 7 4v14" />
+                    <path d="M9 21v-6h6v6" />
+                  </svg>
+                </span>
+                <h2 className="mt-4 text-lg font-bold">Find a contractor</h2>
+                <p className="mt-1 text-sm text-stone-600 dark:text-slate-400">
+                  Browse verified contractors and see their completed builds.
+                </p>
+                <span className="mt-4 inline-block text-sm font-bold text-amber-600 dark:text-amber-400">
+                  Browse contractors →
+                </span>
+              </Link>
+            )}
+
             <Link href="/messages" className={cardClass}>
               <span className="grid h-11 w-11 place-items-center rounded-2xl bg-stone-900 text-white dark:bg-white/15">
                 {/* Paper plane */}

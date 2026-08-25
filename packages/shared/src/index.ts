@@ -10,6 +10,8 @@ export * from "./inspection";
 export * from "./meetings";
 export * from "./nid";
 export * from "./payments";
+export * from "./permitChecklists";
+export * from "./pricing";
 export * from "./resolution";
 export * from "./sitediary";
 export * from "./structural";

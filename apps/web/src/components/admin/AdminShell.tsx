@@ -60,6 +60,19 @@ function NavIcon({ name }: { name: string }) {
         <path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" />
       </>
     ),
+    keys: (
+      <>
+        <circle cx="7.5" cy="15.5" r="4.5" />
+        <path d="m10.6 12.4 6.9-6.9M17.5 5.5l2 2M14.5 8.5l2 2" />
+      </>
+    ),
+    pricing: (
+      <>
+        <circle cx="12" cy="12" r="9" />
+        <path d="M9.5 15a2.5 2.5 0 0 0 2.5 2h.5a2 2 0 0 0 0-4h-1a2 2 0 0 1 0-4h.5a2.5 2.5 0 0 1 2.5 2" />
+        <path d="M12 6v1M12 17v1" />
+      </>
+    ),
   };
   return (
     <svg
@@ -85,7 +98,9 @@ const NAV = [
       { href: "/admin", icon: "overview", label: "Overview" },
       { href: "/admin/users", icon: "users", label: "Users & roles" },
       { href: "/admin/market", icon: "market", label: "Marketplace" },
+      { href: "/admin/pricing", icon: "pricing", label: "Material pricing" },
       { href: "/admin/broadcasts", icon: "announce", label: "Announcements" },
+      { href: "/admin/keys", icon: "keys", label: "Encryption keys" },
     ],
   },
   {

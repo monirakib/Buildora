@@ -28,6 +28,7 @@ import { ChangeOrder } from "./ChangeOrder";
 import { Contract } from "./Contract";
 import { Conversation } from "./Conversation";
 import { CostEstimateSnapshot } from "./CostEstimateSnapshot";
+import { CostIndex } from "./CostIndex";
 import { DapZone } from "./DapZone";
 import { Dispute } from "./Dispute";
 import { EcpsApplication } from "./EcpsApplication";
@@ -40,16 +41,20 @@ import { Inquiry } from "./Inquiry";
 import { InspectionTemplate } from "./InspectionTemplate";
 import { KeyRotationRun } from "./KeyRotationRun";
 import { MarketOrder } from "./MarketOrder";
+import { MarketPrice } from "./MarketPrice";
 import { Meeting } from "./Meeting";
 import { Message } from "./Message";
 import { Milestone } from "./Milestone";
 import { Notification } from "./Notification";
 import { PaymentSession } from "./PaymentSession";
+import { PermitApplication } from "./PermitApplication";
 import { Product } from "./Product";
 import { Project } from "./Project";
 import { ProjectDocument } from "./ProjectDocument";
 import { Proposal } from "./Proposal";
+import { PriceRefreshRun } from "./PriceRefreshRun";
 import { PushSubscription } from "./PushSubscription";
+import { RateComposition } from "./RateComposition";
 import { Review } from "./Review";
 import { Session } from "./Session";
 import { SiteCheckIn } from "./SiteCheckIn";
@@ -78,6 +83,7 @@ export const allModels = [
   Contract,
   Conversation,
   CostEstimateSnapshot,
+  CostIndex,
   DapZone,
   Dispute,
   EcpsApplication,
@@ -90,16 +96,20 @@ export const allModels = [
   InspectionTemplate,
   KeyRotationRun,
   MarketOrder,
+  MarketPrice,
   Meeting,
   Message,
   Milestone,
   Notification,
   PaymentSession,
+  PermitApplication,
   Product,
   Project,
   ProjectDocument,
   Proposal,
+  PriceRefreshRun,
   PushSubscription,
+  RateComposition,
   Review,
   Session,
   SiteCheckIn,

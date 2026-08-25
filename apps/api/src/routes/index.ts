@@ -16,7 +16,9 @@ import { messagesRouter } from "./messages.routes";
 import { nidRouter } from "./nid.routes";
 import { notificationsRouter } from "./notifications.routes";
 import { paymentsRouter } from "./payments.routes";
+import { permitApplicationsRouter } from "./permitApplications.routes";
 import { permitsRouter } from "./permits.routes";
+import { pricingRouter } from "./pricing.routes";
 import { professionalsRouter } from "./professionals.routes";
 import { projectsRouter } from "./projects.routes";
 import { publicRouter } from "./public.routes";
@@ -32,7 +34,7 @@ export const apiRouter = Router();
 
 apiRouter.use("/health", healthRouter);
 apiRouter.use("/auth", authRouter);
-// Key management — SUPER_ADMIN only, and deliberately nothing else.
+// Key management — ADMIN only.
 apiRouter.use("/keys", keysRouter);
 apiRouter.use("/professionals", professionalsRouter);
 apiRouter.use("/inquiries", inquiriesRouter);
@@ -55,6 +57,8 @@ apiRouter.use("/public", publicRouter);
 apiRouter.use("/calls", callsRouter);
 apiRouter.use("/meetings", meetingsRouter);
 apiRouter.use("/permits", permitsRouter);
+apiRouter.use("/permit-applications", permitApplicationsRouter);
+apiRouter.use("/pricing", pricingRouter);
 apiRouter.use("/geo", geoRouter);
 apiRouter.use("/assistant", assistantRouter);
 apiRouter.use("/marketplace", marketplaceRouter);

@@ -14,14 +14,14 @@ import { requireRole } from "../middleware/roles";
 export const keysRouter = Router();
 
 /**
- * Every route here is SUPER_ADMIN and only SUPER_ADMIN.
+ * Every route here is ADMIN and only ADMIN.
  *
- * `requireRole` is an exact match, so an ADMIN gets a 403 from this router just
- * as any other role would — the admin console and the keys are separate
- * capabilities held by separate accounts. That is the entire reason the role
- * exists, and this one line is where it is enforced.
+ * This used to be a separate SUPER_ADMIN role, kept apart from the admin
+ * console so that compromising one didn't hand over the other. That split was
+ * removed: key rotation now lives alongside the rest of platform supervision,
+ * reachable from the same admin console and the same account.
  */
-keysRouter.use(requireAuth, requireRole(UserRole.SUPER_ADMIN));
+keysRouter.use(requireAuth, requireRole(UserRole.ADMIN));
 
 keysRouter.get("/status", keyStatus);
 keysRouter.get("/rotations", listRotations);

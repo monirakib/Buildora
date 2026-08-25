@@ -232,9 +232,9 @@ export function VerificationWizard({ user }: { user: SessionUser }) {
   const backRef = useHoverScale<HTMLButtonElement>({ enabled: step > 0 });
   const nextRef = useHoverScale<HTMLButtonElement>({ enabled: step < stepCount - 1 });
 
-  // Roles with nothing to verify (admin, key custodian) have no wizard. The
-  // route never sends them here; this is the guard that makes that true rather
-  // than assumed. It sits below every hook so the hook order never changes.
+  // Roles with nothing to verify (admin) have no wizard. The route never
+  // sends them here; this is the guard that makes that true rather than
+  // assumed. It sits below every hook so the hook order never changes.
   if (!config) return null;
 
   return (

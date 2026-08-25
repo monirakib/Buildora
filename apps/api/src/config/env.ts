@@ -179,17 +179,31 @@ const envSchema = z.object({
   TURN_URL: z.string().optional(),
   TURN_USERNAME: z.string().optional(),
   TURN_CREDENTIAL: z.string().optional(),
+  // Where transformers.js caches the embedding model's weights. Unset it uses
+  // the package's own default inside node_modules, which is fine locally and on
+  // Render alike — the instance's disk is ephemeral either way, so the weekly
+  // job re-downloads ~25 MB after a cold start and moves on.
+  HF_CACHE_DIR: z.string().optional(),
+  // Shared secret for POST /api/pricing/refresh, the endpoint an external cron
+  // service (cron-job.org's free tier, say) pings once a week to run the price
+  // refresh. Render's free tier spins the instance down when idle, so an
+  // in-process timer cannot be relied on alone — see services/priceRefresh for
+  // the three triggers and why the lazy one is the actual guarantee.
+  // Unset, the endpoint refuses everyone and only the admin route and the lazy
+  // sweep can start a refresh.
+  PRICE_REFRESH_SECRET: z.string().optional(),
+  // Set false to stop this instance running the in-process weekly timer — the
+  // switch to flip when an external cron is doing the job and you would rather
+  // not have both.
+  PRICE_REFRESH_CRON: z
+    .string()
+    .default("true")
+    .transform((v) => v !== "false"),
   // Supervisor account created by `pnpm seed:admin` (see scripts/seed-admin.ts).
   ADMIN_NAME: z.string().default("Platform Supervisor"),
   ADMIN_USERNAME: z.string().default("supervisor"),
   ADMIN_EMAIL: z.string().optional(),
   ADMIN_PASSWORD: z.string().optional(),
-  // Key-management account created by `pnpm seed:superadmin`. Separate from the
-  // supervisor above on purpose — see UserRole.SUPER_ADMIN.
-  SUPER_ADMIN_NAME: z.string().default("Key Custodian"),
-  SUPER_ADMIN_USERNAME: z.string().default("keycustodian"),
-  SUPER_ADMIN_EMAIL: z.string().optional(),
-  SUPER_ADMIN_PASSWORD: z.string().optional(),
 });
 
 const parsedEnv = envSchema.parse(process.env);

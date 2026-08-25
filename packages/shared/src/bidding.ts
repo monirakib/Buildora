@@ -1,4 +1,5 @@
 import { EstimateTier } from "./enums";
+import type { PricingProvenance } from "./pricing";
 import type { BidStatus, BuildContractStatus, TenderStatus } from "./enums";
 import type { PaymentEntry, UserRef } from "./types";
 
@@ -184,6 +185,15 @@ export interface CostEstimate {
   rangeHighBdt: number;
   /** How live marketplace prices have moved since the previous estimate. */
   drift?: MarketDrift;
+  /**
+   * Which live prices this figure was actually built from.
+   *
+   * Present only on the PLOT_ONLY and FLOOR_PLAN tiers. The BOQ and bid-backed
+   * tiers are priced from real numbers for this specific building, and are
+   * deliberately not adjusted by a general market index — see
+   * services/estimateLadder.applyLivePrices.
+   */
+  pricing?: PricingProvenance;
 }
 
 /**

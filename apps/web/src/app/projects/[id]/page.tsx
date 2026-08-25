@@ -38,6 +38,7 @@ import { Navbar } from "@/components/landing/Navbar";
 import { ProposalsSection } from "@/components/project/ProposalsSection";
 import { ContractSection } from "@/components/project/ContractSection";
 import { EcpsSection } from "@/components/project/EcpsSection";
+import { PermitApplicationsSection } from "@/components/project/PermitApplicationsSection";
 import { StructuralSection } from "@/components/project/StructuralSection";
 import { DesignStudioCard } from "@/components/project/DesignStudioCard";
 import { DocumentsSection } from "@/components/project/DocumentsSection";
@@ -526,11 +527,18 @@ export default function ProjectDetailPage() {
                 )}
 
                 {tab === "rajuk" && (
-                  <EcpsSection
-                    project={project}
-                    token={token}
-                    canEdit={isOwner || isAssignedArchitect}
-                  />
+                  <div className="flex flex-col gap-8">
+                    <PermitApplicationsSection
+                      project={project}
+                      token={token}
+                      canEdit={isOwner || isAssignedArchitect || isAssignedEngineer}
+                    />
+                    <EcpsSection
+                      project={project}
+                      token={token}
+                      canEdit={isOwner || isAssignedArchitect}
+                    />
+                  </div>
                 )}
 
                 {/* Contractor — bidding, the schedule, then variations */}
