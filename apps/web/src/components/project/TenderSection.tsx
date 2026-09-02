@@ -599,7 +599,7 @@ export function TenderSection({
                                     <td
                                       key={bid.id}
                                       className={`py-2 pr-3 font-semibold ${
-                                        low ? "text-amber-600 dark:text-amber-400" : ""
+                                        low ? "text-amber-700 dark:text-amber-400" : ""
                                       }`}
                                       title={low ? "Well below the median rate" : undefined}
                                     >

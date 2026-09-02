@@ -355,7 +355,7 @@ export function PlotMapPicker({ value, onChange, onAddress, onAreaKatha }: PlotM
   }
 
   const buttonClass =
-    "rounded-full border border-stone-300 px-3.5 py-1.5 text-xs font-bold text-stone-700 transition hover:border-amber-500 hover:text-amber-600 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/20 dark:text-slate-200 dark:hover:border-amber-400 dark:hover:text-amber-300";
+    "rounded-full border border-stone-300 px-3.5 py-1.5 text-xs font-bold text-stone-700 transition hover:border-amber-500 hover:text-amber-700 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/20 dark:text-slate-200 dark:hover:border-amber-400 dark:hover:text-amber-300";
   const activeButtonClass =
     "rounded-full bg-stone-900 px-3.5 py-1.5 text-xs font-bold text-amber-400 transition dark:bg-amber-400 dark:text-stone-950";
 
@@ -434,7 +434,7 @@ export function PlotMapPicker({ value, onChange, onAddress, onAreaKatha }: PlotM
       {/* What's been picked */}
       <div className="mt-3 rounded-xl bg-stone-500/5 px-4 py-3 text-sm dark:bg-white/5">
         {drawing ? (
-          <p className="font-semibold text-amber-600 dark:text-amber-400">
+          <p className="font-semibold text-amber-700 dark:text-amber-400">
             Tracing: tap each corner of the plot, then press “Done tracing”.
             {boundary.length > 0 &&
               ` ${boundary.length} corner${boundary.length === 1 ? "" : "s"} so far.`}

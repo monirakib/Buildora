@@ -208,7 +208,7 @@ export const PRICE_STALE_AFTER_DAYS = 21;
 /** One execution of the price refresh — see apps/api PriceRefreshRun. */
 export interface PriceRefreshRunSummary {
   id: string;
-  trigger: "CRON" | "ENDPOINT" | "ADMIN" | "LAZY" | "SEED";
+  trigger: "CRON" | "ENDPOINT" | "ADMIN" | "LAZY" | "SEED" | "IMPORT";
   status: "RUNNING" | "OK" | "PARTIAL" | "FAILED";
   startedAt: string;
   finishedAt?: string;
@@ -220,4 +220,94 @@ export interface PriceRefreshRunSummary {
   estimatesUpdated: number;
   sourcesOk: string[];
   sourcesFailed: { source: string; reason: string }[];
+}
+
+/* ---------- The weekly price sheet ---------- */
+
+/**
+ * The columns of the admin's weekly CSV, in order.
+ *
+ * Exported rather than written out twice because three places have to agree on
+ * them exactly: the exporter that produces the file, the importer that reads it
+ * back, and the admin console that tells a person what to put in each column. A
+ * header the importer doesn't recognise is rejected by name, so a sheet edited
+ * in Excel with a renamed column fails loudly instead of silently dropping a
+ * price.
+ */
+export const PRICE_SHEET_COLUMNS = [
+  "category",
+  "itemLabel",
+  "unit",
+  "priceBdt",
+  "sourceName",
+  "sourceUrl",
+  "effectiveFrom",
+] as const;
+
+export type PriceSheetColumn = (typeof PRICE_SHEET_COLUMNS)[number];
+
+/**
+ * One row of the sheet as the admin console shows it.
+ *
+ * This is the *current* view of an append-only collection: one entry per
+ * distinct item, holding its newest row. `priceId` is that newest row's id, and
+ * it is what an edit is made relative to — editing writes a new row, it never
+ * touches the one named here.
+ */
+export interface PriceSheetItem {
+  priceId: string;
+  category: string;
+  itemLabel: string;
+  unit: string;
+  priceBdt: number;
+  source: PriceSource;
+  sourceName: string;
+  sourceUrl?: string;
+  effectiveFrom: string;
+  /** Days since it took effect — what the staleness badge reads. */
+  ageDays: number;
+  /** How many rows this item has accumulated; its price history depth. */
+  revisions: number;
+  /** The previous row's price, when there is one — so the console can show the move. */
+  previousPriceBdt?: number;
+  /** False while a FETCHED row is still waiting for an admin to look at it. */
+  approved: boolean;
+}
+
+/** A row the importer refused, with the line of the file it was on. */
+export interface PriceSheetRowError {
+  /** 1-based line number in the uploaded file, counting the header. */
+  line: number;
+  message: string;
+}
+
+/**
+ * What an import did.
+ *
+ * Deliberately more detailed than "ok": an admin who uploads a sheet and is told
+ * only that it worked has no way to notice that half of it was a no-op because
+ * they edited the wrong copy of the file.
+ */
+export interface PriceSheetImportReport {
+  /** Data rows read from the file, excluding the header. */
+  rowsRead: number;
+  /** Items that did not exist before this sheet. */
+  added: number;
+  /** Items whose price moved, each of which wrote a new append-only row. */
+  updated: number;
+  /** Items already at exactly this price — nothing was written for them. */
+  unchanged: number;
+  /**
+   * Items in the current sheet that this file did not mention. Reported, never
+   * retired automatically: a truncated upload must not be able to empty the
+   * price sheet by omission.
+   */
+  missing: string[];
+  /** Rows rejected by validation. When non-empty, nothing at all was written. */
+  errors: PriceSheetRowError[];
+  /** The refresh run recording this import, when one was written. */
+  runId?: string;
+  pricesEmbedded: number;
+  estimatesChecked: number;
+  estimatesUpdated: number;
 }

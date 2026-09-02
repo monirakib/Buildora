@@ -1,0 +1,29 @@
+{
+  "name": "Buildora — Bangladesh Construction Super-Platform",
+  "short_name": "Buildora",
+  "description": "Post a brief, hire a verified architect, fund escrow, track your RAJUK permit, and run your build to handover.",
+  "id": "/",
+  "scope": "/",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#f5f2ec",
+  "theme_color": "#0a0f1a",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["business", "productivity", "utilities"],
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    {
+      "src": "/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    { "name": "Your projects", "url": "/projects" },
+    { "name": "Messages", "url": "/messages" },
+    { "name": "Marketplace", "url": "/marketplace" }
+  ]
+}

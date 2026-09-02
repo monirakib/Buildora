@@ -150,7 +150,7 @@ export default function MarketOrdersPage() {
         <div className="mx-auto w-full max-w-4xl">
           <Link
             href="/marketplace"
-            className="text-sm font-semibold text-stone-500 transition hover:text-amber-600 dark:text-slate-400 dark:hover:text-amber-400"
+            className="text-sm font-semibold text-stone-500 transition hover:text-amber-700 dark:text-slate-400 dark:hover:text-amber-400"
           >
             ← Marketplace
           </Link>
@@ -194,7 +194,7 @@ export default function MarketOrdersPage() {
                     Browse the{" "}
                     <Link
                       href="/marketplace"
-                      className="text-amber-600 underline underline-offset-2 dark:text-amber-400"
+                      className="text-amber-700 underline underline-offset-2 dark:text-amber-400"
                     >
                       marketplace
                     </Link>{" "}

@@ -141,7 +141,7 @@ function NidPhotoField({
           </button>
         </div>
       ) : (
-        <label className="flex h-16 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-stone-300 text-xs font-semibold text-stone-500 transition hover:border-amber-500 hover:text-amber-600 dark:border-white/20 dark:text-slate-400">
+        <label className="flex h-16 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-stone-300 text-xs font-semibold text-stone-500 transition hover:border-amber-500 hover:text-amber-700 dark:border-white/20 dark:text-slate-400">
           <input
             type="file"
             accept="image/*"
@@ -826,7 +826,7 @@ export default function AccountPage() {
                     Getting verified also needs your registered address and a signed declaration.{" "}
                     <Link
                       href="/verify"
-                      className="font-semibold text-amber-600 hover:underline dark:text-amber-400"
+                      className="font-semibold text-amber-700 hover:underline dark:text-amber-400"
                     >
                       Finish verification →
                     </Link>
@@ -861,7 +861,7 @@ export default function AccountPage() {
                 Your public profile, credentials, portfolio and verification, is edited on{" "}
                 <Link
                   href="/profile/professional"
-                  className="font-bold text-amber-600 dark:text-amber-400"
+                  className="font-bold text-amber-700 dark:text-amber-400"
                 >
                   your profile page
                 </Link>
@@ -1191,7 +1191,7 @@ export default function AccountPage() {
                       </span>
                       <span className="min-w-0 flex-1 truncate">{label}</span>
                       {form.preferredMethod === value && (
-                        <Check className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-300" />
+                        <Check className="h-4 w-4 shrink-0 text-amber-700 dark:text-amber-300" />
                       )}
                     </button>
                   ))}
@@ -1302,7 +1302,7 @@ export default function AccountPage() {
                     </span>
                   </span>
                   {themeMode === mode && (
-                    <Check className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-300" />
+                    <Check className="h-4 w-4 shrink-0 text-amber-700 dark:text-amber-300" />
                   )}
                 </button>
               ))}

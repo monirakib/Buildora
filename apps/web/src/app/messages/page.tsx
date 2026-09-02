@@ -6,15 +6,29 @@ import { Phone, PhoneIncoming, PhoneMissed, PhoneOutgoing, Video } from "lucide-
 import {
   CallMedia,
   CallStatus,
+  MESSAGE_EVENTS,
   type CallRecord,
   type ChatMessage,
   type Conversation,
+  type MessageCreatedEvent,
 } from "@buildora/shared";
 import { listRecentCalls } from "@/lib/apiCalls";
 import { getConversationMessages, listConversations, sendMessage } from "@/lib/apiMessages";
 import { useCall } from "@/store/useCall";
+import { onAppEvent } from "@/store/useNotifications";
 import { useSession } from "@/store/useSession";
 import { Navbar } from "@/components/landing/Navbar";
+
+/**
+ * Poll intervals, in milliseconds.
+ *
+ * These were 10s and 5s back when polling was the only way a message arrived.
+ * With the socket carrying messages, what is left for the timers is presence
+ * and the call log — both of which nobody is watching by the second — plus
+ * catching up a tab whose socket dropped.
+ */
+const INBOX_POLL_MS = 30_000;
+const THREAD_POLL_MS = 20_000;
 
 const inputClass =
   "block w-full rounded-xl border border-stone-300/80 bg-white/70 px-4 py-2.5 text-sm text-stone-900 placeholder-stone-400 backdrop-blur transition outline-none focus:border-amber-500 focus:bg-white/90 focus:ring-2 focus:ring-amber-400/30 dark:border-white/15 dark:bg-white/5 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:bg-white/10";
@@ -193,14 +207,42 @@ function MessagesInner() {
     }
   }, [token]);
 
-  // Inbox on mount, then every 10s — this is also what keeps the presence dots
-  // in the list current, so it polls whether or not a thread is open.
+  // Inbox on mount, then on a slow timer. Messages themselves arrive over the
+  // socket below; what this poll is still for is the presence dots ("Online
+  // now" / "Active … ago"), which nothing pushes — so it runs whether or not a
+  // thread is open, just far less often than it used to.
   useEffect(() => {
     if (!mounted || !token) return;
     loadInbox();
-    const timer = setInterval(loadInbox, 10000);
+    const timer = setInterval(loadInbox, INBOX_POLL_MS);
     return () => clearInterval(timer);
   }, [mounted, token, loadInbox]);
+
+  /**
+   * Live messages.
+   *
+   * The server pushes every message to both participants, so this covers the
+   * open thread and the inbox at once. The polls underneath stay as a safety
+   * net: a tab that was asleep, or one whose socket dropped and hasn't
+   * reconnected, still catches up on its next tick.
+   */
+  useEffect(() => {
+    if (!mounted || !token) return;
+    return onAppEvent<MessageCreatedEvent>(MESSAGE_EVENTS.created, (event) => {
+      if (event.conversationId === activeId) {
+        setMessages((list) =>
+          // Dedupe by id: the sender already appended this message from the
+          // POST response, and their own tabs get the push as well.
+          list.some((m) => m.id === event.message.id) ? list : [...list, event.message]
+        );
+      }
+      // Ordering, unread counts and the last-message preview all live in the
+      // inbox, so it needs refreshing either way.
+      loadInbox();
+    });
+    // Re-subscribing when the open thread changes costs a Map entry, and keeps
+    // `activeId` honest without a ref.
+  }, [mounted, token, activeId, loadInbox]);
 
   useEffect(() => {
     if (!mounted || !token || !activeId) {
@@ -210,12 +252,12 @@ function MessagesInner() {
     }
     loadThread();
     loadCalls();
-    // The open thread refreshes faster than the inbox — new messages and the
-    // peer's "Online now" / "Active … ago" line both come from this poll.
+    // Slower than it was: new messages now arrive over the socket, so this is
+    // only the fallback plus the call log and the peer's last-seen line.
     const timer = setInterval(() => {
       loadThread();
       loadCalls();
-    }, 5000);
+    }, THREAD_POLL_MS);
     return () => clearInterval(timer);
   }, [mounted, token, activeId, loadThread, loadCalls]);
 

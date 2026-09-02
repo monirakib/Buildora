@@ -254,7 +254,7 @@ export function VerificationWizard({ user }: { user: SessionUser }) {
           >
             <ArrowLeft className="h-3.5 w-3.5" /> Back to dashboard
           </Link>
-          <p className="text-xs font-bold tracking-[0.2em] text-amber-600 uppercase dark:text-[#F5B400]">
+          <p className="text-xs font-bold tracking-[0.2em] text-amber-800 uppercase dark:text-[#F5B400]">
             Buildora · {config.eyebrow}
           </p>
           <h1 className="mt-2 bg-gradient-to-b from-stone-900 via-stone-900 to-stone-500 bg-clip-text text-3xl font-extrabold tracking-tight text-transparent sm:text-4xl dark:from-white dark:via-white dark:to-slate-400">
@@ -341,7 +341,7 @@ export function VerificationWizard({ user }: { user: SessionUser }) {
                     type="button"
                     onClick={() => setStep((s) => Math.min(stepCount - 1, s + 1))}
                     disabled={step === stepCount - 1}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-white/50 px-5 py-2 text-sm font-bold text-stone-700 transition-colors hover:border-[#F5B400]/50 hover:text-amber-600 hover:shadow-[0_0_24px_rgba(245,180,0,0.12)] disabled:opacity-40 dark:border-white/12 dark:text-slate-300 dark:hover:text-[#F5B400]"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-white/50 px-5 py-2 text-sm font-bold text-stone-700 transition-colors hover:border-[#F5B400]/50 hover:text-amber-700 hover:shadow-[0_0_24px_rgba(245,180,0,0.12)] disabled:opacity-40 dark:border-white/12 dark:text-slate-300 dark:hover:text-[#F5B400]"
                   >
                     Next <ArrowRight className="h-4 w-4" />
                   </button>

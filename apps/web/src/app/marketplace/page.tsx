@@ -11,6 +11,7 @@ import { Navbar } from "@/components/landing/Navbar";
 import { Stagger } from "@/components/Stagger";
 import { VerifiedBadge } from "@/components/app/VerifiedBadge";
 import { categoryLabels, formatBdt } from "@/components/market/market";
+import { imageAt } from "@/lib/imageUrl";
 
 const inputClass =
   "block w-full rounded-xl border border-stone-300/80 bg-white/70 px-4 py-2.5 text-sm text-stone-900 placeholder-stone-400 backdrop-blur transition outline-none focus:border-amber-500 focus:bg-white/90 focus:ring-2 focus:ring-amber-400/30 dark:border-white/15 dark:bg-white/5 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:bg-white/10";
@@ -53,10 +54,28 @@ function OrderModal({
     }
   }
 
+  // Escape closes it, and the page behind stops scrolling while the dialog owns
+  // the screen — the same contract as the account dialogs in components/account/ui.tsx.
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    document.addEventListener("keydown", onKeyDown);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [onClose]);
+
   return (
     <div
       role="dialog"
       aria-modal="true"
+      // Without a name a screen reader announces this as an unlabelled dialog.
+      // Pointing at the heading keeps the two from drifting apart.
+      aria-labelledby="order-modal-title"
       className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4 backdrop-blur-sm"
       onClick={onClose}
     >
@@ -66,12 +85,14 @@ function OrderModal({
       >
         {placed ? (
           <div className="text-center">
-            <p className="text-lg font-extrabold">Order placed ✓</p>
+            <h2 id="order-modal-title" className="text-lg font-extrabold">
+              Order placed ✓
+            </h2>
             <p className="mt-2 text-sm text-stone-600 dark:text-slate-400">
               {product.seller.name} has been notified. Track it under{" "}
               <Link
                 href="/marketplace/orders"
-                className="text-amber-600 underline underline-offset-2 dark:text-amber-400"
+                className="text-amber-700 underline underline-offset-2 dark:text-amber-400"
               >
                 your orders
               </Link>
@@ -87,7 +108,9 @@ function OrderModal({
           </div>
         ) : (
           <>
-            <p className="text-lg font-extrabold tracking-tight">Order {product.name}</p>
+            <h2 id="order-modal-title" className="text-lg font-extrabold tracking-tight">
+              Order {product.name}
+            </h2>
             <p className="mt-1 text-sm text-stone-600 dark:text-slate-400">
               {formatBdt(product.priceBdt)} per {product.unit} · sold by {product.seller.name}
             </p>
@@ -180,7 +203,7 @@ function OrderModal({
               <div className="mt-1 flex items-center justify-between gap-3">
                 <p className="text-sm font-bold">
                   Total:{" "}
-                  <span className="text-amber-600 dark:text-amber-400">{formatBdt(total)}</span>
+                  <span className="text-amber-700 dark:text-amber-400">{formatBdt(total)}</span>
                 </p>
                 <div className="flex gap-2">
                   <button
@@ -260,7 +283,7 @@ export default function MarketplacePage() {
         <div className="mx-auto w-full max-w-6xl">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
-              <p className="text-sm font-bold tracking-[0.2em] text-amber-600 uppercase dark:text-amber-400">
+              <p className="text-sm font-bold tracking-[0.2em] text-amber-800 uppercase dark:text-amber-400">
                 Marketplace
               </p>
               <h1 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">
@@ -354,9 +377,10 @@ export default function MarketplacePage() {
                     {p.imageUrl ? (
                       /* eslint-disable-next-line @next/next/no-img-element -- Cloudinary-hosted */
                       <img
-                        src={p.imageUrl}
+                        src={imageAt(p.imageUrl, 640)}
                         alt={p.name}
                         loading="lazy"
+                        decoding="async"
                         className="aspect-4/3 w-full object-cover"
                       />
                     ) : (
@@ -385,7 +409,7 @@ export default function MarketplacePage() {
                       )}
                       <div className="mt-auto flex items-end justify-between gap-3 pt-4">
                         <div>
-                          <p className="text-lg font-extrabold text-amber-600 dark:text-amber-400">
+                          <p className="text-lg font-extrabold text-amber-700 dark:text-amber-400">
                             {formatBdt(p.priceBdt)}
                             <span className="text-xs font-semibold text-stone-500 dark:text-slate-400">
                               {" "}

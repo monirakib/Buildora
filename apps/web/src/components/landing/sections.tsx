@@ -74,13 +74,13 @@ export function Statement() {
       <div className="grid items-center gap-12 lg:grid-cols-2">
         {/* The words */}
         <Reveal>
-          <p className="text-sm font-bold tracking-[0.2em] text-amber-600 uppercase dark:text-amber-400">
+          <p className="text-sm font-bold tracking-[0.2em] text-amber-800 uppercase dark:text-amber-400">
             Why Buildora exists
           </p>
           <h2 className="mt-3 text-3xl leading-tight font-extrabold tracking-tight sm:text-5xl">
             We don&apos;t just connect you to builders.
             <br />
-            <span className="text-amber-600 dark:text-amber-400">We protect the build.</span>
+            <span className="text-amber-700 dark:text-amber-400">We protect the build.</span>
           </h2>
           <p className="mt-5 max-w-lg text-lg text-stone-600 dark:text-slate-400">
             Building a home in Bangladesh means navigating unverified contractors, cash handshakes,
@@ -94,7 +94,7 @@ export function Statement() {
               "Every permit step is tracked in the open, end to end",
             ].map((point) => (
               <li key={point} className="flex items-start gap-3 text-sm font-semibold">
-                <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-amber-400/20 text-amber-600 dark:text-amber-400">
+                <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-amber-400/20 text-amber-700 dark:text-amber-400">
                   <svg
                     viewBox="0 0 24 24"
                     className="h-3 w-3"
@@ -172,7 +172,7 @@ export function Features() {
   return (
     <section id="features" className="mx-auto max-w-6xl scroll-mt-24 px-5 py-24 sm:px-8 sm:py-32">
       <Reveal>
-        <p className="text-sm font-bold tracking-[0.2em] text-amber-600 uppercase dark:text-amber-400">
+        <p className="text-sm font-bold tracking-[0.2em] text-amber-800 uppercase dark:text-amber-400">
           The platform
         </p>
         <h2 className="mt-3 max-w-2xl text-3xl font-extrabold tracking-tight sm:text-5xl">
@@ -287,7 +287,7 @@ export function Features() {
                   <span className="grid h-5 w-5 place-items-center rounded-full border border-stone-300 transition-colors duration-300 group-hover:border-amber-500 group-hover:bg-amber-400/15 dark:border-white/20 dark:group-hover:border-amber-400">
                     <svg
                       viewBox="0 0 24 24"
-                      className="h-3 w-3 scale-0 text-amber-600 transition-transform duration-300 group-hover:scale-100 dark:text-amber-400"
+                      className="h-3 w-3 scale-0 text-amber-700 transition-transform duration-300 group-hover:scale-100 dark:text-amber-400"
                       style={{ transitionDelay: `${i * 120}ms` }}
                       fill="none"
                       stroke="currentColor"
@@ -421,7 +421,7 @@ export function Stats() {
                 i > 0 ? "lg:border-l lg:border-stone-200 lg:pl-8 dark:lg:border-white/10" : ""
               }
             >
-              <p className="text-5xl font-extrabold tracking-tight text-amber-600 tabular-nums sm:text-6xl dark:text-amber-400">
+              <p className="text-5xl font-extrabold tracking-tight text-amber-700 tabular-nums sm:text-6xl dark:text-amber-400">
                 <CountUp to={stat.to} suffix={stat.suffix} />
               </p>
               <p className="mt-3 text-sm font-semibold text-stone-600 dark:text-slate-400">
@@ -470,9 +470,9 @@ export function Vision() {
           </span>
           <p className="-mt-6 text-2xl leading-snug font-bold tracking-tight text-stone-800 sm:-mt-8 sm:text-4xl dark:text-slate-100">
             The single digital home for every construction project in Bangladesh, where every
-            professional is <span className="text-amber-600 dark:text-amber-400">verified</span>,
-            every payment is <span className="text-amber-600 dark:text-amber-400">protected</span>,
-            and every permit is <span className="text-amber-600 dark:text-amber-400">tracked</span>.
+            professional is <span className="text-amber-700 dark:text-amber-400">verified</span>,
+            every payment is <span className="text-amber-700 dark:text-amber-400">protected</span>,
+            and every permit is <span className="text-amber-700 dark:text-amber-400">tracked</span>.
           </p>
         </Reveal>
         <Reveal delay={150}>
@@ -480,7 +480,7 @@ export function Vision() {
             {roles.map((role) => (
               <li
                 key={role}
-                className="rounded-full border border-stone-400/50 bg-white/50 px-4 py-1.5 text-sm font-semibold text-stone-700 backdrop-blur transition hover:border-amber-500 hover:text-amber-600 dark:border-white/20 dark:bg-white/5 dark:text-slate-300 dark:hover:border-amber-400 dark:hover:text-amber-300"
+                className="rounded-full border border-stone-400/50 bg-white/50 px-4 py-1.5 text-sm font-semibold text-stone-700 backdrop-blur transition hover:border-amber-500 hover:text-amber-700 dark:border-white/20 dark:bg-white/5 dark:text-slate-300 dark:hover:border-amber-400 dark:hover:text-amber-300"
               >
                 {role}
               </li>
@@ -583,7 +583,7 @@ export function Footer() {
               <li key={l.label}>
                 <Link
                   href={l.href}
-                  className="text-sm font-semibold text-stone-700 transition hover:text-amber-600 dark:text-slate-300 dark:hover:text-amber-400"
+                  className="text-sm font-semibold text-stone-700 transition hover:text-amber-700 dark:text-slate-300 dark:hover:text-amber-400"
                 >
                   {l.label}
                 </Link>
@@ -601,7 +601,7 @@ export function Footer() {
               <li key={l.label}>
                 <Link
                   href={l.href}
-                  className="text-sm font-semibold text-stone-700 transition hover:text-amber-600 dark:text-slate-300 dark:hover:text-amber-400"
+                  className="text-sm font-semibold text-stone-700 transition hover:text-amber-700 dark:text-slate-300 dark:hover:text-amber-400"
                 >
                   {l.label}
                 </Link>

@@ -98,7 +98,7 @@ export default function MeetingsPage() {
         <div className="mx-auto w-full max-w-3xl">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
-              <p className="text-sm font-bold tracking-[0.2em] text-amber-600 uppercase dark:text-amber-400">
+              <p className="text-sm font-bold tracking-[0.2em] text-amber-800 uppercase dark:text-amber-400">
                 Meetings
               </p>
               <h1 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">

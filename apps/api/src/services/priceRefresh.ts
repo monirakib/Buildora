@@ -183,13 +183,19 @@ async function refreshScrapedSources(): Promise<{
 /**
  * Gives vectors to everything that needs one.
  *
+ * Exported because the weekly job is no longer the only writer of prices: an
+ * admin importing the CSV sheet (controllers/priceSheet) writes rows that need
+ * vectors before retrieval can match them semantically, and calls this rather
+ * than running a whole refresh it doesn't want. Both callers are admin-side and
+ * awaited, which is what keeps the 274 MB model off every other request path.
+ *
  * Both sides of the eventual comparison are embedded here, together, which is
  * what keeps the model off the request path entirely (see services/embeddings).
  * Rows embedded by an older model are picked up too, so changing
  * EMBEDDING_MODEL re-embeds the corpus over the next run instead of leaving a
  * mix of incomparable vectors.
  */
-async function embedPending(): Promise<number> {
+export async function embedPending(): Promise<number> {
   let embedded = 0;
 
   // ---- Price labels ----

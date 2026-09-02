@@ -2,6 +2,17 @@ import { Router, type Request, type Response } from "express";
 import { timingSafeEqual } from "node:crypto";
 import { UserRole, type PriceRefreshRunSummary } from "@buildora/shared";
 import { env } from "../config/env";
+import {
+  addPriceItem,
+  approvePendingPrice,
+  downloadPriceSheet,
+  getPriceSheet,
+  importPriceSheet,
+  rejectPendingPrice,
+  retirePriceItem,
+  sheetUpload,
+  updatePriceItem,
+} from "../controllers/priceSheet.controller";
 import { requireAuth } from "../middleware/auth";
 import { requireRole } from "../middleware/roles";
 import { PriceRefreshRun, type PriceRefreshRunDoc } from "../models/PriceRefreshRun";
@@ -25,6 +36,13 @@ import { isRefreshDue, lastSuccessfulRun, runPriceRefresh } from "../services/pr
  * us nothing useful anyway, so it returns immediately and the outcome is read
  * back from `/status`. `/refresh/admin` is the exception — see the note on it
  * below for why that one is awaited end to end.
+ *
+ * The `/sheet` routes underneath are the other half of the module: the weekly
+ * price sheet an admin actually maintains by hand, uploaded and downloaded as
+ * CSV or edited row by row in the console. They live here rather than under
+ * /admin because they are pricing, not administration — everything on this
+ * router writes to or reads from the same MarketPrice collection — and they
+ * carry the same ADMIN role check either way.
  */
 export const pricingRouter = Router();
 
@@ -169,3 +187,31 @@ pricingRouter.get(
     });
   }
 );
+
+/* ------------------------------------------------- the weekly price sheet --- */
+
+// Every route below is ADMIN-only. The role check is repeated per route rather
+// than applied with router.use, because /refresh above must stay reachable
+// without a session for the external scheduler.
+const adminOnly = [requireAuth, requireRole(UserRole.ADMIN)] as const;
+
+/** The sheet as JSON, for the console table. */
+pricingRouter.get("/sheet", ...adminOnly, getPriceSheet);
+
+/**
+ * The sheet as a downloadable CSV.
+ *
+ * Registered before the parameterised routes and with a literal dot in the
+ * path, so it can never be confused with an item id.
+ */
+pricingRouter.get("/sheet.csv", ...adminOnly, downloadPriceSheet);
+
+// multer parses the multipart body and puts the file on req.file.
+pricingRouter.post("/sheet/import", ...adminOnly, sheetUpload.single("sheet"), importPriceSheet);
+
+pricingRouter.post("/sheet/items", ...adminOnly, addPriceItem);
+pricingRouter.patch("/sheet/items/:id", ...adminOnly, updatePriceItem);
+pricingRouter.post("/sheet/items/:id/retire", ...adminOnly, retirePriceItem);
+
+pricingRouter.post("/sheet/pending/:id/approve", ...adminOnly, approvePendingPrice);
+pricingRouter.post("/sheet/pending/:id/reject", ...adminOnly, rejectPendingPrice);

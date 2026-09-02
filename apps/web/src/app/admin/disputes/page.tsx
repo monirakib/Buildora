@@ -135,7 +135,7 @@ export default function AdminDisputesPage() {
       <Navbar />
       <main className="flex-1 px-5 pt-28 pb-16 sm:px-8">
         <div className="mx-auto w-full max-w-5xl">
-          <p className="text-sm font-bold tracking-[0.2em] text-amber-600 uppercase dark:text-amber-400">
+          <p className="text-sm font-bold tracking-[0.2em] text-amber-800 uppercase dark:text-amber-400">
             Supervisor
           </p>
           <h1 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">Disputes</h1>
@@ -179,7 +179,7 @@ export default function AdminDisputesPage() {
                       <p className="mt-0.5 text-sm text-stone-600 dark:text-slate-400">
                         <Link
                           href={`/projects/${d.projectId}`}
-                          className="text-amber-600 underline underline-offset-2 dark:text-amber-400"
+                          className="text-amber-700 underline underline-offset-2 dark:text-amber-400"
                         >
                           {d.projectTitle}
                         </Link>{" "}
@@ -205,7 +205,7 @@ export default function AdminDisputesPage() {
                           href={e.fileUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="rounded-full border border-stone-300/60 px-3 py-1 text-xs font-semibold text-amber-600 dark:border-white/15 dark:text-amber-400"
+                          className="rounded-full border border-stone-300/60 px-3 py-1 text-xs font-semibold text-amber-700 dark:border-white/15 dark:text-amber-400"
                         >
                           {e.caption}
                         </a>

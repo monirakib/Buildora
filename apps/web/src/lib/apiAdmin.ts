@@ -8,10 +8,13 @@ import type {
   OrderStatus,
   Paginated,
   PriceRefreshRunSummary,
+  PriceSheetImportReport,
+  PriceSheetItem,
   Product,
+  ProductCategory,
   UserRole,
 } from "@buildora/shared";
-import { request } from "./api";
+import { API_BASE_URL, request } from "./api";
 
 // Every admin endpoint requires the admin's JWT.
 const auth = (token: string) => ({ Authorization: `Bearer ${token}` });
@@ -163,4 +166,128 @@ export async function triggerPriceRefresh(token: string): Promise<PriceRefreshRu
     }
   );
   return res.data.run;
+}
+
+/* ------------------------------------------------- the weekly price sheet --- */
+
+/** GET /api/pricing/sheet — the live sheet plus anything awaiting approval. */
+export async function getPriceSheet(
+  token: string
+): Promise<{ items: PriceSheetItem[]; pending: PriceSheetItem[] }> {
+  const res = await request<{ data: { items: PriceSheetItem[]; pending: PriceSheetItem[] } }>(
+    "/api/pricing/sheet",
+    { headers: auth(token) }
+  );
+  return res.data;
+}
+
+/**
+ * GET /api/pricing/sheet.csv — download the sheet as a file.
+ *
+ * Can't be a plain `<a href>`: the route needs an Authorization header, and a
+ * link can't carry one. So the file is fetched, turned into a blob, and handed
+ * to a link that is clicked and thrown away. The object URL is revoked
+ * afterwards because it pins the whole file in memory until it is.
+ */
+export async function downloadPriceSheet(token: string): Promise<void> {
+  const res = await fetch(`${API_BASE_URL}/api/pricing/sheet.csv`, { headers: auth(token) });
+  if (!res.ok) throw new Error(`Couldn't download the sheet: ${res.status}`);
+
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `buildora-prices-${new Date().toISOString().slice(0, 10)}.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * POST /api/pricing/sheet/import — upload the week's sheet.
+ *
+ * Written out rather than routed through `request()` for two reasons: the body
+ * is multipart, which `request` overrides with a JSON content-type, and a
+ * rejected file returns its per-line errors in the *error* response, which
+ * `request` throws away in favour of the message alone. Those line numbers are
+ * the only thing that makes a bad file fixable, so this reads the body itself.
+ */
+export async function importPriceSheet(token: string, file: File): Promise<PriceSheetImportReport> {
+  const form = new FormData();
+  form.append("sheet", file);
+
+  const res = await fetch(`${API_BASE_URL}/api/pricing/sheet/import`, {
+    method: "POST",
+    headers: auth(token),
+    body: form,
+  });
+
+  const body = (await res.json().catch(() => null)) as {
+    data?: { report: PriceSheetImportReport };
+    error?: { message?: string };
+  } | null;
+
+  if (!res.ok) {
+    // A validation failure still carries a report; hand it back so the console
+    // can list the offending lines instead of just saying "it failed".
+    if (body?.data?.report) return body.data.report;
+    throw new Error(body?.error?.message ?? `Import failed: ${res.status}`);
+  }
+  return body!.data!.report;
+}
+
+export interface PriceItemInput {
+  category: ProductCategory;
+  itemLabel: string;
+  unit: string;
+  priceBdt: number;
+  sourceName?: string;
+  sourceUrl?: string;
+  effectiveFrom?: string;
+}
+
+/** POST /api/pricing/sheet/items — add an item to the sheet. */
+export async function addPriceItem(token: string, input: PriceItemInput): Promise<void> {
+  await request<{ data: { priceId: string } }>("/api/pricing/sheet/items", {
+    method: "POST",
+    headers: auth(token),
+    body: JSON.stringify(input),
+  });
+}
+
+/**
+ * PATCH /api/pricing/sheet/items/:id — record a new price for an item.
+ *
+ * The id names the row being superseded. Nothing is overwritten — the server
+ * writes a new row beside it, which is what keeps the price history readable.
+ */
+export async function updatePriceItem(
+  token: string,
+  priceId: string,
+  input: { priceBdt: number; unit?: string; sourceName?: string; effectiveFrom?: string }
+): Promise<void> {
+  await request<{ data: { priceId: string } }>(`/api/pricing/sheet/items/${priceId}`, {
+    method: "PATCH",
+    headers: auth(token),
+    body: JSON.stringify(input),
+  });
+}
+
+/** POST /api/pricing/sheet/items/:id/retire — take an item off the sheet. */
+export async function retirePriceItem(token: string, priceId: string): Promise<void> {
+  await request<{ data: { ok: boolean } }>(`/api/pricing/sheet/items/${priceId}/retire`, {
+    method: "POST",
+    headers: auth(token),
+  });
+}
+
+/** POST /api/pricing/sheet/pending/:id/approve|reject — clear the review queue. */
+export async function reviewPendingPrice(
+  token: string,
+  priceId: string,
+  decision: "approve" | "reject"
+): Promise<void> {
+  await request<{ data: { ok: boolean } }>(`/api/pricing/sheet/pending/${priceId}/${decision}`, {
+    method: "POST",
+    headers: auth(token),
+  });
 }

@@ -183,7 +183,7 @@ export default function SellPage() {
         <div className="mx-auto w-full max-w-4xl">
           <Link
             href="/marketplace"
-            className="text-sm font-semibold text-stone-500 transition hover:text-amber-600 dark:text-slate-400 dark:hover:text-amber-400"
+            className="text-sm font-semibold text-stone-500 transition hover:text-amber-700 dark:text-slate-400 dark:hover:text-amber-400"
           >
             ← Marketplace
           </Link>
@@ -264,7 +264,7 @@ export default function SellPage() {
                   onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
                   className={`${inputClass} sm:col-span-2`}
                 />
-                <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-stone-400/60 px-4 py-2.5 text-sm font-semibold text-stone-600 transition hover:border-amber-500 hover:text-amber-600 dark:border-white/25 dark:text-slate-300">
+                <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-stone-400/60 px-4 py-2.5 text-sm font-semibold text-stone-600 transition hover:border-amber-500 hover:text-amber-700 dark:border-white/25 dark:text-slate-300">
                   {uploading
                     ? "Uploading…"
                     : form.imageUrl
@@ -346,7 +346,7 @@ export default function SellPage() {
                       type="button"
                       disabled={busy}
                       onClick={() => startEdit(p)}
-                      className="rounded-full border border-stone-300 px-4 py-1.5 text-stone-700 transition hover:border-amber-500 hover:text-amber-600 dark:border-white/20 dark:text-slate-200"
+                      className="rounded-full border border-stone-300 px-4 py-1.5 text-stone-700 transition hover:border-amber-500 hover:text-amber-700 dark:border-white/20 dark:text-slate-200"
                     >
                       Edit
                     </button>
@@ -354,7 +354,7 @@ export default function SellPage() {
                       type="button"
                       disabled={busy}
                       onClick={() => toggleActive(p)}
-                      className="rounded-full border border-stone-300 px-4 py-1.5 text-stone-700 transition hover:border-amber-500 hover:text-amber-600 dark:border-white/20 dark:text-slate-200"
+                      className="rounded-full border border-stone-300 px-4 py-1.5 text-stone-700 transition hover:border-amber-500 hover:text-amber-700 dark:border-white/20 dark:text-slate-200"
                     >
                       {p.isActive ? "Pause" : "Activate"}
                     </button>

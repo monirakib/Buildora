@@ -1,10 +1,17 @@
 import type { Request, Response } from "express";
 import { isValidObjectId, type HydratedDocument } from "mongoose";
 import { z } from "zod";
-import type { ChatMessage, Conversation as ConversationDto, UserRole } from "@buildora/shared";
+import {
+  MESSAGE_EVENTS,
+  type ChatMessage,
+  type Conversation as ConversationDto,
+  type MessageCreatedEvent,
+  type UserRole,
+} from "@buildora/shared";
 import { Conversation, sortPair, type ConversationDoc } from "../models/Conversation";
 import { Message, type MessageDoc } from "../models/Message";
 import { User } from "../models/User";
+import { emitToUser } from "../realtime/push";
 import { isUserOnline } from "../realtime/signaling";
 import { notifyNewMessage, preview } from "../services/notifications";
 
@@ -227,6 +234,21 @@ export async function sendMessage(req: Request, res: Response) {
     body: preview(created.body),
     link: "/messages",
   });
+
+  // Push the message itself, so an open thread updates without waiting for its
+  // next poll. Sent to BOTH participants, not just the recipient: someone with
+  // the app open on a laptop and a phone should see their own message land on
+  // the other device too.
+  //
+  // One payload for both sides — the client tells its own messages apart by
+  // comparing senderId to the signed-in user, so the name it carries is the
+  // sender's either way.
+  const event: MessageCreatedEvent = {
+    conversationId: String(doc._id),
+    message: toChatMessage(created, sender?.name ?? "someone"),
+  };
+  emitToUser(recipient, MESSAGE_EVENTS.created, event);
+  emitToUser(me, MESSAGE_EVENTS.created, event);
 
   return res.status(201).json({ data: { message: toChatMessage(created, sender?.name ?? "You") } });
 }

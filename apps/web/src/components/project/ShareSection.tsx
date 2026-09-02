@@ -80,7 +80,7 @@ export function ShareSection({ projectId, token }: { projectId: string; token: s
                   setCopied(true);
                   setTimeout(() => setCopied(false), 2000);
                 }}
-                className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-600 hover:underline dark:text-amber-400"
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-700 hover:underline dark:text-amber-400"
               >
                 <Copy className="h-3.5 w-3.5" /> {copied ? "Copied" : "Copy"}
               </button>

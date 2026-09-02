@@ -105,7 +105,7 @@ export function BottomBar({
         <div className="relative min-w-0 flex-1">
           <div className="flex items-center justify-between text-[11px] font-bold">
             <span className="text-stone-600 dark:text-slate-400">Profile completion</span>
-            <span className="text-amber-600 dark:text-[#F5B400]">{percent}%</span>
+            <span className="text-amber-700 dark:text-[#F5B400]">{percent}%</span>
           </div>
           <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-stone-900/10 dark:bg-white/10">
             <div

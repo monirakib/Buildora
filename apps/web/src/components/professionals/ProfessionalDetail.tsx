@@ -12,6 +12,7 @@ import { PendingBadge, VerifiedBadge } from "@/components/app/VerifiedBadge";
 import { Stars } from "@/components/app/Stars";
 import { BookMeeting } from "@/components/meetings/BookMeeting";
 import { professionalCopy } from "./roleCopy";
+import { imageAt } from "@/lib/imageUrl";
 
 function initials(name: string) {
   return name
@@ -126,7 +127,7 @@ export function ProfessionalDetail({ role }: { role: UserRole }) {
           <div className="mx-auto w-full max-w-3xl">
             <Link
               href={`/${copy.basePath}`}
-              className="text-sm font-semibold text-stone-500 transition hover:text-amber-600 dark:text-slate-400 dark:hover:text-amber-400 capitalize"
+              className="text-sm font-semibold text-stone-500 transition hover:text-amber-700 dark:text-slate-400 dark:hover:text-amber-400 capitalize"
             >
               ← All {copy.plural}
             </Link>
@@ -174,7 +175,7 @@ export function ProfessionalDetail({ role }: { role: UserRole }) {
         <div className="mx-auto w-full max-w-6xl">
           <Link
             href={`/${copy.basePath}`}
-            className="text-sm font-semibold text-stone-500 transition hover:text-amber-600 dark:text-slate-400 dark:hover:text-amber-400 capitalize"
+            className="text-sm font-semibold text-stone-500 transition hover:text-amber-700 dark:text-slate-400 dark:hover:text-amber-400 capitalize"
           >
             ← All {copy.plural}
           </Link>
@@ -200,7 +201,7 @@ export function ProfessionalDetail({ role }: { role: UserRole }) {
               {projects.length > 0 && (
                 <a
                   href="#projects"
-                  className="mt-7 inline-flex items-center gap-3 text-sm font-bold underline-offset-8 transition hover:text-amber-600 hover:underline dark:hover:text-amber-400"
+                  className="mt-7 inline-flex items-center gap-3 text-sm font-bold underline-offset-8 transition hover:text-amber-700 hover:underline dark:hover:text-amber-400"
                 >
                   View Projects <span aria-hidden>-</span>
                 </a>
@@ -239,8 +240,9 @@ export function ProfessionalDetail({ role }: { role: UserRole }) {
               <figure className="relative lg:-ml-24">
                 {/* eslint-disable-next-line @next/next/no-img-element -- Cloudinary-hosted */}
                 <img
-                  src={professional.avatarUrl}
+                  src={imageAt(professional.avatarUrl, 900)}
                   alt={professional.name}
+                  decoding="async"
                   className="aspect-4/5 w-full object-cover mask-[linear-gradient(to_right,transparent,black_45%)] sm:aspect-4/3 lg:h-130 lg:aspect-auto"
                 />
                 <figcaption className="absolute top-1/2 right-5 z-10 max-w-[45%] -translate-y-1/2 text-white [text-shadow:0_1px_14px_rgba(0,0,0,0.55)]">
@@ -310,9 +312,10 @@ export function ProfessionalDetail({ role }: { role: UserRole }) {
                       >
                         {/* eslint-disable-next-line @next/next/no-img-element -- Cloudinary-hosted */}
                         <img
-                          src={project.imageUrls[0]}
+                          src={imageAt(project.imageUrls[0], 800)}
                           alt={`${project.title}, cover photo`}
                           loading="lazy"
+                          decoding="async"
                           className="aspect-4/3 w-full object-cover transition duration-500 group-hover:scale-105"
                         />
                       </a>
@@ -337,9 +340,10 @@ export function ProfessionalDetail({ role }: { role: UserRole }) {
                           <a key={url} href={url} target="_blank" rel="noopener noreferrer">
                             {/* eslint-disable-next-line @next/next/no-img-element -- Cloudinary-hosted */}
                             <img
-                              src={url}
+                              src={imageAt(url, 160)}
                               alt={`${project.title}, photo`}
                               loading="lazy"
+                              decoding="async"
                               className="h-10 w-14 rounded-md object-cover transition hover:opacity-80"
                             />
                           </a>
@@ -375,7 +379,7 @@ export function ProfessionalDetail({ role }: { role: UserRole }) {
                   href={professional.website}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="mt-2 inline-block truncate text-sm text-amber-600 underline underline-offset-2 dark:text-amber-400"
+                  className="mt-2 inline-block truncate text-sm text-amber-700 underline underline-offset-2 dark:text-amber-400"
                 >
                   {professional.website}
                 </a>

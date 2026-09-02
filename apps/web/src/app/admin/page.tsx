@@ -153,7 +153,7 @@ export default function AdminOverviewPage() {
               action={
                 <Link
                   href="/admin/users"
-                  className="text-xs font-bold text-amber-600 hover:underline dark:text-amber-400"
+                  className="text-xs font-bold text-amber-700 hover:underline dark:text-amber-400"
                 >
                   Manage →
                 </Link>
@@ -179,7 +179,7 @@ export default function AdminOverviewPage() {
                 action={
                   <Link
                     href="/admin/market"
-                    className="text-xs font-bold text-amber-600 hover:underline dark:text-amber-400"
+                    className="text-xs font-bold text-amber-700 hover:underline dark:text-amber-400"
                   >
                     Open marketplace →
                   </Link>

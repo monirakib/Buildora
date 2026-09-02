@@ -100,7 +100,7 @@ export default function TenderDetailPage() {
       <main className="mx-auto max-w-4xl px-4 pt-28 pb-20 sm:px-6">
         <Link
           href="/tenders"
-          className="text-sm font-semibold text-stone-600 hover:text-amber-600 dark:text-slate-400"
+          className="text-sm font-semibold text-stone-600 hover:text-amber-700 dark:text-slate-400"
         >
           ← All tenders
         </Link>

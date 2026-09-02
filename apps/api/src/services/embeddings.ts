@@ -44,6 +44,25 @@ export const EMBEDDING_DIMS = 384;
  */
 let extractorPromise: Promise<FeatureExtractor> | null = null;
 
+/**
+ * Whether the model is in memory, for /api/health.
+ *
+ * Worth reporting because of what it costs: the model peaks around 274 MB of a
+ * 512 MB free instance. When a deploy starts behaving oddly, "the embedding
+ * model is loaded" is the first thing worth knowing, and there is otherwise no
+ * way to see it from outside the process.
+ *
+ * Tracked separately from `extractorPromise` because a pending promise and a
+ * settled one are the same value: this tells "loading" from "loaded".
+ */
+let extractorState: EmbeddingModelState = "unloaded";
+
+export type EmbeddingModelState = "unloaded" | "loading" | "loaded" | "failed";
+
+export function embeddingModelState(): EmbeddingModelState {
+  return extractorState;
+}
+
 /** The shape we actually use, kept narrow so the import stays lazy. */
 type FeatureExtractor = (
   texts: string[],
@@ -52,6 +71,7 @@ type FeatureExtractor = (
 
 async function getExtractor(): Promise<FeatureExtractor> {
   if (!extractorPromise) {
+    extractorState = "loading";
     extractorPromise = (async () => {
       // Imported here rather than at the top of the file so that merely
       // importing this module — which the models index does, transitively —
@@ -69,6 +89,7 @@ async function getExtractor(): Promise<FeatureExtractor> {
       // similarity ranking that is indistinguishable for our purposes. We are
       // ordering a dozen candidate prices, not doing semantic search at scale.
       const extractor = await pipeline("feature-extraction", EMBEDDING_MODEL, { dtype: "q8" });
+      extractorState = "loaded";
       return extractor as unknown as FeatureExtractor;
     })();
 
@@ -76,6 +97,7 @@ async function getExtractor(): Promise<FeatureExtractor> {
     // failure poisons the process until it restarts.
     extractorPromise.catch(() => {
       extractorPromise = null;
+      extractorState = "failed";
     });
   }
   return extractorPromise;

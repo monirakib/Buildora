@@ -2,7 +2,7 @@
   "name": "buildora",
   "version": "0.1.0",
   "private": true,
-  "description": "Buildora — Bangladesh construction super-platform (monorepo)",
+  "description": "Buildora \u2014 Bangladesh construction super-platform (monorepo)",
   "packageManager": "pnpm@9.12.0",
   "engines": {
     "node": ">=20"
@@ -11,7 +11,8 @@
     "dev": "turbo run dev",
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "test": "turbo run test"
   },
   "devDependencies": {
     "prettier": "^3.9.4",

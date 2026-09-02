@@ -1,0 +1,123 @@
+# Render blueprint for the Buildora API.
+#
+# Only the API lives here. The Next.js app is deployed separately on Vercel —
+# see apps/web/vercel.json and the deployment section of the README — because
+# splitting them lets each side use the platform that hosts it best, and keeps
+# the WebSocket-bearing Express server off a serverless runtime that would drop
+# the Socket.IO connection between requests.
+#
+# To use: Render dashboard → New → Blueprint → point it at this repo. Every
+# secret below is marked `sync: false`, so Render prompts for it rather than
+# reading a value out of version control.
+
+services:
+  - type: web
+    name: buildora-api
+    runtime: node
+    plan: free
+    # Closest region to Bangladesh that Render offers.
+    region: singapore
+
+    # pnpm workspaces: install from the repo root so the lockfile and the
+    # `@buildora/shared` link resolve, then build only the API. tsup bundles
+    # the shared package in (it ships raw TS), so nothing else needs building.
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter @buildora/api build
+    startCommand: pnpm --filter @buildora/api start
+
+    # Render restarts the service if this stops answering. It is also the URL
+    # the weekly price-refresh workflow pings to wake a spun-down instance —
+    # see .github/workflows/price-refresh.yml.
+    healthCheckPath: /api/health
+
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: NODE_ENV
+        value: production
+
+      # --- Required. The API refuses to start in production without these. ---
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      # Ed25519 keyring that signs access tokens.
+      - key: JWT_KEYRING
+        sync: false
+      # AES-256-GCM keyring encrypting stored NID numbers and bank details.
+      # ** Back this up. Lose it and the encrypted data is unrecoverable. **
+      - key: DATA_KEYRING
+        sync: false
+      - key: DATA_KEY_ACTIVE
+        sync: false
+
+      # --- Where the two halves of the app find each other. ---
+      # CORS_ORIGIN must be the Vercel origin exactly; WEB_BASE_URL is what
+      # every link in every email is built from, so a stale value breaks them
+      # silently rather than loudly.
+      - key: CORS_ORIGIN
+        sync: false
+      - key: WEB_BASE_URL
+        sync: false
+      - key: API_BASE_URL
+        sync: false
+      # Set when the API and the web app share a registrable domain, so the
+      # refresh cookie spans both — e.g. .buildora.software
+      - key: SESSION_COOKIE_DOMAIN
+        sync: false
+
+      # --- Optional integrations. Each feature says so when its key is absent
+      #     rather than failing, so none of these blocks a first deploy. ---
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: ORS_API_KEY
+        sync: false
+      - key: SSLCZ_STORE_ID
+        sync: false
+      - key: SSLCZ_STORE_PASSWORD
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM_ADDRESS
+        sync: false
+      - key: EMAIL_FROM_NAME
+        sync: false
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: VAPID_SUBJECT
+        sync: false
+      # Nominatim returns 403 for a placeholder contact — use a real address.
+      - key: NOMINATIM_CONTACT
+        sync: false
+      # Shared secret for the weekly price-refresh workflow. Must match the
+      # PRICE_REFRESH_SECRET repository secret in GitHub Actions.
+      - key: PRICE_REFRESH_SECRET
+        sync: false
+      # The in-process weekly cron never fires on a free instance (it spins
+      # down), so leave it off and let the Actions schedule do the job.
+      - key: PRICE_REFRESH_CRON
+        value: "false"
+      # WebRTC needs a relay to survive a mobile carrier's symmetric NAT.
+      # STUN alone works only between permissive networks.
+      - key: TURN_URL
+        sync: false
+      - key: TURN_USERNAME
+        sync: false
+      - key: TURN_CREDENTIAL
+        sync: false
+      # Where transformers.js caches the embedding model. The free instance's
+      # disk is ephemeral, so this is re-downloaded after every cold start —
+      # naming a writable path just keeps that predictable. The model peaks
+      # around 274 MB of the 512 MB instance, which is why it is loaded lazily
+      # and never on a request path.
+      - key: HF_CACHE_DIR
+        value: /tmp/hf-cache

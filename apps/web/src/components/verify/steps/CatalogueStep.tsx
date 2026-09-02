@@ -69,7 +69,7 @@ export function CatalogueStep({ form, patch, onError }: StepProps) {
       <div className="flex flex-col gap-6">
         <div>
           <p className="mb-3 text-sm font-semibold text-stone-900 dark:text-slate-100">
-            Material categories <span className="text-amber-600 dark:text-[#F5B400]">*</span>
+            Material categories <span className="text-amber-700 dark:text-[#F5B400]">*</span>
           </p>
           <ChipGroup
             options={CATEGORY_OPTIONS}

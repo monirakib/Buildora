@@ -179,7 +179,7 @@ export function HandoverSection({
                       href={handover.occupancyCertificateUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="ml-2 text-amber-600 underline underline-offset-2 dark:text-amber-400"
+                      className="ml-2 text-amber-700 underline underline-offset-2 dark:text-amber-400"
                     >
                       View
                     </a>
@@ -228,7 +228,7 @@ export function HandoverSection({
                             href={w.documentUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-xs font-bold text-amber-600 underline underline-offset-2 dark:text-amber-400"
+                            className="text-xs font-bold text-amber-700 underline underline-offset-2 dark:text-amber-400"
                           >
                             Document
                           </a>

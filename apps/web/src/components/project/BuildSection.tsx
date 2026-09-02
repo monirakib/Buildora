@@ -22,6 +22,7 @@ import {
   listInspectionTemplates,
   releaseMilestone,
 } from "@/lib/apiBuild";
+import { imageAt } from "@/lib/imageUrl";
 
 const inputClass =
   "block w-full rounded-xl border border-stone-300/80 bg-white/70 px-4 py-2.5 text-sm text-stone-900 placeholder-stone-400 backdrop-blur transition outline-none focus:border-amber-500 focus:bg-white/90 focus:ring-2 focus:ring-amber-400/30 dark:border-white/15 dark:bg-white/5 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:bg-white/10";
@@ -254,8 +255,10 @@ export function BuildSection({
                               <a key={url} href={url} target="_blank" rel="noreferrer">
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img
-                                  src={url}
+                                  src={imageAt(url, 128)}
                                   alt="Inspection photo"
+                                  loading="lazy"
+                                  decoding="async"
                                   className="h-16 w-16 rounded-lg object-cover"
                                 />
                               </a>

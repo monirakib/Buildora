@@ -45,7 +45,7 @@ function ArrowButton({ dir, onClick }: { dir: "prev" | "next"; onClick: () => vo
       type="button"
       onClick={onClick}
       aria-label={dir === "prev" ? "Previous projects" : "More projects"}
-      className="grid h-11 w-11 place-items-center rounded-full border border-stone-300 text-stone-700 transition hover:border-amber-500 hover:text-amber-600 dark:border-white/20 dark:text-slate-200 dark:hover:border-amber-400 dark:hover:text-amber-300"
+      className="grid h-11 w-11 place-items-center rounded-full border border-stone-300 text-stone-700 transition hover:border-amber-500 hover:text-amber-700 dark:border-white/20 dark:text-slate-200 dark:hover:border-amber-400 dark:hover:text-amber-300"
     >
       <svg
         viewBox="0 0 24 24"
@@ -96,7 +96,7 @@ export function Showcase() {
         <Reveal>
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
-              <p className="text-sm font-bold tracking-[0.2em] text-amber-600 uppercase dark:text-amber-400">
+              <p className="text-sm font-bold tracking-[0.2em] text-amber-800 uppercase dark:text-amber-400">
                 The possibilities
               </p>
               <h2 className="mt-3 text-3xl font-extrabold tracking-tight sm:text-5xl">

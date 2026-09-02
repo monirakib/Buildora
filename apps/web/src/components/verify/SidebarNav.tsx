@@ -104,7 +104,7 @@ export function SidebarNav({
                 section.complete
                   ? "bg-[#F5B400] text-slate-950 shadow-[0_0_14px_rgba(245,180,0,0.5)]"
                   : isCurrent
-                    ? "border border-[#F5B400]/60 text-amber-600 dark:text-[#F5B400]"
+                    ? "border border-[#F5B400]/60 text-amber-700 dark:text-[#F5B400]"
                     : "border border-stone-400/50 dark:border-white/15 text-stone-500 dark:text-slate-500"
               }`}
             >

@@ -162,7 +162,7 @@ export default function AdminBroadcastsPage() {
                       }`}
                     >
                       <Icon
-                        className={`mt-0.5 h-4 w-4 shrink-0 ${active ? "text-amber-600 dark:text-amber-400" : "text-stone-400"}`}
+                        className={`mt-0.5 h-4 w-4 shrink-0 ${active ? "text-amber-700 dark:text-amber-400" : "text-stone-400"}`}
                       />
                       <span className="min-w-0">
                         <span className="block text-sm font-bold text-stone-900 dark:text-white">

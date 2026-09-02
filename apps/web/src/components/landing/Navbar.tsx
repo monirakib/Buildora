@@ -10,6 +10,7 @@ import { useSession } from "@/store/useSession";
 import { useNotifications } from "@/store/useNotifications";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { ThemeToggle } from "./ThemeToggle";
+import { avatarAt } from "@/lib/imageUrl";
 
 /**
  * On the landing page, intercepts the click and swoops to the section.
@@ -228,7 +229,13 @@ function Avatar({ user, className }: { user: SessionUser; className: string }) {
   const url = user.profile?.avatarUrl;
   return url ? (
     // eslint-disable-next-line @next/next/no-img-element -- tiny avatar, remote host unknown
-    <img src={url} alt="" className={`${className} rounded-full object-cover`} />
+    <img
+      src={avatarAt(url, 96)}
+      alt=""
+      loading="lazy"
+      decoding="async"
+      className={`${className} rounded-full object-cover`}
+    />
   ) : (
     <span
       className={`${className} grid place-items-center rounded-full bg-amber-400 text-[0.65em] font-extrabold tracking-wide text-stone-950`}
