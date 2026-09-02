@@ -25,12 +25,22 @@ export async function getProjectBuild(token: string, projectId: string): Promise
   return res.data;
 }
 
+/**
+ * Every build the caller has a stake in, across all their projects — the
+ * contracts and, flattened together, all their milestones. Group the
+ * milestones by `buildContractId` to put a schedule back with its contract.
+ */
+export interface MyBuildWork {
+  contracts: BuildContract[];
+  milestones: Milestone[];
+}
+
 /** GET /api/build/mine — every build contract the caller is a party to. */
-export async function listMyBuildContracts(token: string): Promise<BuildContract[]> {
-  const res = await request<{ data: { contracts: BuildContract[] } }>("/api/build/mine", {
+export async function listMyBuildWork(token: string): Promise<MyBuildWork> {
+  const res = await request<{ data: MyBuildWork }>("/api/build/mine", {
     headers: authed(token),
   });
-  return res.data.contracts;
+  return res.data;
 }
 
 /** GET /api/build/inspection-templates — the checklists an engineer can use. */

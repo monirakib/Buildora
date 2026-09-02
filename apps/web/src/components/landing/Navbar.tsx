@@ -563,6 +563,10 @@ function SideMenu({
         ...(isProfessional ? [{ href: "/briefs", label: "Open briefs" }] : []),
         // Only contractors bid — a supplier sells materials, they don't build.
         ...(role === UserRole.CONTRACTOR ? [{ href: "/tenders", label: "Tenders to bid on" }] : []),
+        // The engineer's cross-project queue: what's waiting on their signature.
+        ...(role === UserRole.STRUCTURAL_ENGINEER
+          ? [{ href: "/engineer", label: "Inspections & drawings" }]
+          : []),
         ...(isLandOwner ? [{ href: "/architects", label: "Find an architect" }] : []),
         ...(isLandOwner ? [{ href: "/engineers", label: "Find an engineer" }] : []),
         ...(isLandOwner ? [{ href: "/contractors", label: "Find a contractor" }] : []),

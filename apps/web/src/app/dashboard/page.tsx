@@ -160,6 +160,35 @@ export default function DashboardPage() {
               </Link>
             )}
 
+            {user.role === UserRole.STRUCTURAL_ENGINEER && (
+              <Link href="/engineer" className={cardClass}>
+                <span className="grid h-11 w-11 place-items-center rounded-2xl bg-amber-400 text-stone-950">
+                  {/* Clipboard with a tick — a signed inspection */}
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="h-5.5 w-5.5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+                    <rect x="8" y="2" width="8" height="4" rx="1" />
+                    <path d="m9 14 2 2 4-4" />
+                  </svg>
+                </span>
+                <h2 className="mt-4 text-lg font-bold">Inspections &amp; drawings</h2>
+                <p className="mt-1 text-sm text-stone-600 dark:text-slate-400">
+                  Every stage waiting on your signature and every drawing set you owe, across all
+                  your projects at once.
+                </p>
+                <span className="mt-4 inline-block text-sm font-bold text-amber-700 dark:text-amber-400">
+                  Open console →
+                </span>
+              </Link>
+            )}
+
             {isLandOwner && (
               <Link href="/architects" className={cardClass}>
                 <span className="grid h-11 w-11 place-items-center rounded-2xl bg-amber-400 text-stone-950">

@@ -212,7 +212,16 @@ export async function getProjectBuild(req: Request, res: Response) {
   });
 }
 
-/** GET /api/build/mine — every build contract the caller is a party to. */
+/**
+ * GET /api/build/mine — every build contract the caller is a party to, each
+ * with its milestone schedule.
+ *
+ * The schedules come along because the only question anyone opens this list to
+ * answer is "what needs me next", and for an engineer that lives entirely in
+ * the milestone statuses — which stages sit in AWAITING_INSPECTION waiting on
+ * their signature. Returning contracts alone would force the caller to fetch
+ * every project's build panel one at a time just to find that out.
+ */
 export async function listMyBuildContracts(req: Request, res: Response) {
   const me = req.auth!.sub;
   const contracts = await BuildContract.find({
@@ -222,12 +231,22 @@ export async function listMyBuildContracts(req: Request, res: Response) {
     .populate(withParties)
     .populate({ path: "project", select: "title" });
 
+  // One query for every schedule rather than one per contract. A contract
+  // carries about seven stages, so even a busy engineer's list stays small.
+  // `milestone.buildContractId` is what the caller groups them back by.
+  const milestones = await Milestone.find({
+    buildContract: { $in: contracts.map((c) => c._id) },
+  })
+    .sort({ buildContract: 1, order: 1 })
+    .populate({ path: "inspections.inspector", select: "name username company" });
+
   return res.json({
     data: {
       contracts: contracts.map((c) => {
         const project = c.project as unknown as { title?: string };
         return toContractDto(c, project?.title ?? "");
       }),
+      milestones: milestones.map(toMilestoneDto),
     },
   });
 }
