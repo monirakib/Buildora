@@ -16,8 +16,8 @@ import { gsap, prefersReducedMotion, useGSAP } from "@/lib/gsap";
  *   <button ref={ref}>…</button>
  */
 export function useHoverScale<T extends HTMLElement>({
-  hover = 1.04,
-  tap = 0.96,
+  hover = 1.02,
+  tap = 0.97,
   enabled = true,
 }: { hover?: number; tap?: number; enabled?: boolean } = {}) {
   const ref = useRef<T>(null);
@@ -34,8 +34,14 @@ export function useHoverScale<T extends HTMLElement>({
         return;
       }
 
+      // 250ms is a dropdown's budget, not a button's. Press feedback exists to
+      // confirm the interface heard you, so it has to land while your finger is
+      // still down — 140ms does, 250ms arrives after you have let go. The hover
+      // grow came down from 1.04 to 1.02 for the same reason the duration did:
+      // this fires dozens of times a session, and at that frequency the right
+      // amount of motion is the least you can still feel.
       const to = (scale: number) =>
-        gsap.to(el, { scale, duration: 0.25, ease: "power3.out", overwrite: "auto" });
+        gsap.to(el, { scale, duration: 0.14, ease: "power3.out", overwrite: "auto" });
 
       const onEnter = () => to(hover);
       const onLeave = () => to(1);

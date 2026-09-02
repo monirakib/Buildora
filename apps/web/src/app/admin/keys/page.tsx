@@ -15,9 +15,9 @@ import {
   type KeyRotationRun,
   type RotationScope,
 } from "@/lib/apiKeys";
+import { surfaceClass } from "@/components/ui/surface";
 
-const cardClass =
-  "rounded-2xl border border-black/10 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-white/5";
+const cardClass = `${surfaceClass} p-5`;
 
 const SCOPES: { value: RotationScope; label: string; covers: string }[] = [
   {

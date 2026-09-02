@@ -3,9 +3,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { Copy, Link2, RefreshCw } from "lucide-react";
 import { disableProjectShare, enableProjectShare, getProjectShare } from "@/lib/apiEstimator";
+import { surfaceClass } from "@/components/ui/surface";
 
-const cardClass =
-  "rounded-2xl border border-white/50 bg-white/55 p-5 shadow-xl shadow-black/5 backdrop-blur-xl sm:p-6 dark:border-white/10 dark:bg-white/5";
+const cardClass = `${surfaceClass} p-5 sm:p-6`;
 
 /**
  * The public progress link.

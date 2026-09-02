@@ -100,7 +100,7 @@ export function SidebarNav({
             }`}
           >
             <span
-              className={`relative grid h-6 w-6 shrink-0 place-items-center rounded-full text-[11px] font-bold transition-all duration-300 ${
+              className={`relative grid h-6 w-6 shrink-0 place-items-center rounded-full text-[11px] font-bold transition-[color,background-color,border-color] duration-200 ease-out ${
                 section.complete
                   ? "bg-[#F5B400] text-slate-950 shadow-[0_0_14px_rgba(245,180,0,0.5)]"
                   : isCurrent

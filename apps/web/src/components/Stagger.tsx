@@ -17,8 +17,8 @@ import { ENTER_START, gsap, prefersReducedMotion, useGSAP } from "@/lib/gsap";
 export function Stagger({
   children,
   className = "",
-  stagger = 0.07,
-  distance = 20,
+  stagger = 0.05,
+  distance = 12,
   /** Wait for the group to scroll into view instead of playing immediately. */
   onScroll = false,
   dependencies = [],
@@ -55,7 +55,12 @@ export function Stagger({
         {
           opacity: 1,
           y: 0,
-          duration: 0.7,
+          // 700ms was a marketing duration on a working list. With a stagger on
+          // top, the last card in a six-card grid finished nearly a second
+          // after the data arrived — the user is already reaching for a row
+          // that is still moving. 400ms with a 50ms step lands the whole grid
+          // inside 650ms and still reads as a cascade rather than a flash.
+          duration: 0.4,
           ease: "power3.out",
           stagger,
           clearProps: "transform",

@@ -70,7 +70,7 @@ export function ProjectTabs({
                   }`}
                 >
                   <span
-                    className="block h-full rounded-full bg-amber-400 transition-all duration-500"
+                    className="block h-full rounded-full bg-amber-400 transition-[width] duration-500 ease-out"
                     style={{ width: `${Math.round(tab.fraction * 100)}%` }}
                   />
                 </span>

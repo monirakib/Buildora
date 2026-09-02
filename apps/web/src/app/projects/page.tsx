@@ -14,9 +14,9 @@ import {
   projectStatusLabels,
   projectStatusStyles,
 } from "@/components/app/projectStatus";
+import { surfaceClass, surfaceHoverClass } from "@/components/ui/surface";
 
-const cardClass =
-  "block rounded-2xl border border-white/50 bg-white/55 p-5 shadow-xl shadow-black/5 backdrop-blur-xl transition hover:-translate-y-0.5 hover:border-amber-400/60 sm:p-6 dark:border-white/10 dark:bg-white/5";
+const cardClass = `block ${surfaceClass} ${surfaceHoverClass} p-5 sm:p-6`;
 
 export default function ProjectsPage() {
   const router = useRouter();

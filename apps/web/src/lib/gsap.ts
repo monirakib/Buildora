@@ -28,11 +28,38 @@ if (typeof window !== "undefined") {
   ScrollTrigger.config({ ignoreMobileResize: true });
 }
 
-/** True when the visitor has asked their OS to keep animation to a minimum. */
+/**
+ * Whether to hold motion back — a product decision, not a direct reading of
+ * the OS flag.
+ *
+ * The honest version of this function returns
+ * `matchMedia("(prefers-reduced-motion: reduce)").matches`, and that is what
+ * it used to do. The problem is what actually sets that flag on Windows.
+ * Settings > Accessibility > Visual effects > "Animation effects" is a switch
+ * about *window chrome* — minimise and maximise animations, the fade on menus
+ * — and a lot of people turn it off for a snappier desktop with no thought of
+ * the web at all. Browsers report it as `prefers-reduced-motion: reduce`
+ * regardless, because the platform gives them no way to tell the two apart.
+ *
+ * Thirteen components read this. With it wired straight to the media query,
+ * every one of them silently no-ops on any such machine: no page fade, no
+ * stagger on a list, no press response on a button, no reveal on scroll. The
+ * site does not look calmer, it looks broken — as if the CSS failed to load.
+ *
+ * So the answer is `false`, deliberately, and the cost is stated plainly: a
+ * visitor with genuine vestibular sensitivity gets the full motion. What keeps
+ * that defensible is the motion itself. Nothing here parallaxes, spins,
+ * zooms, or moves more than about 20px; the longest UI transition is a quarter
+ * of a second. The category of animation that triggers motion sickness — large
+ * travel, sustained movement, scroll-hijacked scenes — is not what this app
+ * does. If that ever changes, this is the function to change back, and the
+ * scroll-driven landing scenes are the first thing that should start
+ * respecting it again.
+ *
+ * `lib/smoothScroll.ts` already made the same call for the same reason.
+ */
 export function prefersReducedMotion(): boolean {
-  return (
-    typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches
-  );
+  return false;
 }
 
 /**

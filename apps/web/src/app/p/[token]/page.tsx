@@ -93,7 +93,7 @@ export default function PublicProgressPage() {
             </div>
             <div className="mt-3 h-3 overflow-hidden rounded-full bg-black/10 dark:bg-white/10">
               <div
-                className="h-full rounded-full bg-amber-400 transition-all duration-700"
+                className="h-full rounded-full bg-amber-400 transition-[width] duration-500 ease-out"
                 style={{ width: `${progress.constructionPercent}%` }}
               />
             </div>

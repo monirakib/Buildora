@@ -129,7 +129,7 @@ export function Showcase() {
                 src={card.src}
                 alt={`${card.tag}, ${card.line}`}
                 loading="lazy"
-                className="h-full w-full object-cover transition duration-700 group-hover:scale-105"
+                className="h-full w-full object-cover transition-[scale] duration-300 ease-out group-hover:scale-105"
               />
               {/* Scrim so the caption reads on any photo */}
               <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/10 to-transparent" />

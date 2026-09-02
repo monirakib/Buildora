@@ -21,6 +21,7 @@ import {
 } from "@/lib/apiAdmin";
 import { useSession } from "@/store/useSession";
 import { bdtFull, statusLabel, timeAgo } from "@/components/admin/format";
+import { surfaceClass } from "@/components/ui/surface";
 
 /**
  * The weekly price sheet.
@@ -37,8 +38,7 @@ import { bdtFull, statusLabel, timeAgo } from "@/components/admin/format";
  * refresh and reading the run log — is unrelated to it and short.
  */
 
-const cardClass =
-  "rounded-2xl border border-black/10 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-white/5";
+const cardClass = `${surfaceClass} p-5`;
 const inputClass =
   "w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm outline-none focus:border-amber-400 dark:border-white/10 dark:bg-white/5 dark:text-white";
 const theadClass =

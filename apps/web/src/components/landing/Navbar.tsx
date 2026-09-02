@@ -144,8 +144,17 @@ function MegaMenuItem({ group }: { group: (typeof megaMenu)[number] }) {
         </svg>
       </button>
 
-      {/* pt-3 bridges the hover gap between the bar and the panel */}
-      <div className="invisible absolute left-1/2 top-full -translate-x-1/2 translate-y-2 pt-3 opacity-0 transition duration-200 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:opacity-100">
+      {/* pt-3 bridges the hover gap between the bar and the panel.
+
+          `origin-top` is the point of this: a panel that grows from its top
+          edge looks like it came out of the button above it, while the default
+          centre origin makes it expand in both directions from thin air. The
+          scale is only 0.98 — at this size anything more reads as a zoom
+          rather than an opening.
+
+          The properties are named rather than left as a bare `transition`,
+          which would also watch the backdrop-filter on the glass panel inside. */}
+      <div className="invisible absolute left-1/2 top-full origin-top -translate-x-1/2 translate-y-2 scale-[0.98] pt-3 opacity-0 transition-[translate,scale,opacity,visibility] duration-200 ease-out group-hover:visible group-hover:translate-y-0 group-hover:scale-100 group-hover:opacity-100 group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:scale-100 group-focus-within:opacity-100">
         <div className="grid w-136 grid-cols-[1fr_13rem] gap-5 rounded-2xl border border-white/10 bg-stone-950/90 p-5 shadow-2xl shadow-black/40 backdrop-blur-xl">
           {/* Link column */}
           <div className="flex flex-col gap-1">
@@ -276,8 +285,10 @@ function UserChip({ user, onLogout }: { user: SessionUser; onLogout: () => void 
         </svg>
       </button>
 
-      {/* pt-3 bridges the hover gap between the bar and the panel */}
-      <div className="invisible absolute right-0 top-full translate-y-2 pt-3 opacity-0 transition duration-200 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:opacity-100">
+      {/* pt-3 bridges the hover gap between the bar and the panel.
+          `origin-top-right` because that corner is where the avatar is — the
+          menu should unfold from the thing that opened it. */}
+      <div className="invisible absolute right-0 top-full origin-top-right translate-y-2 scale-[0.97] pt-3 opacity-0 transition-[translate,scale,opacity,visibility] duration-200 ease-out group-hover:visible group-hover:translate-y-0 group-hover:scale-100 group-hover:opacity-100 group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:scale-100 group-focus-within:opacity-100">
         <div className="w-64 overflow-hidden rounded-2xl border border-white/10 bg-stone-950/90 shadow-2xl shadow-black/40 backdrop-blur-xl">
           {/* Identity header */}
           <div className="flex items-center gap-3 border-b border-white/10 p-4">
@@ -667,7 +678,7 @@ function SideMenu({
         role="dialog"
         aria-modal="true"
         aria-label="Menu"
-        className={`fixed inset-y-0 left-0 z-50 flex w-72 max-w-[80vw] flex-col overflow-hidden border-r border-white/40 bg-white/30 p-5 shadow-2xl shadow-black/20 backdrop-blur-2xl backdrop-saturate-150 transition-transform duration-300 before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-40 before:bg-linear-to-b before:from-white/40 before:to-transparent before:content-[''] dark:border-white/15 dark:bg-white/10 dark:shadow-black/40 dark:before:from-white/15 ${
+        className={`fixed inset-y-0 left-0 z-50 flex w-72 max-w-[80vw] flex-col overflow-hidden border-r border-white/40 bg-white/30 p-5 shadow-2xl shadow-black/20 backdrop-blur-2xl backdrop-saturate-150 transition-transform duration-500 ease-drawer before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-40 before:bg-linear-to-b before:from-white/40 before:to-transparent before:content-[''] dark:border-white/15 dark:bg-white/10 dark:shadow-black/40 dark:before:from-white/15 ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -743,7 +754,7 @@ function SideMenu({
                     long section or coast through empty space on a short one. */}
                 <div
                   id={panelId}
-                  className={`grid transition-all duration-300 ease-out ${
+                  className={`grid transition-[grid-template-rows,opacity] duration-200 ease-out ${
                     isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
                   }`}
                 >

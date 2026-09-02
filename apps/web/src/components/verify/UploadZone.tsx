@@ -107,7 +107,7 @@ export function UploadZone({
             setDragging(false);
             handleFile(e.dataTransfer.files?.[0]);
           }}
-          className={`group flex w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed transition-all duration-300 disabled:opacity-50 ${
+          className={`group flex w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed transition-[color,background-color,border-color] duration-200 ease-out disabled:opacity-50 ${
             compact ? "h-24" : "h-36"
           } ${
             dragging
@@ -119,7 +119,7 @@ export function UploadZone({
             <Loader2 className="h-6 w-6 animate-spin text-amber-700 dark:text-[#F5B400]" />
           ) : (
             <ImagePlus
-              className={`h-6 w-6 transition-all duration-300 group-hover:-translate-y-0.5 group-hover:text-amber-700 dark:group-hover:text-[#F5B400] ${
+              className={`h-6 w-6 transition-[color,translate] duration-200 ease-out group-hover:-translate-y-0.5 group-hover:text-amber-700 dark:group-hover:text-[#F5B400] ${
                 dragging
                   ? "-translate-y-0.5 text-amber-700 dark:text-[#F5B400]"
                   : "text-stone-600 dark:text-slate-400"

@@ -8,9 +8,9 @@ import { useSession } from "@/store/useSession";
 import { Navbar } from "@/components/landing/Navbar";
 import { VerifyBanner } from "@/components/app/VerifyGate";
 import { Stagger } from "@/components/Stagger";
+import { surfaceClass, surfaceHoverClass } from "@/components/ui/surface";
 
-const cardClass =
-  "group relative overflow-hidden rounded-2xl border border-white/50 bg-white/55 p-6 shadow-xl shadow-black/5 backdrop-blur-xl transition hover:-translate-y-0.5 hover:border-amber-400/60 dark:border-white/10 dark:bg-white/5";
+const cardClass = `group relative overflow-hidden ${surfaceClass} ${surfaceHoverClass} p-6`;
 
 export default function DashboardPage() {
   const router = useRouter();

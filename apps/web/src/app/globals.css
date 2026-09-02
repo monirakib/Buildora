@@ -6,6 +6,29 @@
 @theme {
   --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
 
+  /**
+   * Motion curves — the house easings, overriding Tailwind's built-ins.
+   *
+   * Tailwind's stock `ease-out` is `cubic-bezier(0, 0, 0.2, 1)`, which is a
+   * weak curve: it decelerates gently and reads as mush at the short durations
+   * UI actually uses. These are the stronger variants — they move hard at the
+   * start, which is the moment the user is watching, and settle late.
+   *
+   * Redefining the token names Tailwind already ships means every existing
+   * `ease-out` / `ease-in-out` in the app picks the new curve up with no
+   * edits. `--default-transition-timing-function` does the same for a bare
+   * `transition` utility that never names a curve.
+   */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  /* iOS-like drawer curve (from Ionic) — for sheets and side panels only. */
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+
+  --default-transition-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
+  /* 150ms is Tailwind's default and is right for hover/colour. Anything with
+     travel names its own duration; the budget is under 300ms for UI. */
+  --default-transition-duration: 150ms;
+
   --animate-fade-up: fade-up 0.9s ease-out both;
   --animate-fade-down: fade-down 0.7s ease-out both;
 
@@ -131,3 +154,249 @@
    every in-page jump (see lib/smoothScroll.ts), and the native smooth
    behaviour fights it — the browser and GSAP end up animating the same
    scroll position at once, which reads as stutter. */
+
+/* ==========================================================================
+   Interaction polish
+   ==========================================================================
+
+   The split between layered and unlayered here is deliberate. Anything that
+   sets a *default* goes in `@layer base`, so a component that already made a
+   considered choice still wins — Tailwind's utilities sit in
+   `@layer utilities`, which outranks base. Anything that is a *floor* the app
+   should never fall through — the pressed state, the focus ring — is left
+   unlayered, because unlayered CSS outranks every layer and so applies whether
+   or not the page that wrote the button remembered to ask for it.
+
+   That is what makes this worth doing once instead of 42 times.
+   ========================================================================== */
+
+/**
+ * Press feedback on every pressable thing.
+ *
+ * Before this, three elements in the entire app reacted to being pressed. A
+ * button that doesn't move under the finger reads as a picture of a button —
+ * the interface gives no sign it heard you until the network comes back.
+ *
+ * `scale` is the standalone transform property, not `transform: scale()`, and
+ * that choice is what makes this safe to apply globally: Tailwind writes
+ * `hover:-translate-y-0.5` and friends into `transform`, so a blanket
+ * `transform` here would wipe them out mid-hover. `scale` composes with
+ * `transform` instead of replacing it.
+ *
+ * 0.97 is the whole range — enough to feel, not enough to notice. It scales
+ * the label and any icon along with the box, which is what sells it as one
+ * physical surface being pushed rather than a box that shrank.
+ *
+ * Opt out with `data-no-press` where the geometry can't take it (a canvas
+ * handle, a drag grip).
+ */
+@layer base {
+  button:not(:disabled):not([data-no-press]),
+  [role="button"]:not([aria-disabled="true"]):not([data-no-press]),
+  a[data-press] {
+    transition-property: scale, opacity, color, background-color, border-color, box-shadow;
+    transition-duration: 160ms;
+    transition-timing-function: var(--ease-out);
+  }
+}
+
+button:not(:disabled):not([data-no-press]):active,
+[role="button"]:not([aria-disabled="true"]):not([data-no-press]):active,
+a[data-press]:active {
+  scale: 0.97;
+}
+
+/**
+ * Keyboard focus, once, for the whole app.
+ *
+ * Inputs are excluded on purpose — the `input` class in `components/verify/ui.tsx`
+ * and `inputClass` in `components/account/ui.tsx` already give every field a
+ * considered amber focus ring, and a second ring on top of that reads as a
+ * mistake. This covers the elements nobody styled: links, buttons, tabs,
+ * summaries.
+ *
+ * `:focus-visible` rather than `:focus` so a mouse click never paints a ring;
+ * only keyboard and assistive navigation do.
+ *
+ * No `border-radius` here on purpose. An outline already follows whatever
+ * radius the element has, and setting one in this rule would change the
+ * element's own corners for as long as it held focus — a `rounded-full` pill
+ * would square off the moment you tabbed to it.
+ */
+a:focus-visible,
+button:focus-visible,
+summary:focus-visible,
+[role="button"]:focus-visible,
+[role="tab"]:focus-visible {
+  outline: 2px solid rgba(245, 180, 0, 0.9);
+  outline-offset: 2px;
+}
+
+/**
+ * The grey box mobile Safari and Chrome paint over anything you tap.
+ *
+ * It fires on tap and fades on its own schedule, so it lands on top of our
+ * own press animation and fights it. Killing it is most of the difference
+ * between a page that feels like a website and one that feels like an app.
+ * The `:active` scale above is the replacement, and it is a better one.
+ */
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/**
+ * Headings break at meaning, body text avoids orphans.
+ *
+ * `balance` evens out the lines of a heading so the last one is never a single
+ * stranded word; it is capped at a few lines by the browser, which is why it
+ * goes on headings and not on paragraphs. `pretty` is the cheap version for
+ * long text — it only prevents the orphan.
+ */
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+/**
+ * Selection, in brand.
+ *
+ * The default is the OS blue, which is the one colour on the page that belongs
+ * to nobody. Amber at low alpha tints rather than covers, so the text stays
+ * the colour it was and stays readable in both themes.
+ */
+::selection {
+  background-color: rgba(245, 180, 0, 0.28);
+}
+
+/**
+ * Scrollbars.
+ *
+ * The default Windows scrollbar is a wide opaque grey trench that ignores the
+ * theme entirely — on the night canvas it is the brightest thing on screen.
+ * `scrollbar-width: thin` plus a colour pair gets Firefox and Chromium both,
+ * and the colours are tokens so the dark block below only has to restate two
+ * values.
+ */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(120, 113, 108, 0.35) transparent;
+}
+
+.dark * {
+  scrollbar-color: rgba(148, 163, 184, 0.3) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: rgba(120, 113, 108, 0.35);
+  border: 3px solid transparent;
+  background-clip: content-box;
+  border-radius: 999px;
+}
+
+.dark *::-webkit-scrollbar-thumb {
+  background-color: rgba(148, 163, 184, 0.3);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(120, 113, 108, 0.55);
+}
+
+.dark *::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(148, 163, 184, 0.5);
+}
+
+/**
+ * A disabled control should look unavailable before it is clicked, not after.
+ */
+:disabled {
+  cursor: not-allowed;
+}
+
+/**
+ * Toasts.
+ *
+ * Two things were wrong with the old version. It used a keyframe, and toasts
+ * are the textbook case against keyframes: they arrive in bursts, and a
+ * keyframe restarts from frame zero when it is interrupted instead of
+ * retargeting from wherever it currently is. And it animated *downward* —
+ * `fade-down` — into a stack pinned to the bottom of the screen, so the toast
+ * flew in from a direction it could not have come from.
+ *
+ * Now it rises from below the edge it lives on, and leaves the same way. That
+ * symmetry is not decoration: it is what will make a swipe-to-dismiss gesture
+ * feel obvious if one is ever added, because the exit already goes where the
+ * thumb would push it.
+ *
+ * `translate` is the standalone property rather than `transform`, so it
+ * composes with anything Tailwind writes into `transform` on the same element.
+ * `@starting-style` supplies the "before" state for an element that has only
+ * just been inserted — without it there is no first value to transition from
+ * and the toast would simply appear.
+ *
+ * `ease` rather than our punchy `--ease-out`, and 400ms rather than the
+ * 150-250ms UI budget, is Sonner's tuning: a toast is not a control the user
+ * is waiting on, it is a message arriving, and it reads as more composed when
+ * it takes its time. Leaving is quicker — by then it has been read.
+ */
+.toast-item {
+  opacity: 1;
+  translate: 0 0;
+  transition:
+    opacity 400ms ease,
+    translate 400ms ease;
+}
+
+@starting-style {
+  .toast-item {
+    opacity: 0;
+    translate: 0 100%;
+  }
+}
+
+.toast-item[data-leaving="true"] {
+  opacity: 0;
+  translate: 0 100%;
+  transition-duration: 200ms;
+}
+
+/**
+ * Popover entrance.
+ *
+ * A keyframe here rather than a transition, which is the opposite of the rule
+ * that governs toasts — and the difference is worth stating. Transitions win
+ * whenever an element can be re-triggered while it is still moving, because a
+ * transition retargets from wherever it currently is and a keyframe restarts
+ * from frame zero. A popover cannot get into that state: it is conditionally
+ * rendered, so it is either mounted or gone, and the animation runs exactly
+ * once on the frame it appears. There is nothing to interrupt.
+ *
+ * Pair it with an `origin-*` utility that matches where the trigger sits. The
+ * origin is the whole effect — the panel should look like it unfolded from
+ * the button, not like it faded up over it.
+ */
+@keyframes popover-in {
+  from {
+    opacity: 0;
+    scale: 0.96;
+    translate: 0 -4px;
+  }
+  to {
+    opacity: 1;
+    scale: 1;
+    translate: 0 0;
+  }
+}

@@ -9,9 +9,9 @@ import { formatBdt, formatDate } from "@/components/app/projectStatus";
 import { Navbar } from "@/components/landing/Navbar";
 import { listMyBids, listOpenTenders, type BoardTender, type MyBid } from "@/lib/apiTenders";
 import { useSession } from "@/store/useSession";
+import { surfaceClass } from "@/components/ui/surface";
 
-const cardClass =
-  "rounded-2xl border border-white/50 bg-white/55 p-5 shadow-xl shadow-black/5 backdrop-blur-xl sm:p-6 dark:border-white/10 dark:bg-white/5";
+const cardClass = `${surfaceClass} p-5 sm:p-6`;
 
 const bidStatusStyles: Record<BidStatus, string> = {
   [BidStatus.SUBMITTED]: "bg-sky-500/15 text-sky-700 dark:text-sky-300",

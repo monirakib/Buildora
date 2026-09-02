@@ -255,7 +255,7 @@ export function Meter({ percent, label }: { percent: number; label: string }) {
           />
         ))}
         <span
-          className="absolute inset-y-0 left-0 rounded-full bg-amber-400 transition-[width] duration-500"
+          className="absolute inset-y-0 left-0 rounded-full bg-amber-400 transition-[width] duration-500 ease-out"
           style={{ width: `${clamped}%` }}
         />
       </div>
@@ -341,6 +341,42 @@ export function Tabs<T extends string>({
  * Overlays
  * ------------------------------------------------------------------ */
 
+/**
+ * Keeps an element in the DOM long enough for it to animate out.
+ *
+ * The problem this solves: `if (!open) return null` is the obvious way to
+ * write a modal, and it makes an exit animation impossible — React removes the
+ * node on the same tick the flag flips, so there is nothing left on screen to
+ * animate. The overlay vanishes, which reads as a glitch rather than a close.
+ *
+ * So the flag is split in two. `render` says whether the node exists;
+ * `shown` says which visual state it is in. Opening sets `render` first and
+ * `shown` one frame later, because a transition needs to observe both ends —
+ * an element that is born already at its final value has nothing to travel
+ * from. Closing does it in reverse and waits `exitMs` before unmounting.
+ *
+ * The double `requestAnimationFrame` is not superstition: one frame gets the
+ * element inserted, the second guarantees the browser has taken a style
+ * snapshot of the closed state before we change it.
+ */
+function usePresence(open: boolean, exitMs: number) {
+  const [render, setRender] = useState(open);
+  const [shown, setShown] = useState(open);
+
+  useEffect(() => {
+    if (open) {
+      setRender(true);
+      const frame = requestAnimationFrame(() => requestAnimationFrame(() => setShown(true)));
+      return () => cancelAnimationFrame(frame);
+    }
+    setShown(false);
+    const timer = setTimeout(() => setRender(false), exitMs);
+    return () => clearTimeout(timer);
+  }, [open, exitMs]);
+
+  return { render, shown };
+}
+
 /*
  * There is no Popover here on purpose. The only things on this page that
  * wanted one — the account menu and the theme switch — are the navbar's job,
@@ -366,6 +402,9 @@ export function Modal({
   description?: string;
   children: React.ReactNode;
 }) {
+  // 180ms is the exit duration below — the node has to outlive the animation.
+  const { render, shown } = usePresence(open, 180);
+
   useEffect(() => {
     if (!open) return;
     function onKeyDown(e: KeyboardEvent) {
@@ -381,16 +420,42 @@ export function Modal({
     };
   }, [open, onClose]);
 
-  if (!open) return null;
+  if (!render) return null;
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-stone-950/50 p-4 backdrop-blur-sm">
-      {/* Backdrop click closes; the dialog itself stops the click bubbling. */}
-      <div className="absolute inset-0" onClick={onClose} aria-hidden />
+    <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto p-4">
+      {/*
+        Backdrop click closes; the dialog itself stops the click bubbling.
+        It carries the dim and the blur so both fade with the panel — a
+        backdrop that snaps to black while the panel eases in reads as two
+        separate events instead of one surface arriving.
+      */}
+      <div
+        aria-hidden
+        onClick={onClose}
+        className={`fixed inset-0 bg-stone-950/50 backdrop-blur-sm transition-opacity duration-200 ease-out ${
+          shown ? "opacity-100" : "opacity-0"
+        }`}
+      />
       <div
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="relative w-full max-w-lg rounded-2xl border border-white/50 bg-white p-5 shadow-2xl shadow-black/30 dark:border-white/15 dark:bg-slate-900"
+        /*
+          A modal is the one popover that scales from its own centre. Everything
+          else — a menu, a tooltip — is anchored to the thing you clicked and
+          should grow out of it, but a modal has no trigger on screen; it owns
+          the viewport, so the centre is where it belongs.
+
+          0.96 rather than 0 because nothing in the world appears from nothing.
+          Even barely-scaled, the panel reads as arriving rather than blinking
+          into existence. Enter is 250ms, exit 180ms: closing is the system
+          responding to a decision already made, so it should get out of the way.
+        */
+        className={`relative w-full max-w-lg origin-center rounded-2xl border border-white/50 bg-white p-5 shadow-2xl shadow-black/30 transition-[opacity,scale] ease-out dark:border-white/15 dark:bg-slate-900 ${
+          shown
+            ? "scale-100 opacity-100 duration-[250ms]"
+            : "scale-[0.96] opacity-0 duration-[180ms]"
+        }`}
       >
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -422,6 +487,15 @@ export interface Toast {
   id: number;
   message: string;
   tone: "success" | "error";
+  /**
+   * True once the toast has started leaving but is still on screen.
+   *
+   * Removing it from the array is what used to happen the instant its time was
+   * up, and that makes an exit animation impossible — React unmounts the node
+   * on the same tick, so there is nothing left to animate. The flag buys the
+   * 200ms the CSS needs, then the row really is dropped.
+   */
+  leaving?: boolean;
 }
 
 /**
@@ -429,6 +503,9 @@ export interface Toast {
  * taking over the screen. Errors and warnings especially — those are the ones
  * that get missed when a form just silently does nothing.
  */
+/** Matches the exit duration of `.toast-item[data-leaving]` in globals.css. */
+const TOAST_EXIT_MS = 200;
+
 export function useToasts() {
   const [toasts, setToasts] = useState<Toast[]>([]);
   // Timers are cleared on unmount so a toast can't fire setState afterwards.
@@ -439,19 +516,25 @@ export function useToasts() {
     return () => pending.forEach(clearTimeout);
   }, []);
 
-  function pushToast(message: string, tone: Toast["tone"] = "success") {
-    const id = Date.now() + Math.random();
-    setToasts((current) => [...current, { id, message, tone }]);
+  /**
+   * Leaving is two steps, not one: flag it, let the CSS play, then drop it.
+   * Both the four-second auto-expiry and the close button go through here so
+   * a toast always leaves the same way, however it was ended.
+   */
+  function startLeaving(id: number) {
+    setToasts((current) => current.map((t) => (t.id === id ? { ...t, leaving: true } : t)));
     timers.current.push(
-      setTimeout(() => setToasts((current) => current.filter((t) => t.id !== id)), 4000)
+      setTimeout(() => setToasts((current) => current.filter((t) => t.id !== id)), TOAST_EXIT_MS)
     );
   }
 
-  function dismissToast(id: number) {
-    setToasts((current) => current.filter((t) => t.id !== id));
+  function pushToast(message: string, tone: Toast["tone"] = "success") {
+    const id = Date.now() + Math.random();
+    setToasts((current) => [...current, { id, message, tone }]);
+    timers.current.push(setTimeout(() => startLeaving(id), 4000));
   }
 
-  return { toasts, pushToast, dismissToast };
+  return { toasts, pushToast, dismissToast: startLeaving };
 }
 
 export function ToastStack({
@@ -470,7 +553,8 @@ export function ToastStack({
       {toasts.map((toast) => (
         <div
           key={toast.id}
-          className={`animate-fade-down pointer-events-auto flex w-full items-start gap-2.5 rounded-xl px-4 py-3 text-sm font-semibold shadow-2xl sm:w-auto sm:max-w-sm ${
+          data-leaving={toast.leaving ? "true" : undefined}
+          className={`toast-item pointer-events-auto flex w-full items-start gap-2.5 rounded-xl px-4 py-3 text-sm font-semibold shadow-2xl sm:w-auto sm:max-w-sm ${
             toast.tone === "error"
               ? "bg-rose-600 text-white"
               : "bg-stone-900 text-white dark:bg-white dark:text-stone-950"

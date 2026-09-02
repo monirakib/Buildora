@@ -10,7 +10,7 @@ import type { CredentialFormatResult } from "@buildora/shared";
 
 /** Text input / select / textarea — frosted fill, gold glow when focused. */
 export const input =
-  "block w-full rounded-2xl border border-white/60 dark:border-white/[0.16] bg-white/50 dark:bg-white/[0.08] px-4 py-2.5 text-sm text-stone-900 dark:text-white placeholder-stone-400 dark:placeholder-slate-400 shadow-[inset_0_1px_0_rgba(255,255,255,0.10)] backdrop-blur-xl transition-all duration-200 outline-none hover:border-stone-400 dark:hover:border-white/30 focus:border-[#F5B400]/70 focus:bg-white/70 dark:focus:bg-white/[0.12] focus:shadow-[0_0_0_4px_rgba(245,180,0,0.12),0_0_28px_rgba(245,180,0,0.12)] disabled:opacity-50 [color-scheme:light] dark:[color-scheme:dark]";
+  "block w-full rounded-2xl border border-white/60 dark:border-white/[0.16] bg-white/50 dark:bg-white/[0.08] px-4 py-2.5 text-sm text-stone-900 dark:text-white placeholder-stone-400 dark:placeholder-slate-400 shadow-[inset_0_1px_0_rgba(255,255,255,0.10)] backdrop-blur-xl transition-[color,background-color,border-color,box-shadow] duration-200 ease-out outline-none hover:border-stone-400 dark:hover:border-white/30 focus:border-[#F5B400]/70 focus:bg-white/70 dark:focus:bg-white/[0.12] focus:shadow-[0_0_0_4px_rgba(245,180,0,0.12),0_0_28px_rgba(245,180,0,0.12)] disabled:opacity-50 [color-scheme:light] dark:[color-scheme:dark]";
 
 export const label = "mb-1.5 block text-sm font-semibold text-stone-900 dark:text-slate-100";
 
@@ -19,7 +19,7 @@ export const entryBox =
   "rounded-3xl border border-white/50 dark:border-white/[0.12] bg-white/40 dark:bg-white/[0.06] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] backdrop-blur-xl sm:p-5";
 
 export const addButton =
-  "self-start rounded-full border border-white/60 dark:border-white/[0.18] bg-white/50 dark:bg-white/[0.10] px-5 py-2 text-sm font-bold text-stone-900 dark:text-white backdrop-blur-xl transition-all duration-200 hover:-translate-y-0.5 hover:border-[#F5B400]/60 hover:text-amber-700 dark:hover:text-[#F5B400] hover:shadow-[0_8px_24px_rgba(245,180,0,0.15)] active:translate-y-0 disabled:opacity-50";
+  "self-start rounded-full border border-white/60 dark:border-white/[0.18] bg-white/50 dark:bg-white/[0.10] px-5 py-2 text-sm font-bold text-stone-900 dark:text-white backdrop-blur-xl transition-[color,border-color,box-shadow,translate,scale] duration-200 ease-out hover:-translate-y-0.5 hover:border-[#F5B400]/60 hover:text-amber-700 dark:hover:text-[#F5B400] hover:shadow-[0_8px_24px_rgba(245,180,0,0.15)] active:translate-y-0 disabled:opacity-50";
 
 export const removeButton =
   "text-xs font-bold text-stone-500 dark:text-slate-500 transition hover:text-rose-600 dark:hover:text-rose-400 disabled:opacity-50";
@@ -51,7 +51,7 @@ export function GlassCard({
     <div
       ref={ref}
       onMouseMove={onMouseMove}
-      className={`group relative rounded-[32px] border border-white/60 dark:border-white/[0.16] bg-white/60 dark:bg-white/[0.09] shadow-[0_20px_60px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.6)] dark:shadow-[0_20px_60px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.18)] backdrop-blur-[44px] backdrop-saturate-[1.8] transition-all duration-300 hover:-translate-y-0.5 hover:border-white/80 dark:hover:border-white/[0.22] hover:shadow-[0_28px_80px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.7)] dark:hover:shadow-[0_28px_80px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.22)] ${className}`}
+      className={`group relative rounded-[32px] border border-white/60 dark:border-white/[0.16] bg-white/60 dark:bg-white/[0.09] shadow-[0_20px_60px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.6)] dark:shadow-[0_20px_60px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.18)] backdrop-blur-[44px] backdrop-saturate-[1.8] transition-[border-color,box-shadow,translate] duration-200 ease-out hover:-translate-y-0.5 hover:border-white/80 dark:hover:border-white/[0.22] hover:shadow-[0_28px_80px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.7)] dark:hover:shadow-[0_28px_80px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.22)] ${className}`}
     >
       {/* Top sheen — the light source above the glass */}
       <div

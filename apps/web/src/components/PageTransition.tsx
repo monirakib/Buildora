@@ -34,7 +34,13 @@ export function PageTransition({ children }: { children: React.ReactNode }) {
         { opacity: 0 },
         {
           opacity: 1,
-          duration: 0.45,
+          // Navigating is one of the most repeated actions in the app, and the
+          // frequency is what sets the budget: at 450ms every page arrival had
+          // a visible lag before the content settled, which reads as a slow
+          // site rather than a considered one. 200ms still covers the swap —
+          // long enough to stop the content snapping in, short enough that
+          // nobody waits for it.
+          duration: 0.2,
           ease: "power2.out",
           // Remove the inline opacity when it's done so the wrapper stops
           // being a stacking context for everything inside it.

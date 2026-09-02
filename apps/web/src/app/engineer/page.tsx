@@ -20,6 +20,7 @@ import { listMyBuildWork } from "@/lib/apiBuild";
 import { listMyEngagements } from "@/lib/apiStructural";
 import { useRegisterAiContext } from "@/lib/useRegisterAiContext";
 import { useSession } from "@/store/useSession";
+import { surfaceClass } from "@/components/ui/surface";
 
 /**
  * The structural engineer's console.
@@ -36,8 +37,7 @@ import { useSession } from "@/store/useSession";
  * contracts, since the statuses are the whole point.
  */
 
-const cardClass =
-  "rounded-2xl border border-white/50 bg-white/55 shadow-xl shadow-black/5 backdrop-blur-xl dark:border-white/10 dark:bg-white/5";
+const cardClass = surfaceClass;
 
 const smallButtonClass =
   "inline-flex items-center justify-center rounded-full bg-stone-900 px-3.5 py-1.5 text-xs font-bold text-white transition hover:bg-stone-800 dark:bg-white dark:text-stone-950 dark:hover:bg-slate-200";

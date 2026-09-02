@@ -929,7 +929,7 @@ export default function NewProjectPage() {
                     <div className="mt-1.5 h-2 rounded-full bg-stone-200 dark:bg-white/10">
                       <div
                         style={{ width: `${completeness}%` }}
-                        className="h-2 rounded-full bg-amber-500 transition-all duration-500 dark:bg-amber-400"
+                        className="h-2 rounded-full bg-amber-500 transition-[width] duration-500 ease-out dark:bg-amber-400"
                       />
                     </div>
                     <p className="mt-2 text-xs text-stone-500 dark:text-slate-500">

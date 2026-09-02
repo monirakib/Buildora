@@ -1,7 +1,7 @@
 import { PERMIT_CHECKLISTS, type PermitDocument, type PermitType } from "@buildora/shared";
+import { surfaceClass } from "@/components/ui/surface";
 
-const cardClass =
-  "rounded-2xl border border-white/50 bg-white/55 p-5 shadow-xl shadow-black/5 backdrop-blur-xl sm:p-6 dark:border-white/10 dark:bg-white/5";
+const cardClass = `${surfaceClass} p-5 sm:p-6`;
 
 /**
  * Reference-only document checklist for one permit type: which of RAJUK's
@@ -31,7 +31,7 @@ export function PermitDocumentChecklist({
 
       <div className="mt-3 h-2 overflow-hidden rounded-full bg-black/10 dark:bg-white/10">
         <div
-          className="h-full rounded-full bg-emerald-500 transition-all"
+          className="h-full rounded-full bg-emerald-500 transition-[width] duration-500 ease-out"
           style={{
             width: requiredItems.length
               ? `${Math.round((doneCount / requiredItems.length) * 100)}%`

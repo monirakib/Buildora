@@ -14,9 +14,9 @@ import { listDisputes, resolveDispute } from "@/lib/apiResolution";
 import { useSession } from "@/store/useSession";
 import { Navbar } from "@/components/landing/Navbar";
 import { formatBdt, formatDate } from "@/components/app/projectStatus";
+import { surfaceClass } from "@/components/ui/surface";
 
-const cardClass =
-  "rounded-2xl border border-white/50 bg-white/55 backdrop-blur-xl dark:border-white/10 dark:bg-white/5";
+const cardClass = surfaceClass;
 const inputClass =
   "block w-full rounded-xl border border-stone-300/80 bg-white/70 px-4 py-2.5 text-sm outline-none transition focus:border-amber-500 focus:ring-2 focus:ring-amber-400/30 dark:border-white/15 dark:bg-white/5 dark:text-slate-100";
 

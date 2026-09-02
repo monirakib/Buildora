@@ -90,7 +90,7 @@ export function IabCheckField({
           type="button"
           onClick={runCheck}
           disabled={busy || !value.trim()}
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-2xl border border-white/60 bg-white/50 px-4 text-sm font-bold text-stone-900 backdrop-blur-xl transition-all duration-200 hover:border-[#F5B400]/60 hover:text-amber-700 disabled:opacity-50 dark:border-white/[0.18] dark:bg-white/[0.10] dark:text-white dark:hover:text-[#F5B400]"
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-2xl border border-white/60 bg-white/50 px-4 text-sm font-bold text-stone-900 backdrop-blur-xl transition-[color,border-color,scale] duration-200 ease-out hover:border-[#F5B400]/60 hover:text-amber-700 disabled:opacity-50 dark:border-white/[0.18] dark:bg-white/[0.10] dark:text-white dark:hover:text-[#F5B400]"
         >
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
           {busy ? "Checking…" : "Check"}

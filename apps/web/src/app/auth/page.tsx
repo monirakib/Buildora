@@ -290,7 +290,16 @@ export default function AuthPage() {
             <div
               key={bg.src}
               aria-hidden
-              className={`absolute inset-0 bg-cover bg-center transition-opacity duration-700 ease-in-out ${
+              /*
+                `linear`, and it has to be. This is a crossfade: the outgoing
+                image ramps 1→0 while the incoming one ramps 0→1, and the two
+                only sum to a constant if both ramps are straight lines. Under
+                any eased curve both layers sit near 0.5 at the midpoint, the
+                combined opacity dips below full, and you see a grey flash
+                halfway through the swap — the artefact that reads as "the
+                images blinked" rather than "one became the other".
+              */
+              className={`absolute inset-0 bg-cover bg-center transition-opacity duration-700 ease-linear ${
                 active ? "opacity-100" : "opacity-0"
               }`}
               style={{ backgroundImage: `url(${bg.src})` }}

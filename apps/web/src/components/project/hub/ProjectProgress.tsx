@@ -47,7 +47,7 @@ export function ProjectProgress({
             className="group relative h-2.5 overflow-hidden rounded-full bg-black/10 transition hover:h-3 dark:bg-white/10"
           >
             <span
-              className={`absolute inset-y-0 left-0 rounded-full transition-all duration-500 ${
+              className={`absolute inset-y-0 left-0 rounded-full transition-[width] duration-500 ease-out ${
                 phase.fraction >= 1
                   ? "bg-emerald-500"
                   : phase.unlocked

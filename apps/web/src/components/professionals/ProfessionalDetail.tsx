@@ -316,7 +316,7 @@ export function ProfessionalDetail({ role }: { role: UserRole }) {
                           alt={`${project.title}, cover photo`}
                           loading="lazy"
                           decoding="async"
-                          className="aspect-4/3 w-full object-cover transition duration-500 group-hover:scale-105"
+                          className="aspect-4/3 w-full object-cover transition-[scale] duration-300 ease-out group-hover:scale-105"
                         />
                       </a>
                     ) : (

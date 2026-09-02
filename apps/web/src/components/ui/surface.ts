@@ -31,5 +31,25 @@ export const surfaceHeaderClass =
 /** Standard body padding inside a surface. */
 export const surfaceBodyClass = "p-4 sm:p-5";
 
-/** Interactive surface — a card that is itself a link or button. */
-export const surfaceHoverClass = "transition hover:-translate-y-0.5 hover:border-amber-400/60";
+/**
+ * Interactive surface — a card that is itself a link or button.
+ *
+ * Three things beyond the hover lift:
+ *
+ * The properties are named rather than left as a bare `transition`, which in
+ * Tailwind v4 watches a list of about fifteen. A card carries a backdrop blur
+ * and a shadow, and putting those on the watch list means the compositor
+ * re-evaluates them on a hover that was only ever going to move the card 2px.
+ *
+ * `active:scale-[0.99]` is the press. The global rule in `globals.css` gives
+ * every `<button>` one automatically, but these cards are usually an `<a>`,
+ * and a link is not pressable by default — so it is declared here instead.
+ * 0.99 rather than the 0.97 a button gets: the same *visual* amount of squeeze
+ * needs a smaller ratio on a large surface, and a card is a large surface.
+ *
+ * The lift is undone on press. Lifting toward the reader on hover and then
+ * pushing back down on click is the whole gesture — without the second half
+ * the card just floats and never lands.
+ */
+export const surfaceHoverClass =
+  "transition-[translate,scale,border-color] duration-200 ease-out hover:-translate-y-0.5 hover:border-amber-400/60 active:translate-y-0 active:scale-[0.99]";

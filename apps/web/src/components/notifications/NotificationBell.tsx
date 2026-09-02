@@ -353,7 +353,7 @@ export function NotificationBell({ tone = "dark" }: { tone?: "dark" | "surface" 
       {open && (
         // Width is capped to the viewport so the panel never causes sideways
         // scrolling on a phone.
-        <div className="absolute right-0 top-full z-50 mt-3 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-black/10 bg-white shadow-2xl shadow-black/20 dark:border-white/10 dark:bg-stone-950">
+        <div className="absolute top-full right-0 z-50 mt-3 w-[min(22rem,calc(100vw-2rem))] origin-top-right animate-[popover-in_180ms_var(--ease-out)_both] overflow-hidden rounded-2xl border border-black/10 bg-white shadow-2xl shadow-black/20 dark:border-white/10 dark:bg-stone-950">
           <div className="flex items-center justify-between gap-2 border-b border-black/10 px-4 py-3 dark:border-white/10">
             <p className="text-sm font-extrabold text-stone-900 dark:text-white">
               Notifications

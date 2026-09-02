@@ -20,9 +20,9 @@ import {
 import { useSession } from "@/store/useSession";
 import { Navbar } from "@/components/landing/Navbar";
 import { avatarAt, imageAt } from "@/lib/imageUrl";
+import { surfaceClass } from "@/components/ui/surface";
 
-const cardClass =
-  "rounded-2xl border border-white/50 bg-white/55 backdrop-blur-xl dark:border-white/10 dark:bg-white/5";
+const cardClass = surfaceClass;
 
 const roleLabels: Record<string, string> = {
   LAND_OWNER: "Land owner",

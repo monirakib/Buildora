@@ -8,9 +8,9 @@ import { AdminShell } from "@/components/admin/AdminShell";
 import { PriceSheetSection } from "@/components/admin/PriceSheetSection";
 import { timeAgo } from "@/components/admin/format";
 import { getPricingStatus, triggerPriceRefresh } from "@/lib/apiAdmin";
+import { surfaceClass } from "@/components/ui/surface";
 
-const cardClass =
-  "rounded-2xl border border-black/10 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-white/5";
+const cardClass = `${surfaceClass} p-5`;
 
 const STATUS_STYLE: Record<PriceRefreshRunSummary["status"], string> = {
   RUNNING: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",

@@ -12,9 +12,9 @@ import { formatBdt, statusLabels, statusStyles } from "@/components/market/marke
 import { OrderTracker } from "@/components/market/OrderTracker";
 import { GatewayPayButton } from "@/components/app/GatewayPayButton";
 import { readPaymentNotice } from "@/lib/apiPayments";
+import { surfaceClass } from "@/components/ui/surface";
 
-const cardClass =
-  "rounded-2xl border border-white/50 bg-white/55 p-5 shadow-xl shadow-black/5 backdrop-blur-xl sm:p-6 dark:border-white/10 dark:bg-white/5";
+const cardClass = `${surfaceClass} p-5 sm:p-6`;
 
 /** Tomorrow — the usual answer, and one tap away from anything else. */
 function defaultDeliveryDate(): string {

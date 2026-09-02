@@ -264,7 +264,7 @@ export function Features() {
                   {/* Bar fills to 100% on hover, staggered — “tranches releasing” */}
                   <div className="mt-1 h-2 rounded-full bg-stone-200 dark:bg-white/10">
                     <div
-                      className={`h-2 rounded-full bg-amber-500 transition-all duration-700 dark:bg-amber-400 ${m.w} ${m.d} group-hover:w-full`}
+                      className={`h-2 rounded-full bg-amber-500 transition-[width] duration-700 ease-out dark:bg-amber-400 ${m.w} ${m.d} group-hover:w-full`}
                     />
                   </div>
                 </div>
@@ -349,7 +349,7 @@ export function Features() {
               ].map((bar, i) => (
                 <div key={i} className="flex flex-1 flex-col items-center gap-1.5">
                   <div
-                    className={`w-full rounded-t-lg transition-all duration-500 ${bar.h} ${bar.hover} ${bar.tone}`}
+                    className={`w-full rounded-t-lg transition-[height] duration-500 ease-out ${bar.h} ${bar.hover} ${bar.tone}`}
                     style={{ transitionDelay: `${i * 90}ms` }}
                   />
                   <span className="text-xs font-bold text-stone-500 dark:text-slate-400">
