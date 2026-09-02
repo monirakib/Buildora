@@ -90,7 +90,7 @@ export function EcpsSection({
         <h2 className="text-xl font-extrabold tracking-tight">RAJUK permit (ECPS)</h2>
         <Link
           href="/permits"
-          className="text-sm font-semibold text-amber-600 underline underline-offset-2 dark:text-amber-400"
+          className="text-sm font-semibold text-amber-700 underline underline-offset-2 dark:text-amber-400"
         >
           Permit tools & guide →
         </Link>

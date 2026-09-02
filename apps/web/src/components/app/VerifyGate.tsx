@@ -78,7 +78,7 @@ export function VerifyNotice({ action, className = "" }: { action: string; class
         {waiting ? (
           <ShieldCheck className="h-4 w-4 text-sky-600 dark:text-sky-400" />
         ) : (
-          <ShieldAlert className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+          <ShieldAlert className="h-4 w-4 text-amber-700 dark:text-amber-400" />
         )}
         {copy.title}
       </p>
@@ -141,7 +141,7 @@ export function VerifyBanner({ role }: { role: UserRole }) {
   return (
     <div className="mb-6 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
       <p className="inline-flex items-center gap-2 text-sm font-bold text-stone-900 dark:text-white">
-        <ShieldAlert className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+        <ShieldAlert className="h-4 w-4 text-amber-700 dark:text-amber-400" />
         Your account isn&apos;t verified yet
       </p>
       <p className="mt-1 text-sm text-stone-600 dark:text-slate-400">

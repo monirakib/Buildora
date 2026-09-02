@@ -461,6 +461,20 @@ function CallOverlay() {
 
   return (
     <div
+      /* It already covers the screen visually; saying so lets a screen reader
+         treat it the same way, and announce whose call it is rather than
+         reading the page underneath. Focus is deliberately NOT moved here — a
+         call can arrive while someone is mid-sentence in another field, and
+         yanking the caret away would be worse than the announcement is good. */
+      role="dialog"
+      aria-modal="true"
+      aria-label={
+        phase === "incoming"
+          ? `Incoming call from ${peer.name}`
+          : phase === "outgoing"
+            ? `Calling ${peer.name}`
+            : `In a call with ${peer.name}`
+      }
       className="fixed inset-0 z-60 grid place-items-center bg-stone-950/60 p-4 backdrop-blur-sm"
       // Clicking the dimmed area (not the card) collapses the call, the way
       // tapping outside a Messenger call does.
@@ -503,7 +517,7 @@ function CallOverlay() {
           {peer.name}
         </h2>
         <p className="mt-1 text-sm text-stone-500 dark:text-slate-400">{roleLabel(peer.role)}</p>
-        <p className="mt-2 text-sm font-semibold tabular-nums text-amber-600 dark:text-amber-400">
+        <p className="mt-2 text-sm font-semibold tabular-nums text-amber-700 dark:text-amber-400">
           {statusText}
         </p>
 

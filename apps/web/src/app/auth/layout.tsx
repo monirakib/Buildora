@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Sign in · Buildora",
+  title: "Sign in",
   description: "Log in or create your Buildora account to start your construction project.",
 };
 

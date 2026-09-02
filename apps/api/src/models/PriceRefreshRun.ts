@@ -22,8 +22,17 @@ export interface PriceRefreshRunDoc {
   startedAt: Date;
   finishedAt?: Date;
   status: "RUNNING" | "OK" | "PARTIAL" | "FAILED";
-  /** What kicked it off, so an unexpected run can be traced. */
-  trigger: "CRON" | "ENDPOINT" | "ADMIN" | "LAZY" | "SEED";
+  /**
+   * What kicked it off, so an unexpected run can be traced.
+   *
+   * IMPORT is the odd one out: it fetches nothing. It records an admin
+   * uploading the weekly price sheet, and it is here rather than in a table of
+   * its own because a CSV upload writes prices and reprices estimates exactly
+   * like a refresh does — an admin asking "why did every estimate move on
+   * Monday?" needs the import in the same list as the scrapes, not somewhere
+   * else.
+   */
+  trigger: "CRON" | "ENDPOINT" | "ADMIN" | "LAZY" | "SEED" | "IMPORT";
   /** New MarketPrice rows written by this run. */
   pricesWritten: number;
   /** Rows given an embedding by this run, new or re-embedded after a model change. */
@@ -57,7 +66,7 @@ const priceRefreshRunSchema = new Schema<PriceRefreshRunDoc>(
     },
     trigger: {
       type: String,
-      enum: ["CRON", "ENDPOINT", "ADMIN", "LAZY", "SEED"],
+      enum: ["CRON", "ENDPOINT", "ADMIN", "LAZY", "SEED", "IMPORT"],
       required: true,
     },
     pricesWritten: { type: Number, required: true, default: 0 },

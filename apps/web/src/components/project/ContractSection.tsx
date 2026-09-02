@@ -338,7 +338,7 @@ export function ContractSection({
                       href={d.fileUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="mt-2 inline-block text-sm font-semibold text-amber-600 underline underline-offset-2 dark:text-amber-400"
+                      className="mt-2 inline-block text-sm font-semibold text-amber-700 underline underline-offset-2 dark:text-amber-400"
                     >
                       Open attached file ↗
                     </a>

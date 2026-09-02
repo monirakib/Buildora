@@ -75,7 +75,7 @@ export function ReviewCard({
         <button
           type="button"
           onClick={() => setEditing(true)}
-          className="mt-3 text-sm font-bold text-amber-600 underline underline-offset-4 dark:text-amber-400"
+          className="mt-3 text-sm font-bold text-amber-700 underline underline-offset-4 dark:text-amber-400"
         >
           Edit review
         </button>

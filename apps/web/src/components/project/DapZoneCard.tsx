@@ -97,7 +97,7 @@ export function DapZoneCard({
       <p className="rounded-xl bg-stone-500/5 px-4 py-3 text-sm text-stone-600 dark:bg-white/5 dark:text-slate-400">
         No DAP zone record covers “{area}” yet, so we can&apos;t show its limits. You can still post
         the brief,{" "}
-        <a href="/permits" className="font-bold text-amber-600 hover:underline dark:text-amber-400">
+        <a href="/permits" className="font-bold text-amber-700 hover:underline dark:text-amber-400">
           check the zone tools
         </a>{" "}
         or ask a supervisor to add the area.
@@ -184,7 +184,7 @@ export function DapZoneCard({
 
       <p className="mt-2.5 text-xs text-stone-500 dark:text-slate-400">
         Guidance only. RAJUK decides. See the{" "}
-        <a href="/permits" className="font-bold text-amber-600 hover:underline dark:text-amber-400">
+        <a href="/permits" className="font-bold text-amber-700 hover:underline dark:text-amber-400">
           permit tools
         </a>{" "}
         for fees and the ECPS steps.

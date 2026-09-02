@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "For professionals · Buildora",
+  title: "For professionals",
   description:
     "Join Buildora as a verified architect, structural engineer, contractor, or material supplier.",
 };

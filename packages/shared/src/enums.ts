@@ -61,13 +61,6 @@ export enum PermitApplicationStatus {
   REJECTED = "REJECTED",
 }
 
-/** Verification badge tiers (§5.2). */
-export enum BadgeTier {
-  DOCUMENT_VERIFIED = "DOCUMENT_VERIFIED",
-  PLATFORM_VERIFIED = "PLATFORM_VERIFIED",
-  TOP_PROFESSIONAL = "TOP_PROFESSIONAL",
-}
-
 /** Building type a land owner intends to construct (used in profile + briefs). */
 export enum BuildingType {
   RESIDENTIAL = "RESIDENTIAL",

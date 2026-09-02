@@ -64,46 +64,86 @@ say so rather than failing. `apps/api/.env.example` documents each variable.
 
 ## Scripts
 
-| Command          | Description                            |
-| ---------------- | -------------------------------------- |
-| `pnpm dev`       | Run all apps in dev mode (Turborepo)   |
-| `pnpm build`     | Production build of all packages       |
-| `pnpm typecheck` | TypeScript checks across the workspace |
-| `pnpm format`    | Prettier over the whole repo           |
+| Command          | Description                                 |
+| ---------------- | ------------------------------------------- |
+| `pnpm dev`       | Run all apps in dev mode (Turborepo)        |
+| `pnpm build`     | Production build of all packages            |
+| `pnpm typecheck` | TypeScript checks across the workspace      |
+| `pnpm test`      | Unit tests (Vitest, no database or network) |
+| `pnpm format`    | Prettier over the whole repo                |
+
+The test suite covers the pure logic that fails silently rather than loudly —
+the repricing sanity band and unit-alias table, the retrieval similarity
+threshold, the weekly price-sheet CSV parser (quoted commas, Excel's BOM, CRLF),
+OpenRouteService's longitude-first coordinate order, the Open-Meteo
+forecast/archive cutoff, the meeting-slot rules, and the notification-preference
+read. All of it runs offline in about a second.
+
+## Deployment
+
+Two halves, on two free tiers.
+
+| Part       | Host   | Config                                   |
+| ---------- | ------ | ---------------------------------------- |
+| `apps/api` | Render | [`render.yaml`](render.yaml) — Blueprint |
+| `apps/web` | Vercel | Project root directory `apps/web`        |
+
+The API is not serverless on purpose: it holds Socket.IO connections for
+messaging, notifications and call signalling, which a per-request runtime would
+drop between requests.
+
+For Vercel, set the project's **Root Directory** to `apps/web` and leave the
+build settings on auto-detect — Vercel handles the pnpm workspace from there.
+Set `NEXT_PUBLIC_API_URL` to the Render service's URL and `NEXT_PUBLIC_SITE_URL`
+to the site's own origin (link previews and the sitemap are read by crawlers on
+other machines, so a relative URL is no use to them).
+
+On Render's free tier the instance spins down after about fifteen minutes of no
+traffic, so the API's in-process weekly cron for the price refresh will almost
+never fire. Set `PRICE_REFRESH_CRON=false` and let
+[`.github/workflows/price-refresh.yml`](.github/workflows/price-refresh.yml)
+drive it instead: it runs on GitHub's schedule whether or not anything is awake,
+and the request is also what wakes the instance. It needs an `API_BASE_URL`
+repository variable and a `PRICE_REFRESH_SECRET` repository secret matching the
+API's.
+
+`GET /api/health` reports the database connection, uptime, resident memory, the
+embedding model's state and when prices last refreshed — the four things that
+are otherwise invisible from outside the process.
 
 ## Modules
 
 The nine modules from the product plan, plus the accounts and verification layer underneath
 them. All data is real — read and written to MongoDB; nothing is mocked.
 
-| Module                   | What it does                                                                                                                                                                                                                                                                                                                                                                   |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Accounts & roles**     | Six actors, JWT + DB sessions, device list, admin console with live analytics                                                                                                                                                                                                                                                                                                  |
-| **Verification**         | A staged wizard per role — land owner (identity + registered address), architect (IAB), engineer (IEB + seal), contractor and supplier (trade licence, TIN/BIN) — with automated NID and credential pre-screens, one NID per account, and a supervisor review queue. Unverified accounts can browse everything but can't act; land owners can still order from the marketplace |
-| **Design Studio**        | Briefs, architect proposals, concept fee, design contract, revision rounds, and a full-screen 3D design studio — floor plans, furniture and 693 CC0 model kits — that mirrors every save into the BOQ and permit pipeline                                                                                                                                                    |
-| **Cost Estimator**       | AI cost ladder for a brief, sharpened by a RAG pipeline over admin-approved market prices — local embeddings match each BOQ line to the closest live listing, kept current by a weekly scrape-and-refresh job                                                                                                                                                                |
-| **Finance & Escrow**     | Escrow deposits, staged releases, platform commission, full payment ledger per contract                                                                                                                                                                                                                                                                                        |
-| **Permit Module**        | DAP zone checker, RAJUK fee calculator, ECPS step tracker, and a permit-application tracker with a per-type document checklist — all admin-editable, none hardcoded                                                                                                                                                                                                            |
-| **Bidding System**       | BOQ tender builder, **sealed** contractor bids, side-by-side comparison, award                                                                                                                                                                                                                                                                                                 |
-| **Inspection & Reports** | Milestone schedule, engineer-signed inspections with geotagged photo proof, escrow tranche release                                                                                                                                                                                                                                                                             |
-| **Site Diary**           | Daily log with labour, materials and equipment, stamped with the weather over the plot                                                                                                                                                                                                                                                                                         |
-| **Marketplace**          | Supplier product listings, land-owner orders, gateway checkout, road-distance delivery ETA to the build site                                                                                                                                                                                                                                                                  |
-| **Professional Directory** | Public architect, engineer and contractor directories — portfolios, ratings and reviews, filterable by division/district, feeding straight into Inquiries                                                                                                                                                                                                                  |
-| **Comms Hub**            | Per-project messaging, 1:1 voice and video calls (WebRTC), notification bell, admin broadcasts                                                                                                                                                                                                                                                                                 |
-| **Project Hub**          | One tabbed view per project — Overview, Architect, Engineer, RAJUK, Contractor, Site diary, Documents — with a progress bar computed from real completed gates                                                                                                                                                                                                                 |
+| Module                     | What it does                                                                                                                                                                                                                                                                                                                                                                   |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Accounts & roles**       | Six actors, JWT + DB sessions, device list, admin console with live analytics                                                                                                                                                                                                                                                                                                  |
+| **Verification**           | A staged wizard per role — land owner (identity + registered address), architect (IAB), engineer (IEB + seal), contractor and supplier (trade licence, TIN/BIN) — with automated NID and credential pre-screens, one NID per account, and a supervisor review queue. Unverified accounts can browse everything but can't act; land owners can still order from the marketplace |
+| **Design Studio**          | Briefs, architect proposals, concept fee, design contract, revision rounds, and a full-screen 3D design studio — floor plans, furniture and 693 CC0 model kits — that mirrors every save into the BOQ and permit pipeline                                                                                                                                                      |
+| **Cost Estimator**         | AI cost ladder for a brief, sharpened by a RAG pipeline over admin-approved market prices — local embeddings match each BOQ line to the closest live listing. Prices come from marketplace medians, two manufacturer scrapers, and an admin-maintained weekly sheet (download/edit/upload as CSV, or edit items directly) — every change is append-only, so an old estimate stays explainable |
+| **Finance & Escrow**       | Escrow deposits, staged releases, platform commission, full payment ledger per contract                                                                                                                                                                                                                                                                                        |
+| **Permit Module**          | DAP zone checker, RAJUK fee calculator, ECPS step tracker, and a permit-application tracker with a per-type document checklist — all admin-editable, none hardcoded                                                                                                                                                                                                            |
+| **Bidding System**         | BOQ tender builder, **sealed** contractor bids, side-by-side comparison, award                                                                                                                                                                                                                                                                                                 |
+| **Inspection & Reports**   | Milestone schedule, engineer-signed inspections with geotagged photo proof, escrow tranche release                                                                                                                                                                                                                                                                             |
+| **Site Diary**             | Daily log with labour, materials and equipment, stamped with the weather over the plot                                                                                                                                                                                                                                                                                         |
+| **Marketplace**            | Supplier product listings, land-owner orders, gateway checkout, road-distance delivery ETA to the build site                                                                                                                                                                                                                                                                   |
+| **Professional Directory** | Public architect, engineer and contractor directories — portfolios, ratings and reviews, filterable by division/district, feeding straight into Inquiries                                                                                                                                                                                                                      |
+| **Comms Hub**              | Per-project messaging, 1:1 voice and video calls (WebRTC), notification bell, admin broadcasts                                                                                                                                                                                                                                                                                 |
+| **Project Hub**            | One tabbed view per project — Overview, Architect, Engineer, RAJUK, Contractor, Site diary, Documents — with a progress bar computed from real completed gates                                                                                                                                                                                                                 |
 
 ## External integrations
 
-| Service                 | Used for                                        | Key needed |
-| ----------------------- | ------------------------------------------------ | ---------- |
-| Cloudinary              | Image, document and 3D model uploads             | yes        |
-| SSLCommerz              | Payment gateway (sandbox)                        | yes        |
-| Google Gemini           | NID card OCR, in-app assistant (fallback)        | yes        |
-| Groq                    | In-app assistant, site diary digest (primary)    | yes        |
-| OpenRouteService        | Delivery ETA and road route to the build site    | yes        |
-| Open-Meteo              | Site diary weather and rain-day tally            | no         |
-| OpenStreetMap/Nominatim | Plot map picker, geocoding (via Leaflet)         | no         |
-| IAB public directory    | Architect membership lookup                      | no         |
+| Service                 | Used for                                      | Key needed |
+| ----------------------- | --------------------------------------------- | ---------- |
+| Cloudinary              | Image, document and 3D model uploads          | yes        |
+| SSLCommerz              | Payment gateway (sandbox)                     | yes        |
+| Google Gemini           | NID card OCR, in-app assistant (fallback)     | yes        |
+| Groq                    | In-app assistant, site diary digest (primary) | yes        |
+| OpenRouteService        | Delivery ETA and road route to the build site | yes        |
+| Open-Meteo              | Site diary weather and rain-day tally         | no         |
+| OpenStreetMap/Nominatim | Plot map picker, geocoding (via Leaflet)      | no         |
+| IAB public directory    | Architect membership lookup                   | no         |
 
 Cost-estimate retrieval runs on a local embedding model (`Xenova/all-MiniLM-L6-v2`, via
 `@huggingface/transformers`) — no network call and no key, but the first run downloads and

@@ -19,6 +19,7 @@ import {
 } from "@/lib/api";
 import { useSession } from "@/store/useSession";
 import { Navbar } from "@/components/landing/Navbar";
+import { avatarAt, imageAt } from "@/lib/imageUrl";
 
 const cardClass =
   "rounded-2xl border border-white/50 bg-white/55 backdrop-blur-xl dark:border-white/10 dark:bg-white/5";
@@ -135,7 +136,7 @@ function DocLink({ url, label }: { url?: string; label: string }) {
       href={url}
       target="_blank"
       rel="noopener noreferrer"
-      className="font-bold text-amber-600 underline underline-offset-2 dark:text-amber-400"
+      className="font-bold text-amber-700 underline underline-offset-2 dark:text-amber-400"
     >
       {label}
     </a>
@@ -377,7 +378,7 @@ export default function SupervisorPage() {
 
       <main className="flex-1 px-5 pt-28 pb-16 sm:px-8">
         <div className="mx-auto w-full max-w-6xl">
-          <p className="text-sm font-bold tracking-[0.2em] text-amber-600 uppercase dark:text-amber-400">
+          <p className="text-sm font-bold tracking-[0.2em] text-amber-800 uppercase dark:text-amber-400">
             Supervisor
           </p>
           <h1 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">
@@ -457,8 +458,10 @@ export default function SupervisorPage() {
                     {profile.avatarUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element -- Cloudinary-hosted
                       <img
-                        src={profile.avatarUrl}
+                        src={avatarAt(profile.avatarUrl, 112)}
                         alt=""
+                        loading="lazy"
+                        decoding="async"
                         className="h-14 w-14 rounded-2xl object-cover"
                       />
                     ) : (
@@ -513,7 +516,7 @@ export default function SupervisorPage() {
                           href={profile.website}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-amber-600 underline underline-offset-2 dark:text-amber-400"
+                          className="text-amber-700 underline underline-offset-2 dark:text-amber-400"
                         >
                           {profile.website}
                         </a>
@@ -566,7 +569,7 @@ export default function SupervisorPage() {
                               href={profile.nidFrontUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="font-bold text-amber-600 underline underline-offset-2 dark:text-amber-400"
+                              className="font-bold text-amber-700 underline underline-offset-2 dark:text-amber-400"
                             >
                               Front
                             </a>
@@ -578,7 +581,7 @@ export default function SupervisorPage() {
                               href={profile.nidBackUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="font-bold text-amber-600 underline underline-offset-2 dark:text-amber-400"
+                              className="font-bold text-amber-700 underline underline-offset-2 dark:text-amber-400"
                             >
                               Back
                             </a>
@@ -651,8 +654,10 @@ export default function SupervisorPage() {
                       >
                         {/* eslint-disable-next-line @next/next/no-img-element -- Cloudinary-hosted */}
                         <img
-                          src={profile.professionalSealUrl}
+                          src={imageAt(profile.professionalSealUrl, 224)}
                           alt="Professional seal"
+                          loading="lazy"
+                          decoding="async"
                           className="h-28 w-28 rounded-xl border border-stone-300/60 object-contain p-1 transition hover:opacity-80 dark:border-white/10"
                         />
                       </a>
@@ -870,7 +875,7 @@ export default function SupervisorPage() {
                                 href={e.certificateUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="ml-auto text-xs font-bold text-amber-600 underline underline-offset-2 dark:text-amber-400"
+                                className="ml-auto text-xs font-bold text-amber-700 underline underline-offset-2 dark:text-amber-400"
                               >
                                 View certificate
                               </a>
@@ -880,7 +885,7 @@ export default function SupervisorPage() {
                                 href={e.transcriptUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-xs font-bold text-amber-600 underline underline-offset-2 dark:text-amber-400"
+                                className="text-xs font-bold text-amber-700 underline underline-offset-2 dark:text-amber-400"
                               >
                                 Transcript
                               </a>
@@ -951,8 +956,10 @@ export default function SupervisorPage() {
                                   <a key={url} href={url} target="_blank" rel="noopener noreferrer">
                                     {/* eslint-disable-next-line @next/next/no-img-element -- Cloudinary-hosted */}
                                     <img
-                                      src={url}
+                                      src={imageAt(url, 160)}
                                       alt=""
+                                      loading="lazy"
+                                      decoding="async"
                                       className="h-20 w-20 rounded-lg object-cover transition hover:opacity-80"
                                     />
                                   </a>

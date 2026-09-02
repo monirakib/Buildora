@@ -71,7 +71,7 @@ export default function PublicProgressPage() {
   return (
     <main className="min-h-screen bg-stone-100 px-5 py-12 sm:px-8 dark:bg-[#05070C]">
       <div className="mx-auto w-full max-w-2xl">
-        <p className="text-xs font-bold tracking-[0.2em] text-amber-600 uppercase dark:text-amber-400">
+        <p className="text-xs font-bold tracking-[0.2em] text-amber-800 uppercase dark:text-amber-400">
           Buildora · Project progress
         </p>
         <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-stone-900 sm:text-4xl dark:text-slate-100">

@@ -87,7 +87,7 @@ function ProfessionalCard({ p, basePath }: { p: PublicProfessional; basePath: st
         </div>
       )}
 
-      <span className="mt-5 inline-block text-sm font-bold text-amber-600 dark:text-amber-400">
+      <span className="mt-5 inline-block text-sm font-bold text-amber-700 dark:text-amber-400">
         View profile →
       </span>
     </Link>
@@ -194,7 +194,7 @@ export function ProfessionalsDirectory({ role }: { role: UserRole }) {
 
       <main className="flex-1 px-5 pt-28 pb-16 sm:px-8">
         <div className="mx-auto w-full max-w-5xl">
-          <p className="text-sm font-bold tracking-[0.2em] text-amber-600 uppercase dark:text-amber-400">
+          <p className="text-sm font-bold tracking-[0.2em] text-amber-800 uppercase dark:text-amber-400">
             {copy.kicker}
           </p>
           <h1 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl capitalize">
@@ -347,7 +347,7 @@ export function ProfessionalsDirectory({ role }: { role: UserRole }) {
                 type="button"
                 onClick={() => setIncludeUnverified((v) => !v)}
                 aria-pressed={includeUnverified}
-                className="rounded-full border border-stone-300/80 bg-white/70 px-5 py-2 text-sm font-bold text-stone-700 transition hover:border-amber-500 hover:text-amber-600 dark:border-white/15 dark:bg-white/5 dark:text-slate-300 dark:hover:text-amber-400"
+                className="rounded-full border border-stone-300/80 bg-white/70 px-5 py-2 text-sm font-bold text-stone-700 transition hover:border-amber-500 hover:text-amber-700 dark:border-white/15 dark:bg-white/5 dark:text-slate-300 dark:hover:text-amber-400"
               >
                 {includeUnverified ? "Show verified only" : `Also show unverified ${copy.plural}`}
               </button>
@@ -355,7 +355,7 @@ export function ProfessionalsDirectory({ role }: { role: UserRole }) {
                 <button
                   type="button"
                   onClick={clearFilters}
-                  className="text-sm font-bold text-stone-500 underline underline-offset-4 transition hover:text-amber-600 dark:text-slate-400 dark:hover:text-amber-400"
+                  className="text-sm font-bold text-stone-500 underline underline-offset-4 transition hover:text-amber-700 dark:text-slate-400 dark:hover:text-amber-400"
                 >
                   Clear filters
                 </button>

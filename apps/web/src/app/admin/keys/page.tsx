@@ -129,7 +129,7 @@ export default function AdminKeysPage() {
     >
       <div className="space-y-6">
         <div className={`${cardClass} flex gap-3`}>
-          <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
+          <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-amber-700 dark:text-amber-400" />
           <div className="text-sm text-stone-600 dark:text-stone-300">
             <p className="font-bold text-stone-900 dark:text-white">
               This screen sweeps records — it doesn&apos;t create keys.

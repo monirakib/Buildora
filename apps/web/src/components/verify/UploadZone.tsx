@@ -53,7 +53,7 @@ export function UploadZone({
     <div>
       <p className="mb-1.5 text-sm font-semibold text-stone-800 dark:text-slate-200">
         {title}
-        {required && <span className="ml-1 text-amber-600 dark:text-[#F5B400]">*</span>}
+        {required && <span className="ml-1 text-amber-700 dark:text-[#F5B400]">*</span>}
       </p>
 
       <input
@@ -116,12 +116,12 @@ export function UploadZone({
           }`}
         >
           {busy ? (
-            <Loader2 className="h-6 w-6 animate-spin text-amber-600 dark:text-[#F5B400]" />
+            <Loader2 className="h-6 w-6 animate-spin text-amber-700 dark:text-[#F5B400]" />
           ) : (
             <ImagePlus
-              className={`h-6 w-6 transition-all duration-300 group-hover:-translate-y-0.5 group-hover:text-amber-600 dark:group-hover:text-[#F5B400] ${
+              className={`h-6 w-6 transition-all duration-300 group-hover:-translate-y-0.5 group-hover:text-amber-700 dark:group-hover:text-[#F5B400] ${
                 dragging
-                  ? "-translate-y-0.5 text-amber-600 dark:text-[#F5B400]"
+                  ? "-translate-y-0.5 text-amber-700 dark:text-[#F5B400]"
                   : "text-stone-600 dark:text-slate-400"
               }`}
             />

@@ -6,6 +6,7 @@ import { listAdminUsers, revokeUserSessions, setUserRole } from "@/lib/apiAdmin"
 import { useSession } from "@/store/useSession";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { mediumDate, ROLE_LABELS, timeAgo } from "@/components/admin/format";
+import { avatarAt } from "@/lib/imageUrl";
 
 // Short labels so the row fits a laptop screen without scrolling.
 const VERIFICATION_LABELS: Record<VerificationStatus, string> = {
@@ -216,8 +217,10 @@ export default function AdminUsersPage() {
                       {row.avatarUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
-                          src={row.avatarUrl}
+                          src={avatarAt(row.avatarUrl, 72)}
                           alt=""
+                          loading="lazy"
+                          decoding="async"
                           className="h-9 w-9 shrink-0 rounded-full object-cover"
                         />
                       ) : (

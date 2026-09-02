@@ -280,7 +280,7 @@ export function EstimateSection({ projectId, token }: { projectId: string; token
               <button
                 type="button"
                 onClick={() => setShowLines((v) => !v)}
-                className="text-sm font-bold text-amber-600 hover:underline dark:text-amber-400"
+                className="text-sm font-bold text-amber-700 hover:underline dark:text-amber-400"
               >
                 {showLines ? "Hide" : "Show"} all {estimate.lines.length} line items
               </button>

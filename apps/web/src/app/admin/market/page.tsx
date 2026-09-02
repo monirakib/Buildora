@@ -6,6 +6,7 @@ import { listAdminOrders, listAdminProducts, setProductActive } from "@/lib/apiA
 import { useSession } from "@/store/useSession";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { bdtFull, mediumDate, statusLabel } from "@/components/admin/format";
+import { imageAt } from "@/lib/imageUrl";
 
 /** Order status chip — color + icon + label, never color alone. */
 function OrderChip({ status }: { status: OrderStatus }) {
@@ -276,8 +277,10 @@ export default function AdminMarketPage() {
                         {p.imageUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
-                            src={p.imageUrl}
+                            src={imageAt(p.imageUrl, 80)}
                             alt=""
+                            loading="lazy"
+                            decoding="async"
                             className={`h-10 w-10 shrink-0 rounded-lg object-cover ${p.isActive ? "" : "opacity-40 grayscale"}`}
                           />
                         ) : (

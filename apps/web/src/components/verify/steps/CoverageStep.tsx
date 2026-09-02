@@ -96,7 +96,7 @@ export function CoverageStep({ form, patch }: StepProps) {
             <button
               type="button"
               onClick={toggleWholeDivision}
-              className="rounded-full border border-white/60 bg-white/50 px-4 py-1.5 text-xs font-bold text-stone-700 backdrop-blur-xl transition hover:border-[#F5B400]/60 hover:text-amber-600 dark:border-white/[0.18] dark:bg-white/[0.10] dark:text-slate-300 dark:hover:text-[#F5B400]"
+              className="rounded-full border border-white/60 bg-white/50 px-4 py-1.5 text-xs font-bold text-stone-700 backdrop-blur-xl transition hover:border-[#F5B400]/60 hover:text-amber-700 dark:border-white/[0.18] dark:bg-white/[0.10] dark:text-slate-300 dark:hover:text-[#F5B400]"
             >
               {allSelected ? `Clear ${division}` : `Select all of ${division}`}
             </button>

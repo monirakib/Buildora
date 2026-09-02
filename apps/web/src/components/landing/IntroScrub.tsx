@@ -90,7 +90,7 @@ export function IntroScrub() {
             key={i}
             data-word
             className={`mr-[0.28em] inline-block ${
-              accents.has(word) ? "text-amber-600 dark:text-amber-400" : ""
+              accents.has(word) ? "text-amber-700 dark:text-amber-400" : ""
             }`}
           >
             {word}

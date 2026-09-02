@@ -8,6 +8,8 @@
     "build": "tsup",
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "seed:admin": "tsx src/scripts/seed-admin.ts",
     "rotate:keys": "tsx src/scripts/rotate-keys.ts",
     "seed:permits": "tsx src/scripts/seed-permits.ts",
@@ -55,6 +57,7 @@
     "@types/web-push": "^3.6.4",
     "tsup": "^8.5.1",
     "tsx": "^4.22.5",
-    "typescript": "^5.9.0"
+    "typescript": "^5.9.0",
+    "vitest": "^4.1.11"
   }
 }

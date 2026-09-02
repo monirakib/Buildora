@@ -46,7 +46,7 @@ export default function DashboardPage() {
 
       <main className="flex-1 px-5 pt-28 pb-16 sm:px-8">
         <div className="mx-auto w-full max-w-4xl">
-          <p className="text-sm font-bold tracking-[0.2em] text-amber-600 uppercase dark:text-amber-400">
+          <p className="text-sm font-bold tracking-[0.2em] text-amber-800 uppercase dark:text-amber-400">
             Your dashboard
           </p>
           <h1 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">
@@ -96,7 +96,7 @@ export default function DashboardPage() {
                     ? "Post a brief, review proposals, and drive your build from concept to handover."
                     : "The projects you've been engaged on, contracts, submissions, and escrow."}
                 </p>
-                <span className="mt-4 inline-block text-sm font-bold text-amber-600 dark:text-amber-400">
+                <span className="mt-4 inline-block text-sm font-bold text-amber-700 dark:text-amber-400">
                   Open projects →
                 </span>
               </Link>
@@ -123,7 +123,7 @@ export default function DashboardPage() {
                 <p className="mt-1 text-sm text-stone-600 dark:text-slate-400">
                   Browse client briefs and send proposals with your concept and design fees.
                 </p>
-                <span className="mt-4 inline-block text-sm font-bold text-amber-600 dark:text-amber-400">
+                <span className="mt-4 inline-block text-sm font-bold text-amber-700 dark:text-amber-400">
                   Browse briefs →
                 </span>
               </Link>
@@ -154,7 +154,7 @@ export default function DashboardPage() {
                   Price open Bills of Quantities and submit sealed bids. Nobody sees your rates
                   until bidding closes.
                 </p>
-                <span className="mt-4 inline-block text-sm font-bold text-amber-600 dark:text-amber-400">
+                <span className="mt-4 inline-block text-sm font-bold text-amber-700 dark:text-amber-400">
                   Find work →
                 </span>
               </Link>
@@ -181,7 +181,7 @@ export default function DashboardPage() {
                 <p className="mt-1 text-sm text-stone-600 dark:text-slate-400">
                   Browse architects, see their work, and send a contact request.
                 </p>
-                <span className="mt-4 inline-block text-sm font-bold text-amber-600 dark:text-amber-400">
+                <span className="mt-4 inline-block text-sm font-bold text-amber-700 dark:text-amber-400">
                   Browse architects →
                 </span>
               </Link>
@@ -210,7 +210,7 @@ export default function DashboardPage() {
                 <p className="mt-1 text-sm text-stone-600 dark:text-slate-400">
                   Browse verified structural engineers and see their completed work.
                 </p>
-                <span className="mt-4 inline-block text-sm font-bold text-amber-600 dark:text-amber-400">
+                <span className="mt-4 inline-block text-sm font-bold text-amber-700 dark:text-amber-400">
                   Browse engineers →
                 </span>
               </Link>
@@ -238,7 +238,7 @@ export default function DashboardPage() {
                 <p className="mt-1 text-sm text-stone-600 dark:text-slate-400">
                   Browse verified contractors and see their completed builds.
                 </p>
-                <span className="mt-4 inline-block text-sm font-bold text-amber-600 dark:text-amber-400">
+                <span className="mt-4 inline-block text-sm font-bold text-amber-700 dark:text-amber-400">
                   Browse contractors →
                 </span>
               </Link>
@@ -264,7 +264,7 @@ export default function DashboardPage() {
               <p className="mt-1 text-sm text-stone-600 dark:text-slate-400">
                 Chat with the people on your projects, everything stays on the platform.
               </p>
-              <span className="mt-4 inline-block text-sm font-bold text-amber-600 dark:text-amber-400">
+              <span className="mt-4 inline-block text-sm font-bold text-amber-700 dark:text-amber-400">
                 Open inbox →
               </span>
             </Link>
@@ -290,7 +290,7 @@ export default function DashboardPage() {
               <p className="mt-1 text-sm text-stone-600 dark:text-slate-400">
                 DAP zone checker, RAJUK fee calculator, and the ECPS process guide.
               </p>
-              <span className="mt-4 inline-block text-sm font-bold text-amber-600 dark:text-amber-400">
+              <span className="mt-4 inline-block text-sm font-bold text-amber-700 dark:text-amber-400">
                 Check the rules →
               </span>
             </Link>
@@ -318,7 +318,7 @@ export default function DashboardPage() {
                 <p className="mt-1 text-sm text-stone-600 dark:text-slate-400">
                   Live analytics, user &amp; role management, and marketplace oversight.
                 </p>
-                <span className="mt-4 inline-block text-sm font-bold text-amber-600 dark:text-amber-400">
+                <span className="mt-4 inline-block text-sm font-bold text-amber-700 dark:text-amber-400">
                   Open the console →
                 </span>
               </Link>
@@ -345,7 +345,7 @@ export default function DashboardPage() {
                 <p className="mt-1 text-sm text-stone-600 dark:text-slate-400">
                   Review professionals&apos; credentials and award the verified badge.
                 </p>
-                <span className="mt-4 inline-block text-sm font-bold text-amber-600 dark:text-amber-400">
+                <span className="mt-4 inline-block text-sm font-bold text-amber-700 dark:text-amber-400">
                   Open the queue →
                 </span>
               </Link>
@@ -373,7 +373,7 @@ export default function DashboardPage() {
                 <p className="mt-1 text-sm text-stone-600 dark:text-slate-400">
                   Maintain DAP zones, RAJUK fee rates, and the ECPS process steps.
                 </p>
-                <span className="mt-4 inline-block text-sm font-bold text-amber-600 dark:text-amber-400">
+                <span className="mt-4 inline-block text-sm font-bold text-amber-700 dark:text-amber-400">
                   Manage records →
                 </span>
               </Link>
@@ -403,7 +403,7 @@ export default function DashboardPage() {
                     ? "Track the architects you've contacted and their replies."
                     : "See land owners who've reached out to you."}
                 </p>
-                <span className="mt-4 inline-block text-sm font-bold text-amber-600 dark:text-amber-400">
+                <span className="mt-4 inline-block text-sm font-bold text-amber-700 dark:text-amber-400">
                   View requests →
                 </span>
               </Link>
@@ -432,7 +432,7 @@ export default function DashboardPage() {
                 <p className="mt-1 text-sm text-stone-600 dark:text-slate-400">
                   Add your credentials, education, and portfolio, then request verification.
                 </p>
-                <span className="mt-4 inline-block text-sm font-bold text-amber-600 dark:text-amber-400">
+                <span className="mt-4 inline-block text-sm font-bold text-amber-700 dark:text-amber-400">
                   Edit profile →
                 </span>
               </Link>
@@ -459,7 +459,7 @@ export default function DashboardPage() {
               <p className="mt-1 text-sm text-stone-600 dark:text-slate-400">
                 Personal details, contact numbers, billing information, and your password.
               </p>
-              <span className="mt-4 inline-block text-sm font-bold text-amber-600 dark:text-amber-400">
+              <span className="mt-4 inline-block text-sm font-bold text-amber-700 dark:text-amber-400">
                 Manage account →
               </span>
             </Link>

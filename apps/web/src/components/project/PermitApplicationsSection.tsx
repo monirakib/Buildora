@@ -303,7 +303,7 @@ function PermitTypeCard({
                     href={d.fileUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="truncate text-amber-600 underline underline-offset-2 dark:text-amber-400"
+                    className="truncate text-amber-700 underline underline-offset-2 dark:text-amber-400"
                   >
                     {d.name}
                   </a>

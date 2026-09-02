@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ChevronsLeft, ChevronsRight, HelpCircle } from "lucide-react";
 import type { SessionUser } from "@buildora/shared";
 import { Navbar } from "@/components/landing/Navbar";
+import { avatarAt } from "@/lib/imageUrl";
 
 /** One entry in the sidebar. `badge` is the little count/dot beside the label. */
 export interface NavItem {
@@ -84,7 +85,13 @@ export function AccountShell({
       >
         {avatarUrl ? (
           // eslint-disable-next-line @next/next/no-img-element -- Cloudinary-hosted
-          <img src={avatarUrl} alt="" className="h-8 w-8 shrink-0 rounded-full object-cover" />
+          <img
+            src={avatarAt(avatarUrl, 64)}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            className="h-8 w-8 shrink-0 rounded-full object-cover"
+          />
         ) : (
           <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-amber-400 text-xs font-extrabold text-stone-950">
             {initialsOf(user.name)}
@@ -147,7 +154,7 @@ export function AccountShell({
                       {isActive && (
                         <span className="absolute left-0 h-5 w-1 rounded-r-full bg-amber-500 dark:bg-amber-400" />
                       )}
-                      <span className={isActive ? "text-amber-600 dark:text-amber-300" : ""}>
+                      <span className={isActive ? "text-amber-700 dark:text-amber-300" : ""}>
                         {item.icon}
                       </span>
                       {!collapsed && (

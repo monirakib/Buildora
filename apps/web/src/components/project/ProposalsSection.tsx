@@ -144,7 +144,7 @@ export function ProposalsSection({
                   <p className="flex items-center gap-1.5 font-bold">
                     <Link
                       href={`/architects/${p.architect.id}`}
-                      className="hover:text-amber-600 dark:hover:text-amber-400"
+                      className="hover:text-amber-700 dark:hover:text-amber-400"
                     >
                       {p.architect.name}
                     </Link>

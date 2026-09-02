@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import type { NextFunction, Request, Response } from "express";
 import { env } from "../config/env";
 
@@ -17,7 +18,7 @@ function duplicateKeyIndex(err: unknown): string | undefined {
   return Object.keys(candidate.keyPattern ?? {})[0] ?? "";
 }
 
-export function errorHandler(err: unknown, _req: Request, res: Response, _next: NextFunction) {
+export function errorHandler(err: unknown, req: Request, res: Response, _next: NextFunction) {
   // The one-NID-one-account rule is enforced by a unique index, and the handlers
   // that write an NID check for a clash first so the user gets a real
   // explanation. This is the backstop for any path that doesn't — without it a
@@ -32,12 +33,24 @@ export function errorHandler(err: unknown, _req: Request, res: Response, _next: 
     });
   }
 
-  // Deliberately logs the error and not the request: `_req` is never touched
-  // here, so a request body can't reach the log. If an HTTP request logger is
-  // ever added, it needs a redaction list first — /api/auth/login and
-  // /register carry plaintext passwords in the body, and a logger that prints
-  // req.body writes them to disk in the clear.
-  console.error("[api] Unhandled error:", err);
+  /**
+   * A short reference, logged here and returned to the caller.
+   *
+   * Production deliberately hides the real message (see below), which left a
+   * user reporting "it said internal server error" and nothing to search the
+   * logs for. The reference closes that gap without revealing anything: it is
+   * random, it means nothing on its own, and it is the only thing tying a
+   * screenshot to a stack trace.
+   */
+  const reference = randomUUID().slice(0, 8);
+
+  // Method and path only — never the body, and never the query string.
+  // `req.path` excludes the query on purpose: /api/auth/verify-email carries a
+  // single-use token there, and /api/auth/login and /register carry plaintext
+  // passwords in the body. A logger that printed either would write them to
+  // disk in the clear. If a full HTTP request logger is ever added, it needs a
+  // redaction list before it goes anywhere near those routes.
+  console.error(`[api] Unhandled error ${reference} on ${req.method} ${req.path}:`, err);
 
   // Only development sees the real message. Read from the validated config
   // rather than process.env directly: the old check was `!== "production"`,
@@ -46,5 +59,5 @@ export function errorHandler(err: unknown, _req: Request, res: Response, _next: 
   // to every client. Naming the one environment that may see them fails safe.
   const message =
     err instanceof Error && env.NODE_ENV === "development" ? err.message : "Internal server error";
-  return res.status(500).json({ error: { message } });
+  return res.status(500).json({ error: { message, reference } });
 }

@@ -102,7 +102,7 @@ export default function TendersPage() {
                     <div className="min-w-0">
                       <Link
                         href={`/tenders/${t.id}`}
-                        className="font-bold hover:text-amber-600 dark:hover:text-amber-400"
+                        className="font-bold hover:text-amber-700 dark:hover:text-amber-400"
                       >
                         {t.title}
                       </Link>
@@ -157,7 +157,7 @@ export default function TendersPage() {
                     <div className="min-w-0">
                       <Link
                         href={`/tenders/${b.tenderId}`}
-                        className="font-bold hover:text-amber-600 dark:hover:text-amber-400"
+                        className="font-bold hover:text-amber-700 dark:hover:text-amber-400"
                       >
                         {b.tenderTitle || "Tender"}
                       </Link>

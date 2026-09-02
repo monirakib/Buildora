@@ -313,7 +313,7 @@ export default function AuthPage() {
             /* Already signed in — no need to show the form again */
             <div className={`${glassCardClass} p-8 text-center`}>
               <div className="relative z-10">
-                <p className="text-sm font-bold tracking-[0.2em] text-amber-600 uppercase dark:text-amber-400">
+                <p className="text-sm font-bold tracking-[0.2em] text-amber-800 uppercase dark:text-amber-400">
                   Signed in
                 </p>
                 <h1 className="mt-3 text-2xl font-extrabold tracking-tight">
@@ -330,7 +330,7 @@ export default function AuthPage() {
                   <button
                     type="button"
                     onClick={clearSession}
-                    className="rounded-full border border-white/40 bg-white/20 px-8 py-3 text-sm font-bold backdrop-blur transition hover:border-amber-500 hover:text-amber-600 dark:border-white/15 dark:bg-white/5 dark:hover:border-amber-400 dark:hover:text-amber-300"
+                    className="rounded-full border border-white/40 bg-white/20 px-8 py-3 text-sm font-bold backdrop-blur transition hover:border-amber-500 hover:text-amber-700 dark:border-white/15 dark:bg-white/5 dark:hover:border-amber-400 dark:hover:text-amber-300"
                   >
                     Log out
                   </button>
@@ -339,7 +339,7 @@ export default function AuthPage() {
             </div>
           ) : (
             <>
-              <p className="text-sm font-bold tracking-[0.2em] text-amber-600 uppercase dark:text-amber-400">
+              <p className="text-sm font-bold tracking-[0.2em] text-amber-800 uppercase dark:text-amber-400">
                 {copy.kicker}
               </p>
               <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-stone-900 [text-shadow:0_1px_10px_rgba(255,255,255,0.6)] sm:text-4xl dark:text-white dark:[text-shadow:0_1px_12px_rgba(0,0,0,0.5)]">

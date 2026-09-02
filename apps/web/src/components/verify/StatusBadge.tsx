@@ -88,7 +88,7 @@ export function StatusBadge({ status, role }: { status: VerificationStatus; role
                 isActive && stage.status === VerificationStatus.APPROVED
                   ? "bg-emerald-500/25 text-emerald-800 dark:text-emerald-200 backdrop-blur-xl"
                   : isActive
-                    ? "bg-[#F5B400]/20 text-amber-600 dark:text-[#F5B400] backdrop-blur-xl"
+                    ? "bg-[#F5B400]/20 text-amber-700 dark:text-[#F5B400] backdrop-blur-xl"
                     : reached
                       ? "bg-white/70 dark:bg-white/[0.14] text-stone-800 dark:text-slate-200 backdrop-blur-xl"
                       : "bg-white/40 dark:bg-white/[0.07] text-stone-600 dark:text-slate-400 backdrop-blur-xl"

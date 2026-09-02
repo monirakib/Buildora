@@ -19,7 +19,7 @@ export const entryBox =
   "rounded-3xl border border-white/50 dark:border-white/[0.12] bg-white/40 dark:bg-white/[0.06] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] backdrop-blur-xl sm:p-5";
 
 export const addButton =
-  "self-start rounded-full border border-white/60 dark:border-white/[0.18] bg-white/50 dark:bg-white/[0.10] px-5 py-2 text-sm font-bold text-stone-900 dark:text-white backdrop-blur-xl transition-all duration-200 hover:-translate-y-0.5 hover:border-[#F5B400]/60 hover:text-amber-600 dark:hover:text-[#F5B400] hover:shadow-[0_8px_24px_rgba(245,180,0,0.15)] active:translate-y-0 disabled:opacity-50";
+  "self-start rounded-full border border-white/60 dark:border-white/[0.18] bg-white/50 dark:bg-white/[0.10] px-5 py-2 text-sm font-bold text-stone-900 dark:text-white backdrop-blur-xl transition-all duration-200 hover:-translate-y-0.5 hover:border-[#F5B400]/60 hover:text-amber-700 dark:hover:text-[#F5B400] hover:shadow-[0_8px_24px_rgba(245,180,0,0.15)] active:translate-y-0 disabled:opacity-50";
 
 export const removeButton =
   "text-xs font-bold text-stone-500 dark:text-slate-500 transition hover:text-rose-600 dark:hover:text-rose-400 disabled:opacity-50";
@@ -107,7 +107,7 @@ export function Field({
     <div>
       <label htmlFor={id} className={label}>
         {title}
-        {required && <span className="ml-1 text-amber-600 dark:text-[#F5B400]">*</span>}
+        {required && <span className="ml-1 text-amber-700 dark:text-[#F5B400]">*</span>}
       </label>
       {children}
       {hint && <p className="mt-1 text-xs text-stone-500 dark:text-slate-500">{hint}</p>}
@@ -144,7 +144,7 @@ export function ChipGroup({
             aria-pressed={isOn}
             className={`inline-flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-bold transition disabled:opacity-50 ${
               isOn
-                ? "border-[#F5B400]/70 bg-[#F5B400]/20 text-amber-600 dark:text-[#F5B400] shadow-[0_0_16px_rgba(245,180,0,0.2)] backdrop-blur-xl"
+                ? "border-[#F5B400]/70 bg-[#F5B400]/20 text-amber-700 dark:text-[#F5B400] shadow-[0_0_16px_rgba(245,180,0,0.2)] backdrop-blur-xl"
                 : "border-white/60 dark:border-white/[0.18] bg-white/50 dark:bg-white/[0.08] text-stone-800 dark:text-slate-200 backdrop-blur-xl hover:border-stone-400 dark:hover:border-white/35"
             }`}
           >

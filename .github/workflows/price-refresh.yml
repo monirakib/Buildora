@@ -1,0 +1,83 @@
+name: Weekly price refresh
+
+# The cost estimator's market prices are refreshed once a week.
+#
+# The API has an in-process node-cron for this, but on a free Render instance it
+# will essentially never fire: the process is spun down after ~15 minutes of no
+# traffic, and a stopped process has no timers. This workflow is the trigger
+# that actually happens — GitHub runs it whether or not anything is awake, and
+# the request itself is what wakes the instance.
+#
+# Setup (repository → Settings → Secrets and variables → Actions):
+#   API_BASE_URL           e.g. https://api.buildora.software  (variable)
+#   PRICE_REFRESH_SECRET   must match the API's env var        (secret)
+#
+# Without those the job skips rather than failing, so a fork or a fresh clone
+# does not show a permanently red workflow.
+
+on:
+  schedule:
+    # 21:00 UTC Sunday = 03:00 Monday in Dhaka — quiet hours, and a fresh set
+    # of figures waiting at the start of the week.
+    - cron: "0 21 * * 0"
+  # So the refresh can be run by hand, and so this can be tested without
+  # waiting a week for Sunday.
+  workflow_dispatch:
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check the workflow is configured
+        id: config
+        env:
+          API_BASE_URL: ${{ vars.API_BASE_URL }}
+          PRICE_REFRESH_SECRET: ${{ secrets.PRICE_REFRESH_SECRET }}
+        run: |
+          if [ -z "$API_BASE_URL" ] || [ -z "$PRICE_REFRESH_SECRET" ]; then
+            echo "API_BASE_URL or PRICE_REFRESH_SECRET is not set — skipping."
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # A spun-down free instance takes the better part of a minute to boot, and
+      # the refresh POST would time out waiting for it. Waking it first with a
+      # cheap health check keeps the real request fast and its failure honest.
+      - name: Wake the API
+        if: steps.config.outputs.configured == 'true'
+        env:
+          API_BASE_URL: ${{ vars.API_BASE_URL }}
+        run: |
+          curl --silent --show-error --fail \
+               --retry 5 --retry-all-errors --retry-delay 15 \
+               --max-time 90 \
+               "$API_BASE_URL/api/health"
+          echo
+
+      - name: Trigger the refresh
+        if: steps.config.outputs.configured == 'true'
+        env:
+          API_BASE_URL: ${{ vars.API_BASE_URL }}
+          PRICE_REFRESH_SECRET: ${{ secrets.PRICE_REFRESH_SECRET }}
+        run: |
+          # The endpoint answers 202 when it starts a run and 200 with
+          # started:false when one has already happened this week — the lazy
+          # trigger on estimate reads often gets there first. Both are success.
+          status=$(curl --silent --show-error \
+                        --output response.json --write-out '%{http_code}' \
+                        --max-time 60 \
+                        --request POST \
+                        --header "x-price-refresh-secret: $PRICE_REFRESH_SECRET" \
+                        "$API_BASE_URL/api/pricing/refresh")
+
+          echo "HTTP $status"
+          cat response.json
+          echo
+
+          case "$status" in
+            200|202) exit 0 ;;
+            401) echo "::error::PRICE_REFRESH_SECRET does not match the API's." ; exit 1 ;;
+            503) echo "::error::PRICE_REFRESH_SECRET is unset on the API." ; exit 1 ;;
+            *)   echo "::error::Unexpected response from the refresh endpoint." ; exit 1 ;;
+          esac

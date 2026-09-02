@@ -68,7 +68,7 @@ export default function InquiriesPage() {
 
       <main className="flex-1 px-5 pt-28 pb-16 sm:px-8">
         <div className="mx-auto w-full max-w-3xl">
-          <p className="text-sm font-bold tracking-[0.2em] text-amber-600 uppercase dark:text-amber-400">
+          <p className="text-sm font-bold tracking-[0.2em] text-amber-800 uppercase dark:text-amber-400">
             {isLandOwner ? "Your requests" : "Client requests"}
           </p>
           <h1 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">
@@ -97,13 +97,13 @@ export default function InquiriesPage() {
                     </Link>
                     <Link
                       href="/engineers"
-                      className="rounded-full border border-stone-300/80 px-6 py-2.5 text-sm font-bold text-stone-700 transition hover:border-amber-500 hover:text-amber-600 dark:border-white/15 dark:text-slate-300 dark:hover:text-amber-400"
+                      className="rounded-full border border-stone-300/80 px-6 py-2.5 text-sm font-bold text-stone-700 transition hover:border-amber-500 hover:text-amber-700 dark:border-white/15 dark:text-slate-300 dark:hover:text-amber-400"
                     >
                       Find an engineer
                     </Link>
                     <Link
                       href="/contractors"
-                      className="rounded-full border border-stone-300/80 px-6 py-2.5 text-sm font-bold text-stone-700 transition hover:border-amber-500 hover:text-amber-600 dark:border-white/15 dark:text-slate-300 dark:hover:text-amber-400"
+                      className="rounded-full border border-stone-300/80 px-6 py-2.5 text-sm font-bold text-stone-700 transition hover:border-amber-500 hover:text-amber-700 dark:border-white/15 dark:text-slate-300 dark:hover:text-amber-400"
                     >
                       Find a contractor
                     </Link>
@@ -146,7 +146,7 @@ export default function InquiriesPage() {
                             {" · "}
                             <Link
                               href={`/${professionalCopy(q.professional.role).basePath}/${q.professional.id}`}
-                              className="font-semibold text-amber-600 underline underline-offset-2 dark:text-amber-400"
+                              className="font-semibold text-amber-700 underline underline-offset-2 dark:text-amber-400"
                             >
                               View profile
                             </Link>

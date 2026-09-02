@@ -26,6 +26,7 @@ import { NotificationType, type AppNotification } from "@buildora/shared";
 import { timeAgo } from "@/components/admin/format";
 import { useNotifications } from "@/store/useNotifications";
 import { useSession } from "@/store/useSession";
+import { avatarAt } from "@/lib/imageUrl";
 
 /** Fallback refresh, in case a socket push is missed (sleep, flaky network). */
 const POLL_EVERY_MS = 60_000;
@@ -137,8 +138,10 @@ function RowIcon({ notification }: { notification: AppNotification }) {
     return (
       // eslint-disable-next-line @next/next/no-img-element -- tiny avatar, remote host unknown
       <img
-        src={notification.actor.avatarUrl}
+        src={avatarAt(notification.actor.avatarUrl, 72)}
         alt=""
+        loading="lazy"
+        decoding="async"
         className="h-9 w-9 shrink-0 rounded-xl object-cover"
       />
     );

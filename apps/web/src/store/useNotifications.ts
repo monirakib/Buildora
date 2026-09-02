@@ -55,6 +55,50 @@ interface NotificationState {
 let socket: Socket | null = null;
 let socketUserId: string | null = null;
 
+/**
+ * Extra listeners riding on the same socket.
+ *
+ * The bell is not the only thing the server pushes — the chat thread wants its
+ * own messages live too. Rather than opening a third WebSocket per tab (the
+ * bell and the call signaller are already two), other features register here
+ * and share this one.
+ *
+ * The registry is what makes that safe across a re-login: `connect()` throws
+ * the old socket away and builds a new one, and every registered event is
+ * re-bound onto it. A subscriber that just called `socket.on(...)` directly
+ * would go silent at that point and never say so.
+ */
+const extraListeners = new Map<string, Set<(payload: unknown) => void>>();
+const boundEvents = new Set<string>();
+
+function bindEvent(event: string) {
+  if (!socket || boundEvents.has(event)) return;
+  boundEvents.add(event);
+  // One socket handler per event, fanning out to the current subscribers —
+  // so subscribing and unsubscribing never touches the socket itself.
+  socket.on(event, (payload: unknown) => {
+    for (const handler of extraListeners.get(event) ?? []) handler(payload);
+  });
+}
+
+/**
+ * Listen for a server event on the app socket. Returns the unsubscribe, which
+ * an effect should call on cleanup.
+ *
+ * Safe to call before the socket exists: the event is bound as soon as one is
+ * opened.
+ */
+export function onAppEvent<T>(event: string, handler: (payload: T) => void): () => void {
+  const handlers = extraListeners.get(event) ?? new Set<(payload: unknown) => void>();
+  extraListeners.set(event, handlers);
+  const wrapped = handler as (payload: unknown) => void;
+  handlers.add(wrapped);
+  bindEvent(event);
+  return () => {
+    handlers.delete(wrapped);
+  };
+}
+
 export const useNotifications = create<NotificationState>((set, get) => {
   /** Opens the push channel for this login (no-op if already open for it). */
   function connect(token: string) {
@@ -73,6 +117,10 @@ export const useNotifications = create<NotificationState>((set, get) => {
       auth: (cb) => cb({ token: useSession.getState().token ?? token }),
       forceNew: true,
     });
+
+    // This is a brand new socket, so nothing is bound to it yet.
+    boundEvents.clear();
+    for (const event of extraListeners.keys()) bindEvent(event);
 
     socket.on(
       NOTIFICATION_EVENTS.created,
@@ -162,6 +210,9 @@ export const useNotifications = create<NotificationState>((set, get) => {
       socket?.disconnect();
       socket = null;
       socketUserId = null;
+      // The handlers stay registered — the components holding them are still
+      // mounted — but nothing is bound any more, so the next connect() rebinds.
+      boundEvents.clear();
       set({ items: [], unreadCount: 0, filter: null });
     },
   };

@@ -33,6 +33,7 @@ import {
 } from "@/lib/apiSiteDiary";
 import { StatTile } from "@/components/admin/charts";
 import { DiaryDigestModal } from "@/components/project/DiaryDigestModal";
+import { imageAt } from "@/lib/imageUrl";
 
 const inputClass =
   "block w-full rounded-xl border border-stone-300/80 bg-white/70 px-4 py-2.5 text-sm text-stone-900 placeholder-stone-400 backdrop-blur transition outline-none focus:border-amber-500 focus:bg-white/90 focus:ring-2 focus:ring-amber-400/30 dark:border-white/15 dark:bg-white/5 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:bg-white/10";
@@ -324,7 +325,7 @@ export function SiteDiarySection({
                     {dhakaDateLabel(day.date).slice(0, 8)}
                   </p>
                   <div className="mt-2 flex items-center gap-2">
-                    <WeatherIcon code={day.weatherCode} className="h-5 w-5 text-amber-600" />
+                    <WeatherIcon code={day.weatherCode} className="h-5 w-5 text-amber-700" />
                     <span className="text-sm font-semibold">
                       {Math.round(day.tempMaxC)}° / {Math.round(day.tempMinC)}°
                     </span>
@@ -527,8 +528,10 @@ export function SiteDiarySection({
                     <div key={url} className="relative">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
-                        src={url}
+                        src={imageAt(url, 160)}
                         alt="Site photo"
+                        loading="lazy"
+                        decoding="async"
                         className="h-20 w-20 rounded-lg object-cover"
                       />
                       <button
@@ -548,7 +551,7 @@ export function SiteDiarySection({
                   ))}
                 </div>
               )}
-              <label className="mt-2 flex w-fit cursor-pointer items-center rounded-xl border border-dashed border-stone-400/60 px-4 py-2 text-sm font-semibold text-stone-600 transition hover:border-amber-500 hover:text-amber-600 dark:border-white/25 dark:text-slate-300">
+              <label className="mt-2 flex w-fit cursor-pointer items-center rounded-xl border border-dashed border-stone-400/60 px-4 py-2 text-sm font-semibold text-stone-600 transition hover:border-amber-500 hover:text-amber-700 dark:border-white/25 dark:text-slate-300">
                 {uploading ? "Uploading…" : "Add photo"}
                 <input type="file" accept="image/*" onChange={handlePhoto} className="hidden" />
               </label>
@@ -656,8 +659,10 @@ export function SiteDiarySection({
                         <a key={url} href={url} target="_blank" rel="noreferrer">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
-                            src={url}
+                            src={imageAt(url, 160)}
                             alt="Site photo"
+                            loading="lazy"
+                            decoding="async"
                             className="h-20 w-20 rounded-lg object-cover transition hover:opacity-80"
                           />
                         </a>

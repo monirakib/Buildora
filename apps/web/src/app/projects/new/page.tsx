@@ -169,7 +169,7 @@ function Toggle({ label, on, onClick }: { label: string; on: boolean; onClick: (
       className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
         on
           ? "bg-stone-900 text-white dark:bg-amber-400 dark:text-stone-950"
-          : "border border-stone-300 text-stone-600 hover:border-amber-500 hover:text-amber-600 dark:border-white/15 dark:text-slate-300 dark:hover:border-amber-400"
+          : "border border-stone-300 text-stone-600 hover:border-amber-500 hover:text-amber-700 dark:border-white/15 dark:text-slate-300 dark:hover:border-amber-400"
       }`}
     >
       {on ? "✓ " : ""}
@@ -327,7 +327,7 @@ export default function NewProjectPage() {
 
       <main className="flex-1 px-5 pt-28 pb-16 sm:px-8">
         <div className="mx-auto w-full max-w-6xl">
-          <p className="text-sm font-bold tracking-[0.2em] text-amber-600 uppercase dark:text-amber-400">
+          <p className="text-sm font-bold tracking-[0.2em] text-amber-800 uppercase dark:text-amber-400">
             New project
           </p>
           <h1 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">
@@ -746,7 +746,7 @@ export default function NewProjectPage() {
                       </div>
                     ))}
                     {form.photoUrls.length < 6 && (
-                      <label className="flex h-24 w-32 cursor-pointer items-center justify-center rounded-xl border border-dashed border-stone-400/60 text-sm font-semibold text-stone-600 transition hover:border-amber-500 hover:text-amber-600 dark:border-white/25 dark:text-slate-300">
+                      <label className="flex h-24 w-32 cursor-pointer items-center justify-center rounded-xl border border-dashed border-stone-400/60 text-sm font-semibold text-stone-600 transition hover:border-amber-500 hover:text-amber-700 dark:border-white/25 dark:text-slate-300">
                         {uploading ? "Uploading…" : "+ Add photo"}
                         <input
                           type="file"
@@ -888,7 +888,7 @@ export default function NewProjectPage() {
                   </div>
 
                   {budgetLine && (
-                    <p className="mt-3 text-sm font-bold text-amber-600 dark:text-amber-400">
+                    <p className="mt-3 text-sm font-bold text-amber-700 dark:text-amber-400">
                       {budgetLine}
                     </p>
                   )}

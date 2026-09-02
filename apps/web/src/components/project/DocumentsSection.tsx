@@ -161,7 +161,7 @@ export function DocumentsSection({
                     href={d.fileUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="font-semibold hover:text-amber-600 dark:hover:text-amber-400"
+                    className="font-semibold hover:text-amber-700 dark:hover:text-amber-400"
                   >
                     {d.title} ↗
                   </a>
@@ -223,7 +223,7 @@ export function DocumentsSection({
               placeholder={is3d ? "Upload a .glb model →" : "Paste a link, or upload an image →"}
               className={`${inputClass} sm:col-span-1`}
             />
-            <label className="flex cursor-pointer items-center justify-center rounded-xl border border-dashed border-stone-400/60 px-4 py-2.5 text-sm font-semibold text-stone-600 transition hover:border-amber-500 hover:text-amber-600 dark:border-white/25 dark:text-slate-300">
+            <label className="flex cursor-pointer items-center justify-center rounded-xl border border-dashed border-stone-400/60 px-4 py-2.5 text-sm font-semibold text-stone-600 transition hover:border-amber-500 hover:text-amber-700 dark:border-white/25 dark:text-slate-300">
               {uploading ? "Uploading…" : is3d ? "Upload 3D model (.glb)" : "Upload image"}
               <input
                 type="file"

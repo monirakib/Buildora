@@ -5,6 +5,7 @@ import { Coins, RefreshCw, CheckCircle2, XCircle, AlertTriangle } from "lucide-r
 import type { PriceRefreshRunSummary } from "@buildora/shared";
 import { useSession } from "@/store/useSession";
 import { AdminShell } from "@/components/admin/AdminShell";
+import { PriceSheetSection } from "@/components/admin/PriceSheetSection";
 import { timeAgo } from "@/components/admin/format";
 import { getPricingStatus, triggerPriceRefresh } from "@/lib/apiAdmin";
 
@@ -24,10 +25,17 @@ const TRIGGER_LABELS: Record<PriceRefreshRunSummary["trigger"], string> = {
   ADMIN: "Admin button",
   LAZY: "Opened an estimate",
   SEED: "Seed script",
+  IMPORT: "CSV price sheet",
 };
 
 /**
  * Material pricing.
+ *
+ * Two halves. The top is the price sheet an admin maintains by hand — the CSV
+ * they download, edit and upload each week, plus row-by-row editing for the
+ * weeks when only one number moved. The bottom is the automatic side: the
+ * marketplace medians and manufacturer pages the weekly job reads, and the log
+ * of what each run actually did.
  *
  * The weekly refresh that keeps material prices current can't be trusted to
  * fire on its own on a free-tier instance that spins down when idle (see
@@ -79,13 +87,27 @@ export default function AdminPricingPage() {
   return (
     <AdminShell
       title="Material pricing"
-      subtitle="Fetch live material prices and reprice every land owner's estimate against them"
+      subtitle="Keep the weekly price sheet current — the cost estimator prices every build against it"
     >
       <div className="space-y-6">
+        {/* The sheet reloads the run log after an import, since an import
+            writes a run of its own. */}
+        <PriceSheetSection onChanged={load} />
+
+        <div className="border-t border-black/5 pt-6 dark:border-white/10">
+          <h2 className="text-sm font-extrabold text-stone-900 dark:text-white">
+            Automatic sources
+          </h2>
+          <p className="mt-1 text-xs text-stone-500 dark:text-stone-400">
+            Marketplace medians and manufacturer price pages, refreshed weekly. These supplement the
+            sheet above; they never replace it.
+          </p>
+        </div>
+
         <section className={cardClass}>
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="flex gap-3">
-              <Coins className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
+              <Coins className="mt-0.5 h-5 w-5 shrink-0 text-amber-700 dark:text-amber-400" />
               <div className="text-sm text-stone-600 dark:text-stone-300">
                 <p className="font-bold text-stone-900 dark:text-white">
                   This runs the weekly refresh right now, on demand.
@@ -193,8 +215,9 @@ export default function AdminPricingPage() {
           <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-stone-400" />
           <p className="text-xs text-stone-500 dark:text-stone-400">
             Scraped manufacturer prices are written unapproved and this button doesn&apos;t approve
-            them — only marketplace medians are auto-approved, so a scraped source needs its{" "}
-            <code>approved</code> flag set on the MarketPrice row before it can move an estimate.
+            them — they appear under &ldquo;Waiting for review&rdquo; above and can&apos;t move an
+            estimate until you approve one. Marketplace medians are auto-approved: those are our own
+            suppliers&apos; listed prices, which the marketplace already moderates.
           </p>
         </section>
       </div>

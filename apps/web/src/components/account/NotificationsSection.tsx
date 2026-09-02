@@ -189,7 +189,7 @@ export function NotificationsSection({
         }
       >
         <div className="flex flex-wrap items-center gap-3 px-4 py-3.5 sm:px-5">
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-amber-500/15 text-amber-700 dark:text-amber-400">
             <BellRing className="h-4.5 w-4.5" />
           </span>
           <div className="min-w-0 flex-1">
@@ -241,7 +241,7 @@ export function NotificationsSection({
         }
       >
         <div className="flex flex-wrap items-center gap-3 px-4 py-3.5 sm:px-5">
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-amber-500/15 text-amber-700 dark:text-amber-400">
             <Mail className="h-4.5 w-4.5" />
           </span>
           <div className="min-w-0 flex-1">

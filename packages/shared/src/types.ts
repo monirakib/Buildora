@@ -1209,6 +1209,26 @@ export const NOTIFICATION_EVENTS = {
   created: "notification:created",
 } as const;
 
+/**
+ * Socket.IO channel for chat itself.
+ *
+ * Separate from NOTIFICATION_EVENTS on purpose. A notification is the *bell*
+ * ringing — collapsed per sender, so a burst of ten messages is one entry. The
+ * thread needs the opposite: every message, in order, exactly once. Reusing the
+ * notification event would have dropped nine of those ten from the open
+ * conversation.
+ */
+export const MESSAGE_EVENTS = {
+  /** server → client: one message, sent to both participants' tabs. */
+  created: "message:created",
+} as const;
+
+/** Payload of MESSAGE_EVENTS.created. */
+export interface MessageCreatedEvent {
+  conversationId: string;
+  message: ChatMessage;
+}
+
 /* ---------- Admin console ---------- */
 
 /**

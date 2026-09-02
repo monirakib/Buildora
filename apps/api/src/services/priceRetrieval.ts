@@ -128,7 +128,8 @@ function toRetrieved(
  * fifteen rate lines with thirty-odd material slices between them, and thirty
  * round trips to fetch from the same small collection would be silly. The
  * collection is append-only, so this also has to keep only the newest row per
- * distinct label — older rows are history, not candidates.
+ * distinct label — older rows are history, not candidates, and a retired item's
+ * newest row is a tombstone that takes the whole item out.
  */
 export async function loadPriceCandidates(): Promise<Map<ProductCategory, MarketPriceDoc[]>> {
   const rows = await MarketPrice.find({ approved: true }).sort({ effectiveFrom: -1 }).limit(500);
@@ -141,6 +142,12 @@ export async function loadPriceCandidates(): Promise<Map<ProductCategory, Market
     const key = `${row.category}::${row.itemLabel}`;
     if (seen.has(key)) continue;
     seen.add(key);
+
+    // A retirement row is the newest row for its item, and its only job is to
+    // shadow the ones underneath. Marking the key seen before skipping is what
+    // does that — otherwise the next-newest row would be picked up as if the
+    // item were still live. See MarketPrice.retired.
+    if (row.retired) continue;
 
     const list = byCategory.get(row.category) ?? [];
     list.push(row);

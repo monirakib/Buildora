@@ -84,7 +84,7 @@ export function PlotMapView({ location }: { location: PlotLocation }) {
           href={`https://www.google.com/maps?q=${location.lat},${location.lng}`}
           target="_blank"
           rel="noreferrer"
-          className="font-bold text-amber-600 hover:underline dark:text-amber-400"
+          className="font-bold text-amber-700 hover:underline dark:text-amber-400"
         >
           Get directions →
         </a>

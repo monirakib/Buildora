@@ -16,8 +16,11 @@ import { PriceSource, ProductCategory } from "@buildora/shared";
  *
  * Three sources feed it and they are not equal:
  *
- *   - CURATED rows are typed in by an admin from a published figure. Slow,
- *     reliable, and the floor everything else falls back to.
+ *   - CURATED rows come from the admin's weekly price sheet — typed into the
+ *     console or uploaded as a CSV (services/priceSheet). Slow, reliable, and
+ *     the floor everything else falls back to. This is the source a person is
+ *     responsible for keeping current, and the only one that covers categories
+ *     no supplier happens to be listing this week.
  *   - MARKETPLACE rows are medians of live listings on Buildora itself. This is
  *     our own users' data — no scraping, no third-party terms in the way — and
  *     it is the only source that moves without anyone doing anything.
@@ -38,6 +41,17 @@ export interface MarketPriceDoc {
   sourceUrl?: string;
   /** Only FETCHED rows ever land false — see the note above. */
   approved: boolean;
+  /**
+   * Marks the item as no longer sold, or no longer worth tracking.
+   *
+   * Retiring cannot delete anything — that would break the audit trail this
+   * collection exists for. Instead a final row is written with this set, and
+   * because reads take the *newest* row per item, that one shadows the rest and
+   * the item drops out of both the sheet and the estimator's candidate list.
+   * The history underneath stays readable, so an estimate from March that used
+   * this item can still be explained.
+   */
+  retired?: boolean;
   /**
    * When this price started applying. Distinct from `createdAt`: an admin
    * entering last week's TCB bulletin today should backdate it, or the staleness
@@ -69,6 +83,7 @@ const marketPriceSchema = new Schema<MarketPriceDoc>(
     // Curated and marketplace rows are trusted on arrival; only the scraper's
     // output has to be looked at first, and the seed/job set this explicitly.
     approved: { type: Boolean, required: true, default: false },
+    retired: { type: Boolean, default: undefined },
     effectiveFrom: { type: Date, required: true, default: () => new Date() },
     embedding: { type: [Number], default: undefined },
     embeddingModel: { type: String, trim: true, maxlength: 80 },

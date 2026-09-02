@@ -95,7 +95,7 @@ export function HowItWorks() {
         {/* Sticky intro — stays put while the steps scroll past */}
         <div className="lg:sticky lg:top-32 lg:self-start">
           <Reveal>
-            <p className="text-sm font-bold tracking-[0.2em] text-amber-600 uppercase dark:text-amber-400">
+            <p className="text-sm font-bold tracking-[0.2em] text-amber-800 uppercase dark:text-amber-400">
               How it works
             </p>
             <h2 className="mt-3 text-3xl font-extrabold tracking-tight sm:text-5xl">
@@ -108,7 +108,7 @@ export function HowItWorks() {
             </p>
             <Link
               href="/architects"
-              className="mt-7 inline-flex items-center gap-2 text-sm font-bold text-amber-600 transition hover:gap-3 dark:text-amber-400"
+              className="mt-7 inline-flex items-center gap-2 text-sm font-bold text-amber-700 transition hover:gap-3 dark:text-amber-400"
             >
               Browse verified architects
               <span aria-hidden>→</span>
