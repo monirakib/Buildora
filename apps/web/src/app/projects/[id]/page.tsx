@@ -17,6 +17,7 @@ import {
   type Project,
   type StructuralEngagement,
   type Tender,
+  type UserRef,
 } from "@buildora/shared";
 import {
   deleteProject,
@@ -183,6 +184,7 @@ export default function ProjectDetailPage() {
   const isOwner = !!user && !!project && user.id === project.owner.id;
   const isAssignedArchitect = !!user && !!project && user.id === project.architect?.id;
   const isAssignedEngineer = !!user && !!project && user.id === project.engineer?.id;
+  const isAssignedContractor = !!user && !!project && user.id === project.contractor?.id;
 
   const progress = useMemo(() => {
     if (!project) return null;
@@ -339,7 +341,19 @@ export default function ProjectDetailPage() {
   if (!project || !user || !token || !progress) return null;
 
   const nextAction = isOwner ? nextStatusActions[project.status] : undefined;
-  const messagingTarget = isOwner ? project.architect : isAssignedArchitect ? project.owner : null;
+  /**
+   * Who this viewer can open a message thread with from the header. The owner
+   * can reach every professional engaged on the project; the assigned architect,
+   * engineer and contractor can each reach the owner. Both sides are already on
+   * the same project, which is what makes the contact allowed.
+   */
+  const messagingTargets: UserRef[] = isOwner
+    ? [project.architect, project.engineer, project.contractor].filter(
+        (p): p is UserRef => !!p
+      )
+    : isAssignedArchitect || isAssignedEngineer || isAssignedContractor
+      ? [project.owner]
+      : [];
 
   /** Tab descriptors: phase tabs carry their own progress, lock and alert state. */
   const tabDescriptors: TabDescriptor[] = visibleTabs.map((key) => {
@@ -401,7 +415,7 @@ export default function ProjectDetailPage() {
 
             <ProjectProgress progress={progress} onJump={(p: PhaseKey) => selectTab(p)} />
 
-            {(nextAction || messagingTarget || isOwner) && (
+            {(nextAction || messagingTargets.length > 0 || isOwner) && (
               <div className="flex flex-wrap gap-2">
                 {isOwner && project.status === ProjectStatus.DRAFT && (
                   <button
@@ -423,16 +437,17 @@ export default function ProjectDetailPage() {
                     {nextAction.label}
                   </button>
                 )}
-                {messagingTarget && (
+                {messagingTargets.map((target) => (
                   <button
+                    key={target.id}
                     type="button"
                     disabled={busy}
-                    onClick={() => handleMessage(messagingTarget.id)}
+                    onClick={() => handleMessage(target.id)}
                     className="rounded-full border border-stone-300 px-6 py-2.5 text-sm font-bold text-stone-700 transition hover:bg-stone-100 disabled:opacity-60 dark:border-white/20 dark:text-slate-200 dark:hover:bg-white/10"
                   >
-                    Message {messagingTarget.name.split(" ")[0]}
+                    Message {target.name.split(" ")[0]}
                   </button>
-                )}
+                ))}
                 {isOwner &&
                   (project.status === ProjectStatus.DRAFT ||
                     project.status === ProjectStatus.BRIEF_POSTED) && (
