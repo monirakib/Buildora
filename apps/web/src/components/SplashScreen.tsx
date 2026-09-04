@@ -9,7 +9,13 @@ import { useSession } from "@/store/useSession";
 export const WELCOME_KEY = "buildora-welcomed";
 
 /** The overlay never shows for less than this, so the words can be read. */
-const MIN_SHOW_MS = 1600;
+const MIN_SHOW_MS = 1100;
+/**
+ * And never longer than this. A slow network, a cold API, a hero still
+ * fetching its frames: none of them are the welcome screen's business. The
+ * page behind has its own skeletons for whatever is still on its way.
+ */
+const MAX_SHOW_MS = 2400;
 
 const lines = [
   "Verified architects, engineers and contractors.",
@@ -71,7 +77,10 @@ export function SplashScreen() {
   useEffect(() => {
     if (!active) return;
     let fonts = false;
-    let loaded = document.readyState === "complete";
+    // DOM ready, not the window load event. The landing page starts fetching
+    // a few hundred hero frames before load fires, so waiting for load meant
+    // waiting for tens of megabytes on production.
+    let loaded = document.readyState !== "loading";
     let cancelled = false;
 
     const update = () => {
@@ -91,7 +100,7 @@ export function SplashScreen() {
       loaded = true;
       update();
     };
-    window.addEventListener("load", onLoad);
+    document.addEventListener("DOMContentLoaded", onLoad);
 
     // Leave once everything is ready and the minimum time has passed.
     const poll = setInterval(() => {
@@ -101,14 +110,13 @@ export function SplashScreen() {
         setLeaving(true);
       }
     }, 100);
-    // Never trap the visitor: whatever is still pending after six seconds
-    // is a network that is not coming, and the page behind will show its
-    // own loading states.
-    const bail = setTimeout(() => setLeaving(true), 6000);
+    // Never trap the visitor: whatever is still pending by then is a network
+    // that is not coming, and the page behind will show its own loading states.
+    const bail = setTimeout(() => setLeaving(true), MAX_SHOW_MS);
 
     return () => {
       cancelled = true;
-      window.removeEventListener("load", onLoad);
+      document.removeEventListener("DOMContentLoaded", onLoad);
       clearInterval(poll);
       clearTimeout(bail);
     };
