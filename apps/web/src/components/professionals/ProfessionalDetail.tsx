@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
 import { UserRole, VerificationStatus, type PublicProfessional } from "@buildora/shared";
 import type { Review } from "@buildora/shared";
 import { createInquiry, getProfessional, listProfessionalReviews } from "@/lib/api";
@@ -132,7 +133,9 @@ export function ProfessionalDetail({ role }: { role: UserRole }) {
               ← All {copy.plural}
             </Link>
             {loading ? (
-              <p className="mt-8 text-sm text-stone-500 dark:text-slate-500">Loading…</p>
+              <p className="mt-8 text-sm text-stone-500 dark:text-slate-500 loading-dots">
+                Loading
+              </p>
             ) : (
               <div className="mt-8 rounded-2xl border border-white/50 bg-white/55 p-8 text-center backdrop-blur-xl dark:border-white/10 dark:bg-white/5">
                 <h1 className="text-xl font-extrabold capitalize">{copy.singular} not found</h1>
@@ -141,7 +144,7 @@ export function ProfessionalDetail({ role }: { role: UserRole }) {
                 </p>
                 <Link
                   href={`/${copy.basePath}`}
-                  className="mt-6 inline-block rounded-full bg-amber-400 px-6 py-2.5 text-sm font-bold text-stone-950 transition hover:bg-amber-300"
+                  className="mt-6 inline-block rounded-full btn-primary px-6 py-2.5 text-sm"
                 >
                   Back to directory
                 </Link>
@@ -175,9 +178,9 @@ export function ProfessionalDetail({ role }: { role: UserRole }) {
         <div className="mx-auto w-full max-w-6xl">
           <Link
             href={`/${copy.basePath}`}
-            className="text-sm font-semibold text-stone-500 transition hover:text-amber-700 dark:text-slate-400 dark:hover:text-amber-400 capitalize"
+            className="link-arrow inline-flex items-center gap-1.5 text-sm font-semibold text-stone-500 capitalize transition hover:text-amber-700 dark:text-slate-400 dark:hover:text-amber-400"
           >
-            ← All {copy.plural}
+            <ArrowLeft className="h-4 w-4" /> All {copy.plural}
           </Link>
 
           {/* ---- Hero: the professional's own statement left, portrait fading
@@ -185,7 +188,7 @@ export function ProfessionalDetail({ role }: { role: UserRole }) {
                page so the two halves read as one composition. ---- */}
           <section className="mt-8 grid gap-8 lg:grid-cols-2 lg:items-center">
             <div className="relative z-10 lg:py-10">
-              <h1 className="max-w-xl text-4xl leading-[1.08] font-extrabold tracking-tight text-balance sm:text-5xl lg:text-6xl">
+              <h1 className="display-title max-w-xl text-5xl sm:text-6xl lg:text-7xl">
                 {professional.portfolioTitle || professional.name}
               </h1>
 
@@ -251,9 +254,7 @@ export function ProfessionalDetail({ role }: { role: UserRole }) {
                       {professional.professionalTitle}
                     </p>
                   )}
-                  <p className="text-2xl font-extrabold tracking-tight sm:text-3xl">
-                    {professional.name}
-                  </p>
+                  <p className="display-title text-3xl sm:text-4xl">{professional.name}</p>
                   {professional.company && (
                     <p className="mt-0.5 text-sm text-white/85">{professional.company}</p>
                   )}
@@ -295,9 +296,7 @@ export function ProfessionalDetail({ role }: { role: UserRole }) {
               className="mt-16 scroll-mt-28 border-t border-stone-200 pt-10 dark:border-white/10"
             >
               <div className="flex items-end justify-between">
-                <h2 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
-                  Selected Projects
-                </h2>
+                <h2 className="display-title text-3xl sm:text-4xl">Selected Projects</h2>
               </div>
 
               <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
@@ -501,7 +500,7 @@ export function ProfessionalDetail({ role }: { role: UserRole }) {
           {role === UserRole.ARCHITECT && isVerified && (
             <section className="mt-16 border-t border-stone-200 pt-10 dark:border-white/10">
               <SectionLabel>Book a meeting</SectionLabel>
-              <h2 className="mt-2 text-2xl font-extrabold tracking-tight sm:text-3xl">
+              <h2 className="display-title mt-2 text-3xl sm:text-4xl">
                 Talk it through with {firstName}
               </h2>
               <p className="mt-2 mb-6 text-sm text-stone-600 dark:text-slate-400">
@@ -516,7 +515,7 @@ export function ProfessionalDetail({ role }: { role: UserRole }) {
             <div className="rounded-2xl border border-white/50 bg-white/55 p-6 shadow-xl shadow-black/5 backdrop-blur-xl sm:p-10 dark:border-white/10 dark:bg-white/5">
               <div className="grid gap-8 lg:grid-cols-[1fr_auto] lg:items-center">
                 <div>
-                  <h2 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
+                  <h2 className="display-title text-3xl sm:text-4xl">
                     {copy.contactHeadingLines[0]}
                     <br />
                     {copy.contactHeadingLines[1]}
@@ -528,7 +527,7 @@ export function ProfessionalDetail({ role }: { role: UserRole }) {
               </div>
 
               {sent ? (
-                <div className="mt-6 rounded-xl bg-emerald-100 px-4 py-3 text-sm font-medium text-emerald-800 dark:bg-emerald-400/15 dark:text-emerald-300">
+                <div className="mt-6 alert alert-success">
                   Request sent. You&apos;ll see it, and any reply, under{" "}
                   <Link href="/inquiries" className="underline underline-offset-2">
                     Your requests
@@ -542,7 +541,7 @@ export function ProfessionalDetail({ role }: { role: UserRole }) {
                   </p>
                   <Link
                     href="/auth"
-                    className="mt-4 inline-block rounded-full bg-amber-400 px-6 py-2.5 text-sm font-bold text-stone-950 transition hover:bg-amber-300"
+                    className="mt-4 inline-block rounded-full btn-primary px-6 py-2.5 text-sm"
                   >
                     Sign in to contact
                   </Link>
@@ -574,17 +573,13 @@ export function ProfessionalDetail({ role }: { role: UserRole }) {
                     maxLength={1000}
                     rows={4}
                     placeholder="Tell them about your project, location, plot size, building type, and timeline."
-                    className="block w-full rounded-xl border border-stone-300/80 bg-white/70 px-4 py-3 text-sm text-stone-900 placeholder-stone-400 backdrop-blur transition outline-none focus:border-amber-500 focus:bg-white/90 focus:ring-2 focus:ring-amber-400/30 dark:border-white/15 dark:bg-white/5 dark:text-slate-100 dark:placeholder-slate-500"
+                    className="block w-full rounded-xl border border-stone-300/80 bg-white/70 px-4 py-2.5 text-sm text-stone-900 placeholder-stone-400 backdrop-blur transition outline-none focus:border-amber-500 focus:bg-white/90 focus:ring-2 focus:ring-amber-400/30 dark:border-white/15 dark:bg-white/5 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:bg-white/10"
                   />
-                  {error && (
-                    <p className="rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-medium text-rose-800 dark:bg-rose-400/15 dark:text-rose-300">
-                      {error}
-                    </p>
-                  )}
+                  {error && <p className="alert alert-danger">{error}</p>}
                   <button
                     type="submit"
                     disabled={sending}
-                    className="self-start rounded-full bg-amber-400 px-8 py-3 text-sm font-bold text-stone-950 shadow-lg transition hover:scale-[1.02] hover:bg-amber-300 disabled:scale-100 disabled:opacity-60"
+                    className="self-start rounded-full btn-primary px-8 py-3 text-sm disabled:opacity-60"
                   >
                     {sending ? "Sending…" : copy.contactCta}
                   </button>

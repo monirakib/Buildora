@@ -15,6 +15,7 @@ import { VerifyNotice, useIsVerified } from "@/components/app/VerifyGate";
 import { formatBdt, formatDate } from "@/components/app/projectStatus";
 import { ProposalDraftButton } from "@/components/project/ProposalDraftButton";
 import { surfaceClass } from "@/components/ui/surface";
+import { ListSkeleton } from "@/components/ui/Skeleton";
 
 const inputClass =
   "block w-full rounded-xl border border-stone-300/80 bg-white/70 px-4 py-2.5 text-sm text-stone-900 placeholder-stone-400 backdrop-blur transition outline-none focus:border-amber-500 focus:bg-white/90 focus:ring-2 focus:ring-amber-400/30 dark:border-white/15 dark:bg-white/5 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:bg-white/10";
@@ -117,18 +118,12 @@ export function ProposalsSection({
 
   return (
     <section>
-      <h2 className="text-xl font-extrabold tracking-tight">
-        {isOwner ? "Proposals" : "Your proposal"}
-      </h2>
+      <h2 className="display-title text-2xl">{isOwner ? "Proposals" : "Your proposal"}</h2>
 
-      {error && (
-        <p className="mt-3 rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-medium text-rose-800 dark:bg-rose-400/15 dark:text-rose-300">
-          {error}
-        </p>
-      )}
+      {error && <p className="mt-3 alert alert-danger">{error}</p>}
 
       {loading ? (
-        <p className="mt-3 text-sm text-stone-500 dark:text-slate-500">Loading…</p>
+        <ListSkeleton rows={3} className="mt-3" />
       ) : (
         <div className="mt-4 flex flex-col gap-4">
           {proposals.length === 0 && isOwner && (
@@ -215,7 +210,7 @@ export function ProposalsSection({
                           type="button"
                           disabled={busyId === p.id}
                           onClick={() => decide(p.id, "decline")}
-                          className="rounded-full border border-stone-300 px-4 py-1.5 text-xs font-bold text-stone-700 transition hover:bg-stone-100 disabled:opacity-60 dark:border-white/20 dark:text-slate-200 dark:hover:bg-white/10"
+                          className="rounded-full btn-secondary px-4 py-1.5 text-xs disabled:opacity-60"
                         >
                           Decline
                         </button>
@@ -226,7 +221,7 @@ export function ProposalsSection({
                         type="button"
                         disabled={busyId === p.id}
                         onClick={() => decide(p.id, "withdraw")}
-                        className="rounded-full border border-stone-300 px-4 py-1.5 text-xs font-bold text-stone-700 transition hover:bg-stone-100 disabled:opacity-60 dark:border-white/20 dark:text-slate-200 dark:hover:bg-white/10"
+                        className="rounded-full btn-secondary px-4 py-1.5 text-xs disabled:opacity-60"
                       >
                         Withdraw
                       </button>
@@ -319,7 +314,7 @@ export function ProposalsSection({
                 <button
                   type="submit"
                   disabled={sending}
-                  className="self-start rounded-full bg-amber-400 px-6 py-2.5 text-sm font-bold text-stone-950 transition hover:bg-amber-300 disabled:opacity-60"
+                  className="self-start rounded-full btn-primary px-6 py-2.5 text-sm disabled:opacity-60"
                 >
                   {sending ? "Sending…" : "Send proposal"}
                 </button>

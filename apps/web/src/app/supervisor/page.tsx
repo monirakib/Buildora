@@ -21,6 +21,7 @@ import { useSession } from "@/store/useSession";
 import { Navbar } from "@/components/landing/Navbar";
 import { avatarAt, imageAt } from "@/lib/imageUrl";
 import { surfaceClass } from "@/components/ui/surface";
+import { ListSkeleton } from "@/components/ui/Skeleton";
 
 const cardClass = surfaceClass;
 
@@ -360,7 +361,9 @@ export default function SupervisorPage() {
       <div className="flex min-h-screen flex-col">
         <Navbar />
         <main className="flex-1 px-5 pt-28 pb-16 sm:px-8">
-          <p className="text-center text-sm text-stone-500 dark:text-slate-500">Loading…</p>
+          <p className="text-center text-sm text-stone-500 dark:text-slate-500 loading-dots">
+            Loading
+          </p>
         </main>
       </div>
     );
@@ -378,13 +381,13 @@ export default function SupervisorPage() {
 
       <main className="flex-1 px-5 pt-28 pb-16 sm:px-8">
         <div className="mx-auto w-full max-w-6xl">
-          <p className="text-sm font-bold tracking-[0.2em] text-amber-800 uppercase dark:text-amber-400">
+          <p className="animate-rise-in text-[0.7rem] font-bold tracking-[0.22em] text-stone-500 uppercase dark:text-slate-400">
             Supervisor
           </p>
-          <h1 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">
+          <h1 className="display-title animate-rise-in [animation-delay:70ms] mt-2 text-4xl sm:text-5xl">
             Verification requests
           </h1>
-          <p className="mt-3 max-w-xl text-stone-600 dark:text-slate-400">
+          <p className="animate-rise-in [animation-delay:140ms] mt-3 max-w-xl text-stone-600 dark:text-slate-400">
             Review each professional&apos;s credentials, education, and portfolio, then approve or
             reject with a note.
           </p>
@@ -415,7 +418,7 @@ export default function SupervisorPage() {
             {/* ---------- Queue list ---------- */}
             <div className="flex flex-col gap-3">
               {listLoading ? (
-                <p className="text-sm text-stone-500 dark:text-slate-500">Loading…</p>
+                <ListSkeleton rows={3} />
               ) : requests.length === 0 ? (
                 <div className={`${cardClass} p-6 text-sm text-stone-600 dark:text-slate-400`}>
                   No {TABS.find((t) => t.status === tab)?.label.toLowerCase()} requests.
@@ -470,9 +473,7 @@ export default function SupervisorPage() {
                       </span>
                     )}
                     <div>
-                      <h2 className="text-xl font-extrabold tracking-tight">
-                        {detail.professional.name}
-                      </h2>
+                      <h2 className="display-title text-2xl">{detail.professional.name}</h2>
                       <p className="text-sm text-stone-600 dark:text-slate-400">
                         {roleLabels[detail.professional.role] ?? detail.professional.role} · @
                         {detail.professional.username}
@@ -997,13 +998,9 @@ export default function SupervisorPage() {
                         value={note}
                         onChange={(e) => setNote(e.target.value)}
                         placeholder="e.g. Trade licence and TIN certificate checked and match."
-                        className="block w-full rounded-xl border border-stone-300/80 bg-white/70 px-4 py-2.5 text-sm text-stone-900 placeholder-stone-400 backdrop-blur transition outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-400/30 dark:border-white/15 dark:bg-white/5 dark:text-slate-100 dark:placeholder-slate-500"
+                        className="block w-full rounded-xl border border-stone-300/80 bg-white/70 px-4 py-2.5 text-sm text-stone-900 placeholder-stone-400 backdrop-blur transition outline-none focus:border-amber-500 focus:bg-white/90 focus:ring-2 focus:ring-amber-400/30 dark:border-white/15 dark:bg-white/5 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:bg-white/10"
                       />
-                      {error && (
-                        <p className="mt-3 rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-medium text-rose-800 dark:bg-rose-400/15 dark:text-rose-300">
-                          {error}
-                        </p>
-                      )}
+                      {error && <p className="mt-3 alert alert-danger">{error}</p>}
                       <div className="mt-4 flex gap-3">
                         <button
                           type="button"

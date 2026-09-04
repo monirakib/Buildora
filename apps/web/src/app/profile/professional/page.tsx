@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { ListSkeleton } from "@/components/ui/Skeleton";
 
 /**
  * The wizard used to live here, back when only professionals had one. Land
@@ -20,7 +21,7 @@ export default function ProfessionalProfileRedirect() {
 
   return (
     <main className="grid min-h-screen place-items-center bg-stone-100 dark:bg-[#05070C]">
-      <p className="text-sm text-stone-500 dark:text-slate-500">Loading…</p>
+      <ListSkeleton rows={3} />
     </main>
   );
 }

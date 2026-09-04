@@ -194,7 +194,7 @@ export function NidCheckPanel({
         type="button"
         onClick={run}
         disabled={busy || !format.ok || !token}
-        className="mt-3 inline-flex items-center gap-2 rounded-full bg-amber-400 px-5 py-2 text-sm font-bold text-stone-950 transition hover:bg-amber-300 disabled:opacity-50"
+        className="mt-3 inline-flex items-center gap-2 rounded-full btn-primary px-5 py-2 text-sm disabled:opacity-50"
       >
         {busy && <Loader2 className="h-4 w-4 animate-spin" />}
         {busy ? "Checking…" : current ? "Run check again" : "Run NID check"}

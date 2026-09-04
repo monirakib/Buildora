@@ -32,8 +32,7 @@ const inputClass =
 
 const cardClass = `${surfaceClass} p-5 sm:p-6`;
 
-const primaryButtonClass =
-  "rounded-full bg-amber-400 px-6 py-2.5 text-sm font-bold text-stone-950 shadow-lg transition hover:bg-amber-300 disabled:opacity-60";
+const primaryButtonClass = "rounded-full btn-primary px-6 py-2.5 text-sm disabled:opacity-60";
 
 const smallButtonClass =
   "rounded-full border border-stone-300/80 px-4 py-2 text-xs font-bold transition hover:border-amber-400/60 disabled:opacity-60 dark:border-white/15";
@@ -173,11 +172,7 @@ export function StructuralSection({
           </span>
         </div>
 
-        {error && (
-          <p className="mt-4 rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-medium text-rose-800 dark:bg-rose-400/15 dark:text-rose-300">
-            {error}
-          </p>
-        )}
+        {error && <p className="mt-4 alert alert-danger">{error}</p>}
 
         {/* ---- Escrow ---- */}
         {engagement.status === StructuralStatus.AWAITING_ESCROW &&
@@ -342,7 +337,7 @@ export function StructuralSection({
         )}
 
         {engagement.status === StructuralStatus.COMPLETED && (
-          <p className="mt-5 rounded-xl bg-emerald-100 px-4 py-3 text-sm text-emerald-800 dark:bg-emerald-400/15 dark:text-emerald-300">
+          <p className="mt-5 alert alert-success">
             Structural drawings approved and the fee released. The project is ready for its RAJUK
             permit application.
           </p>
@@ -459,11 +454,7 @@ function AppointPanel({
               </p>
             </div>
 
-            {error && (
-              <p className="mt-4 rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-medium text-rose-800 dark:bg-rose-400/15 dark:text-rose-300">
-                {error}
-              </p>
-            )}
+            {error && <p className="mt-4 alert alert-danger">{error}</p>}
 
             <div className="mt-4 flex flex-wrap gap-2">
               <button

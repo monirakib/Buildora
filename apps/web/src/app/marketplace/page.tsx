@@ -1,247 +1,103 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { ProductCategory, UserRole, type Product } from "@buildora/shared";
-import { listProducts, placeOrder } from "@/lib/apiMarket";
-import { DeliveryEstimatePanel } from "@/components/market/DeliveryEstimatePanel";
+import { ArrowRight, PackageSearch, ShoppingBag, SlidersHorizontal, X } from "lucide-react";
+import { UserRole, type Product } from "@buildora/shared";
+import { listProducts, type ProductSort } from "@/lib/apiMarket";
 import { useSession } from "@/store/useSession";
 import { Navbar } from "@/components/landing/Navbar";
 import { Stagger } from "@/components/Stagger";
 import { VerifiedBadge } from "@/components/app/VerifiedBadge";
+import { AddToCartButton } from "@/components/market/AddToCartButton";
+import {
+  CatalogueFilters,
+  EMPTY_FILTERS,
+  type CatalogueFilterState,
+} from "@/components/market/CatalogueFilters";
 import { categoryLabels, formatBdt } from "@/components/market/market";
+import { Alert } from "@/components/ui/Alert";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { CardGridSkeleton } from "@/components/ui/Skeleton";
+import { surfaceClass } from "@/components/ui/surface";
 import { imageAt } from "@/lib/imageUrl";
 
-const inputClass =
-  "block w-full rounded-xl border border-stone-300/80 bg-white/70 px-4 py-2.5 text-sm text-stone-900 placeholder-stone-400 backdrop-blur transition outline-none focus:border-amber-500 focus:bg-white/90 focus:ring-2 focus:ring-amber-400/30 dark:border-white/15 dark:bg-white/5 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:bg-white/10";
+const sortOptions: { value: ProductSort; label: string }[] = [
+  { value: "newest", label: "Newest first" },
+  { value: "price_asc", label: "Price: low to high" },
+  { value: "price_desc", label: "Price: high to low" },
+];
 
-/** Order form modal for one product — quantity, delivery details, done. */
-function OrderModal({
-  product,
-  token,
-  onClose,
-}: {
-  product: Product;
-  token: string;
-  onClose: () => void;
-}) {
-  const [form, setForm] = useState({ quantity: "1", deliveryAddress: "", phone: "", note: "" });
-  const [busy, setBusy] = useState(false);
-  const [placed, setPlaced] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const qty = Math.max(1, Number(form.quantity) || 1);
-  const total = qty * product.priceBdt;
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    setBusy(true);
-    setError(null);
-    try {
-      await placeOrder(token, {
-        productId: product.id,
-        quantity: qty,
-        deliveryAddress: form.deliveryAddress,
-        phone: form.phone,
-        note: form.note || undefined,
-      });
-      setPlaced(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't place the order");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  // Escape closes it, and the page behind stops scrolling while the dialog owns
-  // the screen — the same contract as the account dialogs in components/account/ui.tsx.
-  useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    document.addEventListener("keydown", onKeyDown);
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", onKeyDown);
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [onClose]);
+/** One listing in the catalogue grid. */
+function ProductCard({ product: p }: { product: Product }) {
+  // The add-to-cart flight starts from the photo, so the card hands it over.
+  const imageRef = useRef<HTMLDivElement>(null);
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      // Without a name a screen reader announces this as an unlabelled dialog.
-      // Pointing at the heading keeps the two from drifting apart.
-      aria-labelledby="order-modal-title"
-      className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4 backdrop-blur-sm"
-      onClick={onClose}
+    <article
+      className={`group spotlight flex flex-col overflow-hidden ${surfaceClass} transition-[translate,border-color,box-shadow] duration-200 ease-out hover:-translate-y-0.5 hover:border-amber-400/60 hover:shadow-2xl hover:shadow-amber-900/10 dark:hover:shadow-black/40`}
     >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-md rounded-3xl border border-white/40 bg-white/90 p-6 shadow-2xl backdrop-blur-2xl sm:p-7 dark:border-white/15 dark:bg-stone-950/90"
-      >
-        {placed ? (
-          <div className="text-center">
-            <h2 id="order-modal-title" className="text-lg font-extrabold">
-              Order placed ✓
-            </h2>
-            <p className="mt-2 text-sm text-stone-600 dark:text-slate-400">
-              {product.seller.name} has been notified. Track it under{" "}
-              <Link
-                href="/marketplace/orders"
-                className="text-amber-700 underline underline-offset-2 dark:text-amber-400"
-              >
-                your orders
-              </Link>
-              .
-            </p>
-            <button
-              type="button"
-              onClick={onClose}
-              className="mt-6 rounded-full bg-amber-400 px-8 py-2.5 text-sm font-bold text-stone-950 transition hover:bg-amber-300"
-            >
-              Done
-            </button>
-          </div>
+      <div ref={imageRef} className="zoom-media relative">
+        {p.imageUrl ? (
+          /* eslint-disable-next-line @next/next/no-img-element -- Cloudinary-hosted */
+          <img
+            src={imageAt(p.imageUrl, 640)}
+            alt={p.name}
+            loading="lazy"
+            decoding="async"
+            className="aspect-4/3 w-full object-cover"
+          />
         ) : (
-          <>
-            <h2 id="order-modal-title" className="text-lg font-extrabold tracking-tight">
-              Order {product.name}
-            </h2>
-            <p className="mt-1 text-sm text-stone-600 dark:text-slate-400">
-              {formatBdt(product.priceBdt)} per {product.unit} · sold by {product.seller.name}
-            </p>
-
-            <form onSubmit={submit} className="mt-5 flex flex-col gap-3">
-              <div>
-                <label htmlFor="qty" className="mb-1.5 block text-sm font-semibold">
-                  Quantity ({product.unit})
-                </label>
-                <input
-                  id="qty"
-                  type="number"
-                  min={1}
-                  max={100000}
-                  required
-                  value={form.quantity}
-                  onChange={(e) => setForm((f) => ({ ...f, quantity: e.target.value }))}
-                  className={inputClass}
-                />
-              </div>
-              {/* Distance and ETA before they commit. Picking a project also
-                  fills the address in, since the plot already has one. */}
-              <DeliveryEstimatePanel
-                productId={product.id}
-                token={token}
-                onProjectPicked={(project) =>
-                  setForm((f) => ({
-                    ...f,
-                    // Never overwrite something they've already typed.
-                    deliveryAddress:
-                      f.deliveryAddress.trim() === ""
-                        ? `${project.address}, ${project.areaName}`
-                        : f.deliveryAddress,
-                  }))
-                }
-              />
-
-              <div>
-                <label htmlFor="address" className="mb-1.5 block text-sm font-semibold">
-                  Delivery address
-                </label>
-                <textarea
-                  id="address"
-                  rows={2}
-                  required
-                  minLength={10}
-                  maxLength={300}
-                  placeholder="House, road, area, city"
-                  value={form.deliveryAddress}
-                  onChange={(e) => setForm((f) => ({ ...f, deliveryAddress: e.target.value }))}
-                  className={inputClass}
-                />
-              </div>
-              <div>
-                <label htmlFor="phone" className="mb-1.5 block text-sm font-semibold">
-                  Contact phone
-                </label>
-                <input
-                  id="phone"
-                  type="tel"
-                  required
-                  minLength={6}
-                  value={form.phone}
-                  onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
-                  className={inputClass}
-                />
-              </div>
-              <div>
-                <label htmlFor="note" className="mb-1.5 block text-sm font-semibold">
-                  Note{" "}
-                  <span className="font-medium text-stone-500 dark:text-slate-400">(optional)</span>
-                </label>
-                <input
-                  id="note"
-                  type="text"
-                  maxLength={500}
-                  placeholder="e.g. deliver before 5pm"
-                  value={form.note}
-                  onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))}
-                  className={inputClass}
-                />
-              </div>
-
-              {error && (
-                <p className="rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-medium text-rose-800 dark:bg-rose-400/15 dark:text-rose-300">
-                  {error}
-                </p>
-              )}
-
-              <div className="mt-1 flex items-center justify-between gap-3">
-                <p className="text-sm font-bold">
-                  Total:{" "}
-                  <span className="text-amber-700 dark:text-amber-400">{formatBdt(total)}</span>
-                </p>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={onClose}
-                    className="rounded-full border border-stone-300 px-5 py-2.5 text-sm font-bold text-stone-700 transition hover:border-stone-400 dark:border-white/20 dark:text-slate-200"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={busy}
-                    className="rounded-full bg-amber-400 px-6 py-2.5 text-sm font-bold text-stone-950 transition hover:bg-amber-300 disabled:opacity-60"
-                  >
-                    {busy ? "Placing…" : "Place order"}
-                  </button>
-                </div>
-              </div>
-            </form>
-          </>
+          <div className="grid aspect-4/3 w-full place-items-center bg-stone-200/80 text-stone-400 dark:bg-white/5 dark:text-slate-500">
+            <ShoppingBag className="h-8 w-8" />
+          </div>
         )}
+        <span className="absolute top-3 left-3 rounded-full border border-white/40 bg-stone-950/60 px-2.5 py-1 text-[0.68rem] font-bold tracking-wide text-white uppercase backdrop-blur">
+          {categoryLabels[p.category]}
+        </span>
       </div>
-    </div>
+
+      <div className="flex flex-1 flex-col p-5">
+        <h2 className="leading-snug font-bold">{p.name}</h2>
+        <p className="mt-0.5 flex items-center gap-1.5 text-xs font-semibold text-stone-500 dark:text-slate-400">
+          {p.brand && <span>{p.brand} ·</span>}
+          <span className="truncate">{p.seller.company || p.seller.name}</span>
+          <VerifiedBadge status={p.seller.verificationStatus} />
+        </p>
+        {p.description && (
+          <p className="mt-2.5 line-clamp-2 text-sm text-stone-600 dark:text-slate-400">
+            {p.description}
+          </p>
+        )}
+
+        <div className="mt-auto flex items-end justify-between gap-3 pt-5">
+          <p className="text-xl font-extrabold text-amber-700 dark:text-amber-400">
+            {formatBdt(p.priceBdt)}
+            <span className="text-xs font-semibold text-stone-500 dark:text-slate-400">
+              {" "}
+              / {p.unit}
+            </span>
+          </p>
+          <AddToCartButton product={p} imageEl={imageRef} size="md" />
+        </div>
+      </div>
+    </article>
   );
 }
 
 export default function MarketplacePage() {
-  const router = useRouter();
   const user = useSession((s) => s.user);
-  const token = useSession((s) => s.token);
 
   const [products, setProducts] = useState<Product[]>([]);
   const [total, setTotal] = useState(0);
+  const [priceMaxBdt, setPriceMaxBdt] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
-  const [category, setCategory] = useState("");
-  const [ordering, setOrdering] = useState<Product | null>(null);
+  const [filters, setFilters] = useState<CatalogueFilterState>(EMPTY_FILTERS);
+  const [sort, setSort] = useState<ProductSort>("newest");
+  // Below lg the sidebar folds behind a "Filters" button.
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -249,15 +105,16 @@ export default function MarketplacePage() {
   const isSeller =
     mounted && (user?.role === UserRole.SUPPLIER || user?.role === UserRole.CONTRACTOR);
 
-  // Refetch when the search text (debounced) or category chip changes.
+  // Refetch when any filter (search text debounced) or the sort changes.
   useEffect(() => {
     const timer = setTimeout(async () => {
       setLoading(true);
       setError(null);
       try {
-        const page = await listProducts({ search, category });
+        const page = await listProducts({ ...filters, sort });
         setProducts(page.items);
         setTotal(page.total);
+        setPriceMaxBdt(page.priceMaxBdt);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Couldn't load the marketplace");
       } finally {
@@ -265,14 +122,27 @@ export default function MarketplacePage() {
       }
     }, 300);
     return () => clearTimeout(timer);
-  }, [search, category]);
+  }, [filters, sort]);
 
-  function handleOrderClick(product: Product) {
-    if (!token) {
-      router.push("/auth");
-      return;
-    }
-    if (isLandOwner) setOrdering(product);
+  // The active filters, as removable chips above the grid.
+  const active: { key: keyof CatalogueFilterState; label: string }[] = [];
+  if (filters.search) active.push({ key: "search", label: `“${filters.search}”` });
+  if (filters.category)
+    active.push({
+      key: "category",
+      label: categoryLabels[filters.category as keyof typeof categoryLabels],
+    });
+  if (filters.minPrice || filters.maxPrice)
+    active.push({
+      key: "minPrice",
+      label: `${formatBdt(filters.minPrice)} – ${filters.maxPrice ? formatBdt(filters.maxPrice) : "any"}`,
+    });
+  const filtered = active.length > 0;
+
+  function clearFilter(key: keyof CatalogueFilterState) {
+    setFilters((f) =>
+      key === "minPrice" ? { ...f, minPrice: 0, maxPrice: 0 } : { ...f, [key]: "" }
+    );
   }
 
   return (
@@ -280,169 +150,162 @@ export default function MarketplacePage() {
       <Navbar />
 
       <main className="flex-1 px-5 pt-28 pb-16 sm:px-8">
-        <div className="mx-auto w-full max-w-6xl">
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <p className="text-sm font-bold tracking-[0.2em] text-amber-800 uppercase dark:text-amber-400">
-                Marketplace
-              </p>
-              <h1 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">
-                Materials, straight from the source
-              </h1>
-              <p className="mt-2 max-w-xl text-stone-600 dark:text-slate-400">
-                Cement, steel, bricks, and everything else, listed by suppliers and contractors,
-                delivered to your site. Order anything, any time.
-              </p>
-            </div>
-            {isSeller && (
-              <Link
-                href="/marketplace/sell"
-                className="rounded-full bg-amber-400 px-6 py-2.5 text-sm font-bold text-stone-950 transition hover:bg-amber-300"
-              >
-                Manage my listings
-              </Link>
-            )}
-          </div>
+        <div className="mx-auto w-full max-w-7xl">
+          <PageHeader
+            eyebrow="Marketplace"
+            title="Materials, straight from the source"
+            description="Cement, steel, bricks, and everything else, listed by suppliers and contractors and delivered to your site."
+            actions={
+              isSeller ? (
+                <Link href="/marketplace/sell" className="btn-primary px-6 py-2.5 text-sm">
+                  Manage my listings
+                  <ArrowRight className="btn-arrow h-4 w-4" />
+                </Link>
+              ) : isLandOwner ? (
+                <Link href="/marketplace/orders" className="btn-secondary px-5 py-2.5 text-sm">
+                  Your orders
+                </Link>
+              ) : undefined
+            }
+          />
 
-          {/* Search + category chips */}
-          <div className="mt-8 flex flex-col gap-4">
-            <input
-              type="search"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search products, brands…"
-              className={`${inputClass} max-w-md`}
-            />
-            <div className="flex flex-wrap gap-2">
+          <div className="mt-8 grid gap-6 lg:grid-cols-[17rem_minmax(0,1fr)] lg:gap-8">
+            {/* ---------- Left column: filters ---------- */}
+            <aside className="lg:sticky lg:top-24 lg:self-start">
               <button
                 type="button"
-                onClick={() => setCategory("")}
-                className={`rounded-full px-4 py-1.5 text-sm font-semibold transition ${
-                  category === ""
-                    ? "bg-stone-900 text-white dark:bg-amber-400 dark:text-stone-950"
-                    : "border border-stone-300 text-stone-600 hover:border-amber-500 dark:border-white/15 dark:text-slate-300"
+                onClick={() => setFiltersOpen((v) => !v)}
+                aria-expanded={filtersOpen}
+                aria-controls="catalogue-filters"
+                className="btn-secondary w-full px-4 py-2.5 text-sm lg:hidden"
+              >
+                <SlidersHorizontal className="h-4 w-4" />
+                Filters
+                {active.length > 0 && (
+                  <span className="rounded-full bg-amber-400 px-2 py-0.5 text-xs font-extrabold text-stone-950 tabular-nums">
+                    {active.length}
+                  </span>
+                )}
+              </button>
+              <div
+                id="catalogue-filters"
+                className={`grid transition-[grid-template-rows,opacity] duration-300 ease-out lg:grid-rows-[1fr] lg:opacity-100 ${
+                  filtersOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
                 }`}
               >
-                All
-              </button>
-              {Object.values(ProductCategory).map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => setCategory(category === c ? "" : c)}
-                  className={`rounded-full px-4 py-1.5 text-sm font-semibold transition ${
-                    category === c
-                      ? "bg-stone-900 text-white dark:bg-amber-400 dark:text-stone-950"
-                      : "border border-stone-300 text-stone-600 hover:border-amber-500 dark:border-white/15 dark:text-slate-300"
-                  }`}
+                <div className="overflow-hidden lg:overflow-visible">
+                  <div className="pt-3 lg:pt-0">
+                    <CatalogueFilters
+                      value={filters}
+                      onChange={setFilters}
+                      priceMaxBdt={priceMaxBdt}
+                    />
+                  </div>
+                </div>
+              </div>
+            </aside>
+
+            {/* ---------- Right column: results ---------- */}
+            <section aria-label="Products" className="min-w-0">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p
+                  aria-live="polite"
+                  className="text-sm font-bold text-stone-600 dark:text-slate-400"
                 >
-                  {categoryLabels[c]}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {error && (
-            <p className="mt-8 rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-medium text-rose-800 dark:bg-rose-400/15 dark:text-rose-300">
-              {error}
-            </p>
-          )}
-
-          {/* Catalogue grid */}
-          {loading ? (
-            <p className="mt-10 text-sm text-stone-500 dark:text-slate-500">Loading…</p>
-          ) : products.length === 0 ? (
-            <div className="mt-10 rounded-2xl border border-white/50 bg-white/55 p-10 text-center backdrop-blur-xl dark:border-white/10 dark:bg-white/5">
-              <p className="font-bold">No products found</p>
-              <p className="mt-1 text-sm text-stone-600 dark:text-slate-400">
-                {search || category
-                  ? "Try a different search or category."
-                  : "Suppliers haven't listed anything yet, check back soon."}
-              </p>
-            </div>
-          ) : (
-            <>
-              <p className="mt-8 text-xs font-bold text-stone-500 dark:text-slate-500">
-                {total} product{total === 1 ? "" : "s"}
-              </p>
-              <Stagger
-                className="mt-3 grid gap-5 sm:grid-cols-2 lg:grid-cols-3"
-                dependencies={[products]}
-              >
-                {products.map((p) => (
-                  <article
-                    key={p.id}
-                    className="flex flex-col overflow-hidden rounded-2xl border border-white/50 bg-white/55 shadow-xl shadow-black/5 backdrop-blur-xl transition hover:-translate-y-0.5 hover:border-amber-400/60 dark:border-white/10 dark:bg-white/5"
+                  {loading ? (
+                    <span className="loading-dots">Finding products</span>
+                  ) : (
+                    <>
+                      {total} product{total === 1 ? "" : "s"}
+                      {filtered ? " found" : ""}
+                    </>
+                  )}
+                </p>
+                <label className="flex items-center gap-2 text-sm">
+                  <span className="font-semibold text-stone-500 dark:text-slate-400">Sort by</span>
+                  <select
+                    value={sort}
+                    onChange={(e) => setSort(e.target.value as ProductSort)}
+                    className="rounded-full border border-stone-300/80 bg-white/70 py-1.5 pr-8 pl-3.5 text-sm font-semibold text-stone-900 transition outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-400/30 dark:border-white/15 dark:bg-white/5 dark:text-slate-100"
                   >
-                    {p.imageUrl ? (
-                      /* eslint-disable-next-line @next/next/no-img-element -- Cloudinary-hosted */
-                      <img
-                        src={imageAt(p.imageUrl, 640)}
-                        alt={p.name}
-                        loading="lazy"
-                        decoding="async"
-                        className="aspect-4/3 w-full object-cover"
-                      />
-                    ) : (
-                      <div className="grid aspect-4/3 w-full place-items-center bg-stone-200 text-xs font-semibold text-stone-500 dark:bg-white/5 dark:text-slate-500">
-                        No photo
-                      </div>
-                    )}
-                    <div className="flex flex-1 flex-col p-5">
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <h2 className="font-bold">{p.name}</h2>
-                          {p.brand && (
-                            <p className="text-xs font-semibold text-stone-500 dark:text-slate-400">
-                              {p.brand}
-                            </p>
-                          )}
-                        </div>
-                        <span className="shrink-0 rounded-full bg-stone-500/10 px-2.5 py-1 text-xs font-semibold text-stone-600 dark:bg-white/10 dark:text-slate-300">
-                          {categoryLabels[p.category]}
-                        </span>
-                      </div>
-                      {p.description && (
-                        <p className="mt-2 line-clamp-2 text-sm text-stone-600 dark:text-slate-400">
-                          {p.description}
-                        </p>
-                      )}
-                      <div className="mt-auto flex items-end justify-between gap-3 pt-4">
-                        <div>
-                          <p className="text-lg font-extrabold text-amber-700 dark:text-amber-400">
-                            {formatBdt(p.priceBdt)}
-                            <span className="text-xs font-semibold text-stone-500 dark:text-slate-400">
-                              {" "}
-                              / {p.unit}
-                            </span>
-                          </p>
-                          <p className="mt-0.5 flex items-center gap-1.5 text-xs text-stone-500 dark:text-slate-400">
-                            {p.seller.name}
-                            <VerifiedBadge status={p.seller.verificationStatus} />
-                          </p>
-                        </div>
-                        {(!mounted || !user || isLandOwner) && (
-                          <button
-                            type="button"
-                            onClick={() => handleOrderClick(p)}
-                            className="rounded-full bg-amber-400 px-5 py-2 text-sm font-bold text-stone-950 transition hover:bg-amber-300"
-                          >
-                            Order
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </article>
-                ))}
-              </Stagger>
-            </>
-          )}
+                    {sortOptions.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              {/* Active filters, each one removable on its own. */}
+              {filtered && (
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  {active.map((a) => (
+                    <button
+                      key={a.key}
+                      type="button"
+                      onClick={() => clearFilter(a.key)}
+                      aria-label={`Remove filter ${a.label}`}
+                      className="chip animate-rise-in gap-1.5 py-1 pr-2 text-xs"
+                      aria-pressed="true"
+                    >
+                      {a.label}
+                      <X className="h-3 w-3 opacity-70" />
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setFilters(EMPTY_FILTERS)}
+                    className="btn-ghost px-3 py-1 text-xs"
+                  >
+                    Clear all
+                  </button>
+                </div>
+              )}
+
+              {error && <Alert className="mt-5">{error}</Alert>}
+
+              {loading ? (
+                <CardGridSkeleton
+                  count={6}
+                  className="mt-5 grid gap-5 sm:grid-cols-2 xl:grid-cols-3"
+                />
+              ) : products.length === 0 ? (
+                <EmptyState
+                  className="mt-5"
+                  icon={<PackageSearch className="h-7 w-7" />}
+                  title={filtered ? "Nothing matches" : "Nothing listed yet"}
+                  description={
+                    filtered
+                      ? "Try a different word, widen the price band, or clear the category."
+                      : "Suppliers haven't listed anything yet. Check back soon."
+                  }
+                  action={
+                    filtered ? (
+                      <button
+                        type="button"
+                        onClick={() => setFilters(EMPTY_FILTERS)}
+                        className="btn-secondary px-5 py-2 text-sm"
+                      >
+                        Clear filters
+                      </button>
+                    ) : undefined
+                  }
+                />
+              ) : (
+                <Stagger
+                  className="mt-5 grid gap-5 sm:grid-cols-2 xl:grid-cols-3"
+                  dependencies={[products]}
+                >
+                  {products.map((p) => (
+                    <ProductCard key={p.id} product={p} />
+                  ))}
+                </Stagger>
+              )}
+            </section>
+          </div>
         </div>
       </main>
-
-      {ordering && token && (
-        <OrderModal product={ordering} token={token} onClose={() => setOrdering(null)} />
-      )}
     </div>
   );
 }

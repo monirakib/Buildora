@@ -327,13 +327,13 @@ export default function NewProjectPage() {
 
       <main className="flex-1 px-5 pt-28 pb-16 sm:px-8">
         <div className="mx-auto w-full max-w-6xl">
-          <p className="text-sm font-bold tracking-[0.2em] text-amber-800 uppercase dark:text-amber-400">
+          <p className="animate-rise-in text-[0.7rem] font-bold tracking-[0.22em] text-stone-500 uppercase dark:text-slate-400">
             New project
           </p>
-          <h1 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">
+          <h1 className="display-title animate-rise-in [animation-delay:70ms] mt-2 text-4xl sm:text-5xl">
             Describe what you want to build
           </h1>
-          <p className="mt-3 max-w-2xl text-stone-600 dark:text-slate-400">
+          <p className="animate-rise-in [animation-delay:140ms] mt-3 max-w-2xl text-stone-600 dark:text-slate-400">
             Verified architects will read this brief and send you proposals with their fees. The
             more you tell them, the sharper their proposals, and the fewer surprises later.
           </p>
@@ -787,11 +787,7 @@ export default function NewProjectPage() {
                 />
               )}
 
-              {error && (
-                <p className="rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-medium text-rose-800 dark:bg-rose-400/15 dark:text-rose-300">
-                  {error}
-                </p>
-              )}
+              {error && <p className="alert alert-danger">{error}</p>}
 
               {/* The form itself stays open to everyone — an unverified owner
                   can fill it in and see the preview. Only the two buttons that
@@ -801,7 +797,7 @@ export default function NewProjectPage() {
                   <button
                     type="submit"
                     disabled={saving || uploading}
-                    className="rounded-full bg-amber-400 px-7 py-3 text-sm font-bold text-stone-950 transition hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="rounded-full btn-primary px-7 py-3 text-sm disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {saving ? "Posting…" : "Post brief to architects"}
                   </button>
@@ -809,7 +805,7 @@ export default function NewProjectPage() {
                     type="button"
                     disabled={saving || uploading}
                     onClick={() => submit(false)}
-                    className="rounded-full border border-stone-300 px-7 py-3 text-sm font-bold text-stone-700 transition hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/20 dark:text-slate-200 dark:hover:bg-white/10"
+                    className="rounded-full btn-secondary px-7 py-3 text-sm disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     Save as draft
                   </button>

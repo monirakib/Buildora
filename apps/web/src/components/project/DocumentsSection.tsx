@@ -6,6 +6,7 @@ import { uploadImage, uploadModel } from "@/lib/api";
 import { addProjectDocument, deleteProjectDocument, listProjectDocuments } from "@/lib/apiProjects";
 import { formatDate } from "@/components/app/projectStatus";
 import { surfaceClass } from "@/components/ui/surface";
+import { ListSkeleton } from "@/components/ui/Skeleton";
 /**
  * The 3D viewer is loaded only when a model is actually opened.
  *
@@ -136,17 +137,13 @@ export function DocumentsSection({
 
   return (
     <section>
-      <h2 className="text-xl font-extrabold tracking-tight">Document archive</h2>
+      <h2 className="display-title text-2xl">Document archive</h2>
 
       <div className={`mt-4 ${cardClass}`}>
-        {error && (
-          <p className="mb-4 rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-medium text-rose-800 dark:bg-rose-400/15 dark:text-rose-300">
-            {error}
-          </p>
-        )}
+        {error && <p className="mb-4 alert alert-danger">{error}</p>}
 
         {loading ? (
-          <p className="text-sm text-stone-500 dark:text-slate-500">Loading…</p>
+          <ListSkeleton rows={3} />
         ) : documents.length === 0 ? (
           <p className="text-sm text-stone-600 dark:text-slate-400">
             Nothing filed yet. Designs, permits, receipts, and site photos all live here, the
@@ -173,7 +170,7 @@ export function DocumentsSection({
                   <button
                     type="button"
                     onClick={() => setViewing(d)}
-                    className="shrink-0 rounded-full bg-amber-400 px-4 py-1.5 text-xs font-bold text-stone-950 transition hover:bg-amber-300"
+                    className="shrink-0 rounded-full btn-primary px-4 py-1.5 text-xs"
                   >
                     View in 3D
                   </button>
@@ -236,7 +233,7 @@ export function DocumentsSection({
           <button
             type="submit"
             disabled={busy || uploading}
-            className="mt-3 rounded-full bg-amber-400 px-6 py-2.5 text-sm font-bold text-stone-950 transition hover:bg-amber-300 disabled:opacity-60"
+            className="mt-3 rounded-full btn-primary px-6 py-2.5 text-sm disabled:opacity-60"
           >
             {busy ? "Filing…" : "File document"}
           </button>

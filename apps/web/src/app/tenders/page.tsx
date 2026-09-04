@@ -10,6 +10,7 @@ import { Navbar } from "@/components/landing/Navbar";
 import { listMyBids, listOpenTenders, type BoardTender, type MyBid } from "@/lib/apiTenders";
 import { useSession } from "@/store/useSession";
 import { surfaceClass } from "@/components/ui/surface";
+import { ListSkeleton } from "@/components/ui/Skeleton";
 
 const cardClass = `${surfaceClass} p-5 sm:p-6`;
 
@@ -71,22 +72,18 @@ export default function TendersPage() {
     <div className="min-h-screen">
       <Navbar />
       <main className="mx-auto max-w-5xl px-4 pt-28 pb-20 sm:px-6">
-        <h1 className="text-3xl font-extrabold tracking-tight">Tenders</h1>
+        <h1 className="display-title animate-rise-in [animation-delay:70ms] text-4xl">Tenders</h1>
         <p className="mt-2 text-sm text-stone-600 dark:text-slate-400">
           Price the Bill of Quantities line by line. Your bid stays sealed until the owner closes
           bidding, nobody else can see what you quoted.
         </p>
 
-        {error && (
-          <p className="mt-6 rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-medium text-rose-800 dark:bg-rose-400/15 dark:text-rose-300">
-            {error}
-          </p>
-        )}
+        {error && <p className="mt-6 alert alert-danger">{error}</p>}
 
         <section className="mt-8">
-          <h2 className="text-xl font-extrabold tracking-tight">Open for bids</h2>
+          <h2 className="display-title text-2xl">Open for bids</h2>
           {loading ? (
-            <p className="mt-4 text-sm text-stone-500 dark:text-slate-500">Loading…</p>
+            <ListSkeleton rows={3} className="mt-4" />
           ) : tenders.length === 0 ? (
             <div className={`mt-4 ${cardClass}`}>
               <p className="text-sm text-stone-600 dark:text-slate-400">
@@ -131,7 +128,7 @@ export default function TendersPage() {
                   </div>
                   <Link
                     href={`/tenders/${t.id}`}
-                    className="mt-4 inline-block rounded-full bg-amber-400 px-5 py-2 text-xs font-bold text-stone-950 transition hover:bg-amber-300"
+                    className="mt-4 inline-block rounded-full btn-primary px-5 py-2 text-xs"
                   >
                     {t.alreadyBid ? "Revise your bid" : "Price this tender"}
                   </Link>
@@ -142,7 +139,7 @@ export default function TendersPage() {
         </section>
 
         <section className="mt-10">
-          <h2 className="text-xl font-extrabold tracking-tight">Your bids</h2>
+          <h2 className="display-title text-2xl">Your bids</h2>
           {myBids.length === 0 ? (
             <div className={`mt-4 ${cardClass}`}>
               <p className="text-sm text-stone-600 dark:text-slate-400">

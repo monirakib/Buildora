@@ -125,11 +125,7 @@ export function GatewayPayButton({
         )}
       </div>
 
-      {error && (
-        <p className="mt-2 rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-medium text-rose-800 dark:bg-rose-400/15 dark:text-rose-300">
-          {error}
-        </p>
-      )}
+      {error && <p className="mt-2 alert alert-danger">{error}</p>}
     </div>
   );
 }

@@ -14,6 +14,14 @@ import {
   updateOrderStatus,
   updateProduct,
 } from "../controllers/marketplace.controller";
+import {
+  addCartItem,
+  checkoutCart,
+  clearCart,
+  getCart,
+  removeCartItem,
+  setCartItem,
+} from "../controllers/cart.controller";
 
 export const marketplaceRouter = Router();
 
@@ -46,3 +54,14 @@ marketplaceRouter.delete("/products/:id", requireAuth, seller, requireVerified, 
 marketplaceRouter.post("/orders", requireAuth, requireRole(UserRole.LAND_OWNER), createOrder);
 marketplaceRouter.get("/orders", requireAuth, listOrders);
 marketplaceRouter.patch("/orders/:id/status", requireAuth, updateOrderStatus);
+
+// The cart. Land owners only, and open to unverified ones for the same reason
+// ordering is: it is the buying side of the marketplace, and every line
+// becomes an ordinary order at checkout through the same code path.
+const buyer = requireRole(UserRole.LAND_OWNER);
+marketplaceRouter.get("/cart", requireAuth, buyer, getCart);
+marketplaceRouter.post("/cart/items", requireAuth, buyer, addCartItem);
+marketplaceRouter.patch("/cart/items/:productId", requireAuth, buyer, setCartItem);
+marketplaceRouter.delete("/cart/items/:productId", requireAuth, buyer, removeCartItem);
+marketplaceRouter.delete("/cart", requireAuth, buyer, clearCart);
+marketplaceRouter.post("/cart/checkout", requireAuth, buyer, checkoutCart);

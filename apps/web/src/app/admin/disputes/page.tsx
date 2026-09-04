@@ -15,10 +15,11 @@ import { useSession } from "@/store/useSession";
 import { Navbar } from "@/components/landing/Navbar";
 import { formatBdt, formatDate } from "@/components/app/projectStatus";
 import { surfaceClass } from "@/components/ui/surface";
+import { ListSkeleton } from "@/components/ui/Skeleton";
 
 const cardClass = surfaceClass;
 const inputClass =
-  "block w-full rounded-xl border border-stone-300/80 bg-white/70 px-4 py-2.5 text-sm outline-none transition focus:border-amber-500 focus:ring-2 focus:ring-amber-400/30 dark:border-white/15 dark:bg-white/5 dark:text-slate-100";
+  "block w-full rounded-xl border border-stone-300/80 bg-white/70 px-4 py-2.5 text-sm text-stone-900 placeholder-stone-400 backdrop-blur transition outline-none focus:border-amber-500 focus:bg-white/90 focus:ring-2 focus:ring-amber-400/30 dark:border-white/15 dark:bg-white/5 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:bg-white/10";
 
 const TABS = [
   { status: "", label: "Needs a decision" },
@@ -103,7 +104,9 @@ export default function AdminDisputesPage() {
       <div className="flex min-h-screen flex-col">
         <Navbar />
         <main className="flex-1 px-5 pt-28 pb-16 sm:px-8">
-          <p className="text-center text-sm text-stone-500 dark:text-slate-500">Loading…</p>
+          <p className="text-center text-sm text-stone-500 dark:text-slate-500 loading-dots">
+            Loading
+          </p>
         </main>
       </div>
     );
@@ -135,11 +138,13 @@ export default function AdminDisputesPage() {
       <Navbar />
       <main className="flex-1 px-5 pt-28 pb-16 sm:px-8">
         <div className="mx-auto w-full max-w-5xl">
-          <p className="text-sm font-bold tracking-[0.2em] text-amber-800 uppercase dark:text-amber-400">
+          <p className="animate-rise-in text-[0.7rem] font-bold tracking-[0.22em] text-stone-500 uppercase dark:text-slate-400">
             Supervisor
           </p>
-          <h1 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">Disputes</h1>
-          <p className="mt-3 max-w-xl text-stone-600 dark:text-slate-400">
+          <h1 className="display-title animate-rise-in [animation-delay:70ms] mt-2 text-4xl sm:text-5xl">
+            Disputes
+          </h1>
+          <p className="animate-rise-in [animation-delay:140ms] mt-3 max-w-xl text-stone-600 dark:text-slate-400">
             Money held in escrow that two people disagree about. It stays frozen until you decide.
           </p>
 
@@ -165,7 +170,7 @@ export default function AdminDisputesPage() {
 
           <div className="mt-6 flex flex-col gap-4">
             {loading ? (
-              <p className="text-sm text-stone-500 dark:text-slate-500">Loading…</p>
+              <ListSkeleton rows={3} />
             ) : disputes.length === 0 ? (
               <div className={`${cardClass} p-6 text-sm text-stone-600 dark:text-slate-400`}>
                 Nothing here.
@@ -280,11 +285,7 @@ export default function AdminDisputesPage() {
                           onChange={(e) => setNote(e.target.value)}
                         />
 
-                        {error && (
-                          <p className="rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-medium text-rose-800 dark:bg-rose-400/15 dark:text-rose-300">
-                            {error}
-                          </p>
-                        )}
+                        {error && <p className="alert alert-danger">{error}</p>}
 
                         <div className="flex gap-2">
                           <button
@@ -298,7 +299,7 @@ export default function AdminDisputesPage() {
                           <button
                             type="button"
                             onClick={() => setSelected(null)}
-                            className="rounded-full border border-stone-300 px-6 py-2.5 text-sm font-bold text-stone-700 transition hover:bg-stone-100 dark:border-white/20 dark:text-slate-200"
+                            className="rounded-full btn-secondary px-6 py-2.5 text-sm"
                           >
                             Cancel
                           </button>
@@ -311,7 +312,7 @@ export default function AdminDisputesPage() {
                           setSelected(d);
                           setError(null);
                         }}
-                        className="mt-4 rounded-full bg-amber-400 px-6 py-2.5 text-sm font-bold text-stone-950 transition hover:bg-amber-300"
+                        className="mt-4 rounded-full btn-primary px-6 py-2.5 text-sm"
                       >
                         Decide this
                       </button>

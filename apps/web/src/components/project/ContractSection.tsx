@@ -108,7 +108,7 @@ function PaymentForm({
         <button
           type="submit"
           disabled={busy}
-          className="rounded-xl bg-amber-400 px-5 py-2.5 text-sm font-bold text-stone-950 transition hover:bg-amber-300 disabled:opacity-60"
+          className="rounded-xl btn-primary px-5 py-2.5 text-sm disabled:opacity-60"
         >
           {busy ? "Paying…" : "Pay now"}
         </button>
@@ -176,7 +176,7 @@ export function ContractSection({
 
   return (
     <section>
-      <h2 className="text-xl font-extrabold tracking-tight">Design contract & escrow</h2>
+      <h2 className="display-title text-2xl">Design contract & escrow</h2>
 
       <div className={`mt-4 ${cardClass}`}>
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -207,11 +207,7 @@ export function ContractSection({
           </div>
         </div>
 
-        {error && (
-          <p className="mt-4 rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-medium text-rose-800 dark:bg-rose-400/15 dark:text-rose-300">
-            {error}
-          </p>
-        )}
+        {error && <p className="mt-4 alert alert-danger">{error}</p>}
 
         {/* Phase actions ------------------------------------------------- */}
 
@@ -389,7 +385,7 @@ export function ContractSection({
                               })
                             )
                           }
-                          className="rounded-full border border-stone-300 px-5 py-2 text-xs font-bold text-stone-700 transition hover:bg-stone-100 disabled:opacity-60 dark:border-white/20 dark:text-slate-200 dark:hover:bg-white/10"
+                          className="rounded-full btn-secondary px-5 py-2 text-xs disabled:opacity-60"
                         >
                           Request changes
                         </button>

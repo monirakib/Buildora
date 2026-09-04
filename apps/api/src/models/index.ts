@@ -24,6 +24,7 @@ import { BoqRate } from "./BoqRate";
 import { Broadcast } from "./Broadcast";
 import { BuildContract } from "./BuildContract";
 import { Call } from "./Call";
+import { Cart } from "./Cart";
 import { ChangeOrder } from "./ChangeOrder";
 import { Contract } from "./Contract";
 import { Conversation } from "./Conversation";
@@ -79,6 +80,7 @@ export const allModels = [
   Broadcast,
   BuildContract,
   Call,
+  Cart,
   ChangeOrder,
   Contract,
   Conversation,

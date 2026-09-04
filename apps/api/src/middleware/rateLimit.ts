@@ -3,14 +3,22 @@ import type { NextFunction, Request, Response } from "express";
 /**
  * A small fixed-window rate limiter, kept in memory.
  *
- * It exists for the one endpoint that has to answer people who aren't signed in
- * yet — the IAB lookup on the signup form. Everything else sits behind
- * requireAuth, where the session is the limit.
+ * It started life for the one endpoint that has to answer people who aren't
+ * signed in yet — the IAB lookup on the signup form — and now backs every
+ * ceiling on the platform. There are four kinds, and they exist for different
+ * reasons:
+ *
+ * - guessing:  login and signup, so a password list can't be worked through.
+ * - our quota: anything that spends a free tier we don't pay for — the model
+ *   providers, Cloudinary, the public geocoder (see aiRateLimit.ts and the
+ *   route files).
+ * - someone else's service: endpoints that proxy a third party, so Buildora
+ *   never becomes the thing hammering them.
+ * - flooding:  the baseline in app.ts, which catches the rest.
  *
  * In memory is the right scope here: the API runs as a single process, and the
  * worst case of a restart clearing the counters is that a caller gets a fresh
- * window. Nothing security-critical rests on it — it's there so one script
- * can't hammer IAB through us.
+ * window. Nothing security-critical rests on it.
  */
 export function rateLimit({
   windowMs,

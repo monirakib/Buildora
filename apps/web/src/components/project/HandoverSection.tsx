@@ -9,7 +9,7 @@ import { surfaceClass } from "@/components/ui/surface";
 
 const cardClass = `${surfaceClass} p-5 sm:p-6`;
 const inputClass =
-  "block w-full rounded-xl border border-stone-300/80 bg-white/70 px-4 py-2.5 text-sm outline-none transition focus:border-amber-500 focus:ring-2 focus:ring-amber-400/30 dark:border-white/15 dark:bg-white/5 dark:text-slate-100";
+  "block w-full rounded-xl border border-stone-300/80 bg-white/70 px-4 py-2.5 text-sm text-stone-900 placeholder-stone-400 backdrop-blur transition outline-none focus:border-amber-500 focus:bg-white/90 focus:ring-2 focus:ring-amber-400/30 dark:border-white/15 dark:bg-white/5 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:bg-white/10";
 
 type WarrantyForm = {
   item: string;
@@ -126,13 +126,9 @@ export function HandoverSection({
 
   return (
     <section>
-      <h2 className="text-xl font-extrabold tracking-tight">Handover &amp; warranties</h2>
+      <h2 className="display-title text-2xl">Handover &amp; warranties</h2>
       <div className={`mt-4 ${cardClass}`}>
-        {error && (
-          <p className="mb-4 rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-medium text-rose-800 dark:bg-rose-400/15 dark:text-rose-300">
-            {error}
-          </p>
-        )}
+        {error && <p className="mb-4 alert alert-danger">{error}</p>}
 
         {locked && (
           <p className="mb-4 inline-flex items-center gap-2 rounded-xl bg-emerald-100 px-4 py-3 text-sm font-medium text-emerald-900 dark:bg-emerald-400/15 dark:text-emerald-200">
@@ -156,7 +152,7 @@ export function HandoverSection({
                   setForm({ ...form, warranties: [emptyWarranty()] });
                   setEditing(true);
                 }}
-                className="mt-4 rounded-full bg-amber-400 px-6 py-2.5 text-sm font-bold text-stone-950 transition hover:bg-amber-300"
+                className="mt-4 rounded-full btn-primary px-6 py-2.5 text-sm"
               >
                 Start the handover
               </button>
@@ -245,7 +241,7 @@ export function HandoverSection({
                 <button
                   type="button"
                   onClick={() => setEditing(true)}
-                  className="rounded-full border border-stone-300 px-6 py-2.5 text-sm font-bold text-stone-700 transition hover:bg-stone-100 dark:border-white/20 dark:text-slate-200 dark:hover:bg-white/10"
+                  className="rounded-full btn-secondary px-6 py-2.5 text-sm"
                 >
                   Edit
                 </button>
@@ -382,7 +378,7 @@ export function HandoverSection({
               onClick={() =>
                 setForm({ ...form, warranties: [...form.warranties, emptyWarranty()] })
               }
-              className="inline-flex items-center gap-1.5 self-start rounded-full border border-stone-300 px-5 py-2 text-sm font-bold text-stone-700 transition hover:bg-stone-100 dark:border-white/20 dark:text-slate-200 dark:hover:bg-white/10"
+              className="inline-flex items-center gap-1.5 self-start rounded-full btn-secondary px-5 py-2 text-sm"
             >
               <Plus className="h-4 w-4" /> Add warranty
             </button>
@@ -392,14 +388,14 @@ export function HandoverSection({
                 type="button"
                 disabled={busy}
                 onClick={save}
-                className="rounded-full bg-amber-400 px-6 py-2.5 text-sm font-bold text-stone-950 transition hover:bg-amber-300 disabled:opacity-60"
+                className="rounded-full btn-primary px-6 py-2.5 text-sm disabled:opacity-60"
               >
                 {busy ? "Saving…" : "Save handover"}
               </button>
               <button
                 type="button"
                 onClick={() => setEditing(false)}
-                className="rounded-full border border-stone-300 px-6 py-2.5 text-sm font-bold text-stone-700 transition hover:bg-stone-100 dark:border-white/20 dark:text-slate-200 dark:hover:bg-white/10"
+                className="rounded-full btn-secondary px-6 py-2.5 text-sm"
               >
                 Cancel
               </button>

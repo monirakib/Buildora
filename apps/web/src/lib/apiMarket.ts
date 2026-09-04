@@ -4,18 +4,29 @@ import { request } from "./api";
 /* ---------- Catalogue ---------- */
 
 /** GET /api/marketplace/products — public catalogue with search + filter. */
-export async function listProducts(params: {
+export type ProductSort = "newest" | "price_asc" | "price_desc";
+
+export interface CatalogueQuery {
   search?: string;
   category?: string;
   page?: number;
-}): Promise<Paginated<Product>> {
+  minPrice?: number;
+  maxPrice?: number;
+  sort?: ProductSort;
+}
+
+/** A page of the catalogue, plus the dearest listing overall for the price slider. */
+export type CataloguePage = Paginated<Product> & { priceMaxBdt: number };
+
+export async function listProducts(params: CatalogueQuery): Promise<CataloguePage> {
   const qs = new URLSearchParams();
   if (params.search) qs.set("search", params.search);
   if (params.category) qs.set("category", params.category);
   if (params.page) qs.set("page", String(params.page));
-  const res = await request<{ data: Paginated<Product> }>(
-    `/api/marketplace/products?${qs.toString()}`
-  );
+  if (params.minPrice) qs.set("minPrice", String(params.minPrice));
+  if (params.maxPrice) qs.set("maxPrice", String(params.maxPrice));
+  if (params.sort && params.sort !== "newest") qs.set("sort", params.sort);
+  const res = await request<{ data: CataloguePage }>(`/api/marketplace/products?${qs.toString()}`);
   return res.data;
 }
 
@@ -66,26 +77,6 @@ export async function deleteProduct(token: string, id: string): Promise<void> {
     method: "DELETE",
     headers: { Authorization: `Bearer ${token}` },
   });
-}
-
-/* ---------- Orders ---------- */
-
-export async function placeOrder(
-  token: string,
-  input: {
-    productId: string;
-    quantity: number;
-    deliveryAddress: string;
-    phone: string;
-    note?: string;
-  }
-): Promise<MarketOrder> {
-  const res = await request<{ data: { order: MarketOrder } }>("/api/marketplace/orders", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}` },
-    body: JSON.stringify(input),
-  });
-  return res.data.order;
 }
 
 export async function listOrders(token: string): Promise<MarketOrder[]> {

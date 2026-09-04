@@ -1,20 +1,198 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { UserRole } from "@buildora/shared";
+import {
+  ArrowRight,
+  ArrowUpRight,
+  CalendarClock,
+  ClipboardList,
+  FileText,
+  Gavel,
+  HardHat,
+  Inbox,
+  Info,
+  Megaphone,
+  MessageSquare,
+  PhoneMissed,
+  ShieldCheck,
+  ShoppingCart,
+  Wallet,
+} from "lucide-react";
+import { NotificationType, UserRole, type DashboardSummary } from "@buildora/shared";
 import { useSession } from "@/store/useSession";
 import { Navbar } from "@/components/landing/Navbar";
 import { VerifyBanner } from "@/components/app/VerifyGate";
 import { Stagger } from "@/components/Stagger";
-import { surfaceClass, surfaceHoverClass } from "@/components/ui/surface";
+import { AnimatedNumber } from "@/components/ui/AnimatedNumber";
+import { Alert } from "@/components/ui/Alert";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { surfaceClass } from "@/components/ui/surface";
+import {
+  formatDate,
+  projectStatusLabels,
+  projectStatusStyles,
+} from "@/components/app/projectStatus";
+import { timeAgo } from "@/components/admin/format";
+import { fetchDashboardSummary } from "@/lib/apiDashboard";
+import { gsap, prefersReducedMotion, useGSAP } from "@/lib/gsap";
 
-const cardClass = `group relative overflow-hidden ${surfaceClass} ${surfaceHoverClass} p-6`;
+/** "Good morning" / "afternoon" / "evening", from the visitor's own clock. */
+function greeting(): string {
+  const h = new Date().getHours();
+  if (h < 5) return "Good night";
+  if (h < 12) return "Good morning";
+  if (h < 17) return "Good afternoon";
+  return "Good evening";
+}
 
+/** "৳12,40,000" for money, "3" for counts. */
+function statValue(value: number, unit?: "count" | "bdt") {
+  return unit === "bdt" ? (
+    <>
+      <span className="text-[0.55em] font-semibold text-stone-500 dark:text-slate-400">৳</span>
+      <AnimatedNumber value={value} />
+    </>
+  ) : (
+    <AnimatedNumber value={value} />
+  );
+}
+
+const activityIcon: Record<NotificationType, React.ComponentType<{ className?: string }>> = {
+  [NotificationType.MESSAGE]: MessageSquare,
+  [NotificationType.INQUIRY]: Inbox,
+  [NotificationType.PROPOSAL]: FileText,
+  [NotificationType.CONTRACT]: FileText,
+  [NotificationType.MEETING]: CalendarClock,
+  [NotificationType.TENDER]: Gavel,
+  [NotificationType.BID]: Gavel,
+  [NotificationType.MILESTONE]: HardHat,
+  [NotificationType.SITE_DIARY]: ClipboardList,
+  [NotificationType.PAYMENT]: Wallet,
+  [NotificationType.ORDER]: ShoppingCart,
+  [NotificationType.VERIFICATION]: ShieldCheck,
+  [NotificationType.CALL]: PhoneMissed,
+  [NotificationType.PROMOTION]: Megaphone,
+  [NotificationType.SYSTEM]: Info,
+};
+
+/** The quiet links at the foot of the page, per role. */
+function shortcutsFor(role: UserRole): { href: string; label: string }[] {
+  const common = [
+    { href: "/messages", label: "Messages" },
+    { href: "/permits", label: "Permit tools" },
+    { href: "/marketplace", label: "Marketplace" },
+    { href: "/account", label: "Account" },
+  ];
+  switch (role) {
+    case UserRole.LAND_OWNER:
+      return [
+        { href: "/projects/new", label: "Post a brief" },
+        { href: "/architects", label: "Find an architect" },
+        { href: "/engineers", label: "Find an engineer" },
+        { href: "/contractors", label: "Find a contractor" },
+        { href: "/meetings", label: "Meetings" },
+        ...common,
+      ];
+    case UserRole.ADMIN:
+      return [
+        { href: "/admin", label: "Admin console" },
+        { href: "/supervisor", label: "Verification queue" },
+        { href: "/admin/permits", label: "Permit data" },
+        { href: "/admin/pricing", label: "Price sheet" },
+        ...common,
+      ];
+    case UserRole.CONTRACTOR:
+      return [
+        { href: "/tenders", label: "Tenders" },
+        { href: "/briefs", label: "Open briefs" },
+        { href: "/marketplace/sell", label: "My listings" },
+        { href: "/profile/professional", label: "Profile" },
+        ...common,
+      ];
+    case UserRole.STRUCTURAL_ENGINEER:
+      return [
+        { href: "/engineer", label: "Inspections & drawings" },
+        { href: "/briefs", label: "Open briefs" },
+        { href: "/profile/professional", label: "Profile" },
+        ...common,
+      ];
+    case UserRole.SUPPLIER:
+      return [
+        { href: "/marketplace/sell", label: "My listings" },
+        { href: "/marketplace/orders", label: "Incoming orders" },
+        { href: "/profile/professional", label: "Profile" },
+        ...common,
+      ];
+    default:
+      return [
+        { href: "/briefs", label: "Open briefs" },
+        { href: "/inquiries", label: "Client requests" },
+        { href: "/meetings", label: "Meetings" },
+        { href: "/profile/professional", label: "Profile" },
+        ...common,
+      ];
+  }
+}
+
+const sectionLabel =
+  "text-[0.7rem] font-bold tracking-[0.22em] text-stone-500 uppercase dark:text-slate-400";
+
+/** Hairline-separated list row, the page's one repeating shape. */
+const rowClass =
+  "group flex items-center gap-4 border-b border-black/8 py-4 transition-colors duration-200 hover:border-amber-400/70 dark:border-white/10";
+
+/** What stands in for the page while the summary is on its way. */
+function DashboardSkeleton() {
+  return (
+    <div aria-busy="true" aria-label="Loading your dashboard">
+      <Skeleton className="h-3 w-28" />
+      <Skeleton className="mt-5 h-12 w-2/3 max-w-lg" />
+      <Skeleton className="mt-4 h-4 w-1/2 max-w-md" />
+      <div className="mt-12 grid gap-8 border-y border-black/8 py-8 sm:grid-cols-2 lg:grid-cols-4 dark:border-white/10">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i}>
+            <Skeleton className="h-3 w-24" />
+            <Skeleton className="mt-3 h-10 w-20" />
+            <Skeleton className="mt-2 h-3 w-28" />
+          </div>
+        ))}
+      </div>
+      <div className="mt-12 grid gap-12 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+        <div>
+          <Skeleton className="h-3 w-20" />
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="mt-4 h-14 w-full" />
+          ))}
+        </div>
+        <div>
+          <Skeleton className="h-3 w-20" />
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="mt-4 h-10 w-full" />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The dashboard: one screen that answers "where do things stand" for whoever
+ * is signed in.
+ *
+ * Editorial rather than tiled. Figures sit on a ruled band under the masthead,
+ * lists are hairline-separated rows, and the only colour is the amber on
+ * whatever needs the user. Every number comes from the summary endpoint,
+ * which counts the real collections; nothing here is a placeholder.
+ */
 export default function DashboardPage() {
   const router = useRouter();
   const user = useSession((s) => s.user);
+  const token = useSession((s) => s.token);
+
+  const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   // Session hydrates from localStorage on the client — wait for mount before
   // trusting `user`, then bounce anyone who isn't signed in.
@@ -24,475 +202,306 @@ export default function DashboardPage() {
     if (mounted && !user) router.replace("/auth");
   }, [mounted, user, router]);
 
+  useEffect(() => {
+    if (!token) return;
+    fetchDashboardSummary(token)
+      .then(setSummary)
+      .catch((err) =>
+        setError(err instanceof Error ? err.message : "Couldn't load your dashboard")
+      );
+  }, [token]);
+
+  // The masthead rises line by line once the summary is in.
+  const headRef = useRef<HTMLDivElement>(null);
+  useGSAP(
+    () => {
+      const el = headRef.current;
+      if (!el || !summary || prefersReducedMotion()) return;
+      gsap.fromTo(
+        el.querySelectorAll("[data-line]"),
+        { opacity: 0, y: 16 },
+        { opacity: 1, y: 0, duration: 0.7, stagger: 0.09, ease: "power3.out", clearProps: "all" }
+      );
+    },
+    { scope: headRef, dependencies: [summary] }
+  );
+
   if (!mounted || !user) {
     return (
       <div className="flex min-h-screen flex-col">
         <Navbar />
         <main className="flex-1 px-5 pt-28 pb-16 sm:px-8">
-          <p className="text-center text-sm text-stone-500 dark:text-slate-500">Loading…</p>
+          <div className="mx-auto w-full max-w-5xl">
+            <DashboardSkeleton />
+          </div>
         </main>
       </div>
     );
   }
 
-  const firstName = user.name.split(" ")[0];
-  const isLandOwner = user.role === UserRole.LAND_OWNER;
   const isAdmin = user.role === UserRole.ADMIN;
-  const isProfessional = !isLandOwner && !isAdmin;
+  const isLandOwner = user.role === UserRole.LAND_OWNER;
+  const needsYou = summary?.attention.filter((a) => a.count > 0) ?? [];
 
   return (
     <div className="flex min-h-screen flex-col">
       <Navbar />
 
-      <main className="flex-1 px-5 pt-28 pb-16 sm:px-8">
-        <div className="mx-auto w-full max-w-4xl">
-          <p className="text-sm font-bold tracking-[0.2em] text-amber-800 uppercase dark:text-amber-400">
-            Your dashboard
-          </p>
-          <h1 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">
-            Welcome back, {firstName}.
-          </h1>
-          <p className="mt-3 max-w-xl text-stone-600 dark:text-slate-400">
-            {isLandOwner
-              ? "Start by finding a verified architect to design your building."
-              : isAdmin
-                ? "Review professionals' verification requests and keep the platform trustworthy."
-                : "Manage your profile and the client requests coming your way."}
-          </p>
+      <main className="flex-1 px-5 pt-28 pb-20 sm:px-8">
+        <div className="mx-auto w-full max-w-5xl">
+          {error && <Alert className="mb-8">{error}</Alert>}
 
-          {/* Renders itself away once a supervisor approves the account. Admins
-              have nothing to verify, so they never see it. */}
-          {!isAdmin && (
-            <div className="mt-8">
-              <VerifyBanner role={user.role} />
-            </div>
+          {!summary ? (
+            <DashboardSkeleton />
+          ) : (
+            <>
+              {/* ---------- Masthead ---------- */}
+              <div ref={headRef}>
+                <p data-line className={sectionLabel}>
+                  Your dashboard
+                </p>
+                <h1
+                  data-line
+                  className="display-title mt-4 text-4xl text-stone-900 sm:text-6xl dark:text-white"
+                >
+                  {greeting()}, {summary.firstName}.
+                </h1>
+                <p
+                  data-line
+                  className="mt-4 max-w-xl text-lg leading-relaxed text-stone-600 dark:text-slate-400"
+                >
+                  {summary.headline}
+                </p>
+              </div>
+
+              {!isAdmin && (
+                <div className="mt-8">
+                  <VerifyBanner role={user.role} />
+                </div>
+              )}
+
+              {/* ---------- Figures ---------- */}
+              <Stagger
+                className="mt-12 grid gap-x-8 gap-y-8 border-y border-black/8 py-8 sm:grid-cols-2 lg:grid-cols-4 dark:border-white/10"
+                dependencies={[summary]}
+              >
+                {summary.stats.map((s) => {
+                  const inner = (
+                    <>
+                      <p className={sectionLabel}>{s.label}</p>
+                      <p className="display-title mt-2 text-4xl text-stone-900 sm:text-5xl dark:text-white">
+                        {statValue(s.value, s.unit)}
+                      </p>
+                      {s.hint && (
+                        <p className="mt-1.5 text-sm text-stone-500 dark:text-slate-400">
+                          {s.hint}
+                        </p>
+                      )}
+                    </>
+                  );
+                  return s.href ? (
+                    <Link key={s.key} href={s.href} className="group block">
+                      {inner}
+                      <span className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-amber-700 opacity-0 transition-opacity duration-200 group-hover:opacity-100 dark:text-amber-400">
+                        Open <ArrowUpRight className="h-3.5 w-3.5" />
+                      </span>
+                    </Link>
+                  ) : (
+                    <div key={s.key}>{inner}</div>
+                  );
+                })}
+              </Stagger>
+
+              <div className="mt-12 grid gap-12 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] lg:gap-16">
+                {/* ---------- Left: what needs you, then the projects ---------- */}
+                <div className="flex flex-col gap-12">
+                  {needsYou.length > 0 && (
+                    <section>
+                      <p className={sectionLabel}>Needs you</p>
+                      <Stagger as="ul" className="mt-3 flex flex-col" dependencies={[summary]}>
+                        {needsYou.map((a) => (
+                          <li key={a.key}>
+                            <Link href={a.href} className={rowClass}>
+                              <span className="display-title w-12 shrink-0 text-3xl text-amber-700 dark:text-amber-400">
+                                {a.count}
+                              </span>
+                              <span className="flex-1 text-base font-semibold">{a.label}</span>
+                              <ArrowRight className="btn-arrow h-4 w-4 text-stone-400 group-hover:text-amber-700 dark:group-hover:text-amber-400" />
+                            </Link>
+                          </li>
+                        ))}
+                      </Stagger>
+                    </section>
+                  )}
+
+                  <section>
+                    <div className="flex items-baseline justify-between">
+                      <p className={sectionLabel}>{isAdmin ? "Latest projects" : "Projects"}</p>
+                      <Link
+                        href="/projects"
+                        className="link-underline text-xs font-bold text-stone-500 hover:text-amber-700 dark:text-slate-400 dark:hover:text-amber-400"
+                      >
+                        {isAdmin ? "All projects" : "See all"}
+                      </Link>
+                    </div>
+                    {summary.projects.length === 0 ? (
+                      <div className={`${surfaceClass} mt-4 p-6 sm:p-8`}>
+                        <p className="display-title text-2xl sm:text-3xl">
+                          {isLandOwner ? "No projects yet." : "Nothing on your desk yet."}
+                        </p>
+                        <p className="mt-2 max-w-md text-sm leading-relaxed text-stone-600 dark:text-slate-400">
+                          {isLandOwner
+                            ? "Post a brief and verified architects will send proposals with their fees and timelines."
+                            : "Browse the open briefs and send a proposal to get started."}
+                        </p>
+                        <Link
+                          href={isLandOwner ? "/projects/new" : "/briefs"}
+                          className="btn-primary mt-5 px-6 py-2.5 text-sm"
+                        >
+                          {isLandOwner ? "Post a brief" : "Open briefs"}
+                          <ArrowRight className="btn-arrow h-4 w-4" />
+                        </Link>
+                      </div>
+                    ) : (
+                      <Stagger as="ul" className="mt-3 flex flex-col" dependencies={[summary]}>
+                        {summary.projects.map((p) => (
+                          <li key={p.id}>
+                            <Link href={`/projects/${p.id}`} className={rowClass}>
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate text-lg font-semibold">{p.title}</p>
+                                <p className="mt-0.5 text-sm text-stone-500 dark:text-slate-400">
+                                  {p.areaName} · updated {formatDate(p.updatedAt)}
+                                </p>
+                              </div>
+                              <span
+                                className={`shrink-0 rounded-full px-3 py-1 text-xs font-bold ${projectStatusStyles[p.status]}`}
+                              >
+                                {projectStatusLabels[p.status]}
+                              </span>
+                              <ArrowRight className="btn-arrow h-4 w-4 shrink-0 text-stone-400 group-hover:text-amber-700 dark:group-hover:text-amber-400" />
+                            </Link>
+                          </li>
+                        ))}
+                      </Stagger>
+                    )}
+                  </section>
+                </div>
+
+                {/* ---------- Right: coming up, then the activity feed ---------- */}
+                <div className="flex flex-col gap-12">
+                  {summary.upcoming.length > 0 && (
+                    <section>
+                      <p className={sectionLabel}>Coming up</p>
+                      <Stagger as="ul" className="mt-3 flex flex-col" dependencies={[summary]}>
+                        {summary.upcoming.map((u) => {
+                          const d = new Date(u.at);
+                          return (
+                            <li key={u.id}>
+                              <Link href={u.href} className={`${rowClass} py-3.5`}>
+                                <span className="w-12 shrink-0 text-center">
+                                  <span className="display-title block text-2xl leading-none">
+                                    {d.getDate()}
+                                  </span>
+                                  <span className="mt-1 block text-[0.65rem] font-bold tracking-wider text-stone-500 uppercase dark:text-slate-400">
+                                    {d.toLocaleDateString(undefined, { month: "short" })}
+                                  </span>
+                                </span>
+                                <span className="min-w-0 flex-1">
+                                  <span className="block truncate text-sm font-semibold">
+                                    {u.title}
+                                  </span>
+                                  <span className="block truncate text-xs text-stone-500 dark:text-slate-400">
+                                    {u.detail} ·{" "}
+                                    {d.toLocaleTimeString(undefined, {
+                                      hour: "numeric",
+                                      minute: "2-digit",
+                                    })}
+                                  </span>
+                                </span>
+                              </Link>
+                            </li>
+                          );
+                        })}
+                      </Stagger>
+                    </section>
+                  )}
+
+                  <section>
+                    <p className={sectionLabel}>Activity</p>
+                    {summary.activity.length === 0 ? (
+                      <p className="mt-3 text-sm text-stone-500 dark:text-slate-400">
+                        Nothing has happened yet. It will show up here as it does.
+                      </p>
+                    ) : (
+                      <Stagger as="ul" className="mt-3 flex flex-col" dependencies={[summary]}>
+                        {summary.activity.map((n) => {
+                          const Icon = activityIcon[n.type] ?? Info;
+                          const inner = (
+                            <>
+                              <span
+                                className={`mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full ${
+                                  n.readAt
+                                    ? "bg-stone-900/5 text-stone-500 dark:bg-white/5 dark:text-slate-400"
+                                    : "bg-amber-400/20 text-amber-700 dark:text-amber-300"
+                                }`}
+                              >
+                                <Icon className="h-3.5 w-3.5" />
+                              </span>
+                              <span className="min-w-0 flex-1">
+                                <span
+                                  className={`block truncate text-sm ${n.readAt ? "font-medium" : "font-bold"}`}
+                                >
+                                  {n.title}
+                                </span>
+                                <span className="block truncate text-xs text-stone-500 dark:text-slate-400">
+                                  {n.body}
+                                </span>
+                                <span className="mt-0.5 block text-[0.68rem] text-stone-400 dark:text-slate-500">
+                                  {timeAgo(n.createdAt)}
+                                </span>
+                              </span>
+                            </>
+                          );
+                          const cls = `${rowClass} items-start py-3`;
+                          return (
+                            <li key={n.id}>
+                              {n.link ? (
+                                <Link href={n.link} className={cls}>
+                                  {inner}
+                                </Link>
+                              ) : (
+                                <div className={cls}>{inner}</div>
+                              )}
+                            </li>
+                          );
+                        })}
+                      </Stagger>
+                    )}
+                  </section>
+                </div>
+              </div>
+
+              {/* ---------- Shortcuts ---------- */}
+              <nav
+                aria-label="Shortcuts"
+                className="mt-16 border-t border-black/8 pt-6 dark:border-white/10"
+              >
+                <p className={sectionLabel}>Go to</p>
+                <ul className="mt-3 flex flex-wrap gap-x-6 gap-y-2">
+                  {shortcutsFor(user.role).map((s) => (
+                    <li key={s.href}>
+                      <Link
+                        href={s.href}
+                        className="link-underline text-sm font-semibold text-stone-700 hover:text-amber-700 dark:text-slate-300 dark:hover:text-amber-400"
+                      >
+                        {s.label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </nav>
+            </>
           )}
-
-          <Stagger className="mt-10 grid gap-5 sm:grid-cols-2">
-            {!isAdmin && (
-              <Link href="/projects" className={cardClass}>
-                <span className="grid h-11 w-11 place-items-center rounded-2xl bg-amber-400 text-stone-950">
-                  {/* Building / project */}
-                  <svg
-                    viewBox="0 0 24 24"
-                    className="h-5.5 w-5.5"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M4 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16" />
-                    <path d="M16 9h3a1 1 0 0 1 1 1v11" />
-                    <path d="M2 21h20" />
-                    <path d="M8 7h2M8 11h2M8 15h2" />
-                  </svg>
-                </span>
-                <h2 className="mt-4 text-lg font-bold">
-                  {isLandOwner ? "Your projects" : "Your engagements"}
-                </h2>
-                <p className="mt-1 text-sm text-stone-600 dark:text-slate-400">
-                  {isLandOwner
-                    ? "Post a brief, review proposals, and drive your build from concept to handover."
-                    : "The projects you've been engaged on, contracts, submissions, and escrow."}
-                </p>
-                <span className="mt-4 inline-block text-sm font-bold text-amber-700 dark:text-amber-400">
-                  Open projects →
-                </span>
-              </Link>
-            )}
-
-            {isProfessional && (
-              <Link href="/briefs" className={cardClass}>
-                <span className="grid h-11 w-11 place-items-center rounded-2xl bg-amber-400 text-stone-950">
-                  {/* Document search */}
-                  <svg
-                    viewBox="0 0 24 24"
-                    className="h-5.5 w-5.5"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-6-6Z" />
-                    <path d="M14 3v6h6" />
-                  </svg>
-                </span>
-                <h2 className="mt-4 text-lg font-bold">Open briefs</h2>
-                <p className="mt-1 text-sm text-stone-600 dark:text-slate-400">
-                  Browse client briefs and send proposals with your concept and design fees.
-                </p>
-                <span className="mt-4 inline-block text-sm font-bold text-amber-700 dark:text-amber-400">
-                  Browse briefs →
-                </span>
-              </Link>
-            )}
-
-            {user.role === UserRole.CONTRACTOR && (
-              <Link href="/tenders" className={cardClass}>
-                <span className="grid h-11 w-11 place-items-center rounded-2xl bg-amber-400 text-stone-950">
-                  {/* Gavel — bidding */}
-                  <svg
-                    viewBox="0 0 24 24"
-                    className="h-5.5 w-5.5"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="m14 13-7.5 7.5a2.1 2.1 0 0 1-3-3L11 10" />
-                    <path d="m16 16 6-6" />
-                    <path d="m8 8 6-6" />
-                    <path d="m9 7 8 8" />
-                    <path d="m21 11-8-8" />
-                  </svg>
-                </span>
-                <h2 className="mt-4 text-lg font-bold">Tenders</h2>
-                <p className="mt-1 text-sm text-stone-600 dark:text-slate-400">
-                  Price open Bills of Quantities and submit sealed bids. Nobody sees your rates
-                  until bidding closes.
-                </p>
-                <span className="mt-4 inline-block text-sm font-bold text-amber-700 dark:text-amber-400">
-                  Find work →
-                </span>
-              </Link>
-            )}
-
-            {user.role === UserRole.STRUCTURAL_ENGINEER && (
-              <Link href="/engineer" className={cardClass}>
-                <span className="grid h-11 w-11 place-items-center rounded-2xl bg-amber-400 text-stone-950">
-                  {/* Clipboard with a tick — a signed inspection */}
-                  <svg
-                    viewBox="0 0 24 24"
-                    className="h-5.5 w-5.5"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
-                    <rect x="8" y="2" width="8" height="4" rx="1" />
-                    <path d="m9 14 2 2 4-4" />
-                  </svg>
-                </span>
-                <h2 className="mt-4 text-lg font-bold">Inspections &amp; drawings</h2>
-                <p className="mt-1 text-sm text-stone-600 dark:text-slate-400">
-                  Every stage waiting on your signature and every drawing set you owe, across all
-                  your projects at once.
-                </p>
-                <span className="mt-4 inline-block text-sm font-bold text-amber-700 dark:text-amber-400">
-                  Open console →
-                </span>
-              </Link>
-            )}
-
-            {isLandOwner && (
-              <Link href="/architects" className={cardClass}>
-                <span className="grid h-11 w-11 place-items-center rounded-2xl bg-amber-400 text-stone-950">
-                  {/* Compass / find */}
-                  <svg
-                    viewBox="0 0 24 24"
-                    className="h-5.5 w-5.5"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <circle cx="12" cy="12" r="9" />
-                    <path d="M15.5 8.5l-2 5-5 2 2-5 5-2Z" />
-                  </svg>
-                </span>
-                <h2 className="mt-4 text-lg font-bold">Find an architect</h2>
-                <p className="mt-1 text-sm text-stone-600 dark:text-slate-400">
-                  Browse architects, see their work, and send a contact request.
-                </p>
-                <span className="mt-4 inline-block text-sm font-bold text-amber-700 dark:text-amber-400">
-                  Browse architects →
-                </span>
-              </Link>
-            )}
-
-            {isLandOwner && (
-              <Link href="/engineers" className={cardClass}>
-                <span className="grid h-11 w-11 place-items-center rounded-2xl bg-amber-400 text-stone-950">
-                  {/* Ruler — structural / drafting */}
-                  <svg
-                    viewBox="0 0 24 24"
-                    className="h-5.5 w-5.5"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M3 17 17 3l4 4L7 21H3v-4Z" />
-                    <path d="m14 6 4 4" />
-                    <path d="m11 9 2 2" />
-                    <path d="m8 12 2 2" />
-                  </svg>
-                </span>
-                <h2 className="mt-4 text-lg font-bold">Find an engineer</h2>
-                <p className="mt-1 text-sm text-stone-600 dark:text-slate-400">
-                  Browse verified structural engineers and see their completed work.
-                </p>
-                <span className="mt-4 inline-block text-sm font-bold text-amber-700 dark:text-amber-400">
-                  Browse engineers →
-                </span>
-              </Link>
-            )}
-
-            {isLandOwner && (
-              <Link href="/contractors" className={cardClass}>
-                <span className="grid h-11 w-11 place-items-center rounded-2xl bg-amber-400 text-stone-950">
-                  {/* House — construction */}
-                  <svg
-                    viewBox="0 0 24 24"
-                    className="h-5.5 w-5.5"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M3 21h18" />
-                    <path d="M5 21V7l7-4 7 4v14" />
-                    <path d="M9 21v-6h6v6" />
-                  </svg>
-                </span>
-                <h2 className="mt-4 text-lg font-bold">Find a contractor</h2>
-                <p className="mt-1 text-sm text-stone-600 dark:text-slate-400">
-                  Browse verified contractors and see their completed builds.
-                </p>
-                <span className="mt-4 inline-block text-sm font-bold text-amber-700 dark:text-amber-400">
-                  Browse contractors →
-                </span>
-              </Link>
-            )}
-
-            <Link href="/messages" className={cardClass}>
-              <span className="grid h-11 w-11 place-items-center rounded-2xl bg-stone-900 text-white dark:bg-white/15">
-                {/* Paper plane */}
-                <svg
-                  viewBox="0 0 24 24"
-                  className="h-5.5 w-5.5"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M22 2 11 13" />
-                  <path d="M22 2 15 22l-4-9-9-4 20-7Z" />
-                </svg>
-              </span>
-              <h2 className="mt-4 text-lg font-bold">Messages</h2>
-              <p className="mt-1 text-sm text-stone-600 dark:text-slate-400">
-                Chat with the people on your projects, everything stays on the platform.
-              </p>
-              <span className="mt-4 inline-block text-sm font-bold text-amber-700 dark:text-amber-400">
-                Open inbox →
-              </span>
-            </Link>
-
-            <Link href="/permits" className={cardClass}>
-              <span className="grid h-11 w-11 place-items-center rounded-2xl bg-stone-900 text-white dark:bg-white/15">
-                {/* Stamp / permit */}
-                <svg
-                  viewBox="0 0 24 24"
-                  className="h-5.5 w-5.5"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M5 22h14" />
-                  <path d="M5 18h14v4H5z" />
-                  <path d="M14 13.5V18h-4v-4.5a5 5 0 1 1 4 0Z" />
-                </svg>
-              </span>
-              <h2 className="mt-4 text-lg font-bold">Permit toolkit</h2>
-              <p className="mt-1 text-sm text-stone-600 dark:text-slate-400">
-                DAP zone checker, RAJUK fee calculator, and the ECPS process guide.
-              </p>
-              <span className="mt-4 inline-block text-sm font-bold text-amber-700 dark:text-amber-400">
-                Check the rules →
-              </span>
-            </Link>
-
-            {isAdmin && (
-              <Link href="/admin" className={cardClass}>
-                <span className="grid h-11 w-11 place-items-center rounded-2xl bg-amber-400 text-stone-950">
-                  {/* Console grid */}
-                  <svg
-                    viewBox="0 0 24 24"
-                    className="h-5.5 w-5.5"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <rect x="3" y="3" width="7" height="7" rx="1.5" />
-                    <rect x="14" y="3" width="7" height="7" rx="1.5" />
-                    <rect x="3" y="14" width="7" height="7" rx="1.5" />
-                    <rect x="14" y="14" width="7" height="7" rx="1.5" />
-                  </svg>
-                </span>
-                <h2 className="mt-4 text-lg font-bold">Admin console</h2>
-                <p className="mt-1 text-sm text-stone-600 dark:text-slate-400">
-                  Live analytics, user &amp; role management, and marketplace oversight.
-                </p>
-                <span className="mt-4 inline-block text-sm font-bold text-amber-700 dark:text-amber-400">
-                  Open the console →
-                </span>
-              </Link>
-            )}
-
-            {isAdmin && (
-              <Link href="/supervisor" className={cardClass}>
-                <span className="grid h-11 w-11 place-items-center rounded-2xl bg-amber-400 text-stone-950">
-                  {/* Shield-check / review */}
-                  <svg
-                    viewBox="0 0 24 24"
-                    className="h-5.5 w-5.5"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M12 2l7 4v6c0 5-3.5 8.5-7 10-3.5-1.5-7-5-7-10V6l7-4Z" />
-                    <path d="M9 12l2 2 4-4" />
-                  </svg>
-                </span>
-                <h2 className="mt-4 text-lg font-bold">Verification requests</h2>
-                <p className="mt-1 text-sm text-stone-600 dark:text-slate-400">
-                  Review professionals&apos; credentials and award the verified badge.
-                </p>
-                <span className="mt-4 inline-block text-sm font-bold text-amber-700 dark:text-amber-400">
-                  Open the queue →
-                </span>
-              </Link>
-            )}
-
-            {isAdmin && (
-              <Link href="/admin/permits" className={cardClass}>
-                <span className="grid h-11 w-11 place-items-center rounded-2xl bg-amber-400 text-stone-950">
-                  {/* Database / records */}
-                  <svg
-                    viewBox="0 0 24 24"
-                    className="h-5.5 w-5.5"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <ellipse cx="12" cy="5" rx="8" ry="3" />
-                    <path d="M4 5v14c0 1.66 3.58 3 8 3s8-1.34 8-3V5" />
-                    <path d="M4 12c0 1.66 3.58 3 8 3s8-1.34 8-3" />
-                  </svg>
-                </span>
-                <h2 className="mt-4 text-lg font-bold">Permit reference data</h2>
-                <p className="mt-1 text-sm text-stone-600 dark:text-slate-400">
-                  Maintain DAP zones, RAJUK fee rates, and the ECPS process steps.
-                </p>
-                <span className="mt-4 inline-block text-sm font-bold text-amber-700 dark:text-amber-400">
-                  Manage records →
-                </span>
-              </Link>
-            )}
-
-            {!isAdmin && (
-              <Link href="/inquiries" className={cardClass}>
-                <span className="grid h-11 w-11 place-items-center rounded-2xl bg-stone-900 text-white dark:bg-white/15">
-                  {/* Chat */}
-                  <svg
-                    viewBox="0 0 24 24"
-                    className="h-5.5 w-5.5"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z" />
-                  </svg>
-                </span>
-                <h2 className="mt-4 text-lg font-bold">
-                  {isLandOwner ? "Your requests" : "Client requests"}
-                </h2>
-                <p className="mt-1 text-sm text-stone-600 dark:text-slate-400">
-                  {isLandOwner
-                    ? "Track the architects you've contacted and their replies."
-                    : "See land owners who've reached out to you."}
-                </p>
-                <span className="mt-4 inline-block text-sm font-bold text-amber-700 dark:text-amber-400">
-                  View requests →
-                </span>
-              </Link>
-            )}
-
-            {/* Only professionals have a profile: credentials and portfolio,
-                leading to verification. */}
-            {isProfessional && (
-              <Link href="/profile/professional" className={cardClass}>
-                <span className="grid h-11 w-11 place-items-center rounded-2xl bg-stone-900 text-white dark:bg-white/15">
-                  {/* Person */}
-                  <svg
-                    viewBox="0 0 24 24"
-                    className="h-5.5 w-5.5"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                    <circle cx="12" cy="7" r="4" />
-                  </svg>
-                </span>
-                <h2 className="mt-4 text-lg font-bold">Complete your profile</h2>
-                <p className="mt-1 text-sm text-stone-600 dark:text-slate-400">
-                  Add your credentials, education, and portfolio, then request verification.
-                </p>
-                <span className="mt-4 inline-block text-sm font-bold text-amber-700 dark:text-amber-400">
-                  Edit profile →
-                </span>
-              </Link>
-            )}
-
-            {/* Account settings — same for every role. */}
-            <Link href="/account" className={cardClass}>
-              <span className="grid h-11 w-11 place-items-center rounded-2xl bg-stone-900 text-white dark:bg-white/15">
-                {/* Settings cog */}
-                <svg
-                  viewBox="0 0 24 24"
-                  className="h-5.5 w-5.5"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <circle cx="12" cy="12" r="3" />
-                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />
-                </svg>
-              </span>
-              <h2 className="mt-4 text-lg font-bold">Account information</h2>
-              <p className="mt-1 text-sm text-stone-600 dark:text-slate-400">
-                Personal details, contact numbers, billing information, and your password.
-              </p>
-              <span className="mt-4 inline-block text-sm font-bold text-amber-700 dark:text-amber-400">
-                Manage account →
-              </span>
-            </Link>
-          </Stagger>
         </div>
       </main>
     </div>

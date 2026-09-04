@@ -35,6 +35,7 @@ import { StatTile } from "@/components/admin/charts";
 import { DiaryDigestModal } from "@/components/project/DiaryDigestModal";
 import { imageAt } from "@/lib/imageUrl";
 import { surfaceClass } from "@/components/ui/surface";
+import { ListSkeleton } from "@/components/ui/Skeleton";
 
 const inputClass =
   "block w-full rounded-xl border border-stone-300/80 bg-white/70 px-4 py-2.5 text-sm text-stone-900 placeholder-stone-400 backdrop-blur transition outline-none focus:border-amber-500 focus:bg-white/90 focus:ring-2 focus:ring-amber-400/30 dark:border-white/15 dark:bg-white/5 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:bg-white/10";
@@ -251,12 +252,12 @@ export function SiteDiarySection({
   return (
     <section>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-xl font-extrabold tracking-tight">Site diary</h2>
+        <h2 className="display-title text-2xl">Site diary</h2>
         {canWrite && !showForm && (
           <button
             type="button"
             onClick={openNew}
-            className="rounded-full bg-amber-400 px-5 py-2 text-sm font-bold text-stone-950 transition hover:bg-amber-300"
+            className="rounded-full btn-primary px-5 py-2 text-sm"
           >
             Log a day
           </button>
@@ -264,11 +265,7 @@ export function SiteDiarySection({
       </div>
 
       <div className={`mt-4 ${cardClass}`}>
-        {error && (
-          <p className="mb-4 rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-medium text-rose-800 dark:bg-rose-400/15 dark:text-rose-300">
-            {error}
-          </p>
-        )}
+        {error && <p className="mb-4 alert alert-danger">{error}</p>}
 
         {!hasPlotPin && (
           <p className="mb-4 rounded-xl bg-amber-100 px-4 py-2.5 text-sm text-amber-900 dark:bg-amber-400/15 dark:text-amber-200">
@@ -561,7 +558,7 @@ export function SiteDiarySection({
               <button
                 type="submit"
                 disabled={busy || uploading}
-                className="rounded-full bg-amber-400 px-6 py-2.5 text-sm font-bold text-stone-950 transition hover:bg-amber-300 disabled:opacity-60"
+                className="rounded-full btn-primary px-6 py-2.5 text-sm disabled:opacity-60"
               >
                 {busy ? "Saving…" : editingId ? "Save changes" : "Log the day"}
               </button>
@@ -582,7 +579,7 @@ export function SiteDiarySection({
         {/* The diary itself ------------------------------------------------ */}
         <div className="mt-6 border-t border-black/10 pt-5 dark:border-white/10">
           {loading ? (
-            <p className="text-sm text-stone-500 dark:text-slate-500">Loading…</p>
+            <ListSkeleton rows={3} />
           ) : entries.length === 0 ? (
             <p className="text-sm text-stone-600 dark:text-slate-400">
               No days logged yet. Each entry records the work done, who was on site, and the weather

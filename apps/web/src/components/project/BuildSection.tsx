@@ -134,14 +134,10 @@ export function BuildSection({
 
   return (
     <section>
-      <h2 className="text-xl font-extrabold tracking-tight">Construction</h2>
+      <h2 className="display-title text-2xl">Construction</h2>
 
       <div className={`mt-4 ${cardClass}`}>
-        {error && (
-          <p className="mb-4 rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-medium text-rose-800 dark:bg-rose-400/15 dark:text-rose-300">
-            {error}
-          </p>
-        )}
+        {error && <p className="mb-4 alert alert-danger">{error}</p>}
 
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -316,7 +312,7 @@ export function BuildSection({
                           <button
                             type="submit"
                             disabled={busy}
-                            className="rounded-xl bg-amber-400 px-5 py-2.5 text-sm font-bold text-stone-950 transition hover:bg-amber-300 disabled:opacity-60"
+                            className="rounded-xl btn-primary px-5 py-2.5 text-sm disabled:opacity-60"
                           >
                             Record deposit
                           </button>
@@ -331,7 +327,7 @@ export function BuildSection({
                       type="button"
                       disabled={busy}
                       onClick={() => run(() => claimMilestone(token, contract.id, m.id))}
-                      className="rounded-full bg-amber-400 px-5 py-2 text-xs font-bold text-stone-950 transition hover:bg-amber-300 disabled:opacity-60"
+                      className="rounded-full btn-primary px-5 py-2 text-xs disabled:opacity-60"
                     >
                       Mark complete & request inspection
                     </button>
@@ -356,7 +352,7 @@ export function BuildSection({
                         <button
                           type="button"
                           onClick={() => openInspection(m.id)}
-                          className="rounded-full bg-amber-400 px-5 py-2 text-xs font-bold text-stone-950 transition hover:bg-amber-300"
+                          className="rounded-full btn-primary px-5 py-2 text-xs"
                         >
                           Inspect this stage
                         </button>
@@ -617,7 +613,7 @@ function InspectionForm({
         <button
           type="submit"
           disabled={busy || uploading}
-          className="rounded-full bg-amber-400 px-6 py-2.5 text-sm font-bold text-stone-950 transition hover:bg-amber-300 disabled:opacity-60"
+          className="rounded-full btn-primary px-6 py-2.5 text-sm disabled:opacity-60"
         >
           {busy ? "Filing…" : "File inspection"}
         </button>

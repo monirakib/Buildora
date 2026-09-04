@@ -18,7 +18,7 @@
  * out is what lets one string cover every case.
  */
 export const surfaceClass =
-  "rounded-2xl border border-white/50 bg-white/55 shadow-xl shadow-black/5 backdrop-blur-xl dark:border-white/10 dark:bg-white/5 dark:shadow-black/20";
+  "rounded-3xl border border-black/[0.06] bg-white/70 shadow-[0_1px_2px_rgba(28,25,23,0.04),0_24px_48px_-32px_rgba(28,25,23,0.28)] backdrop-blur-xl dark:border-white/[0.08] dark:bg-white/[0.04] dark:shadow-[0_24px_48px_-32px_rgba(0,0,0,0.8)]";
 
 /**
  * Title strip at the top of a surface, divided from the body by a hairline.
@@ -52,4 +52,4 @@ export const surfaceBodyClass = "p-4 sm:p-5";
  * the card just floats and never lands.
  */
 export const surfaceHoverClass =
-  "transition-[translate,scale,border-color] duration-200 ease-out hover:-translate-y-0.5 hover:border-amber-400/60 active:translate-y-0 active:scale-[0.99]";
+  "spotlight transition-[translate,scale,border-color,box-shadow] duration-200 ease-out hover:-translate-y-0.5 hover:border-amber-400/60 hover:shadow-2xl hover:shadow-amber-900/10 active:translate-y-0 active:scale-[0.99] dark:hover:shadow-black/40";

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { StudioShell } from "@/components/studio/StudioShell";
 import { useSession } from "@/store/useSession";
+import { ListSkeleton } from "@/components/ui/Skeleton";
 
 /**
  * The BD Design Studio, on its own route.
@@ -37,7 +38,7 @@ export default function ProjectStudioPage() {
   }, [mounted, token, user, router]);
 
   if (!mounted || !token || !user) {
-    return <p className="p-10 text-center text-sm text-stone-500">Loading…</p>;
+    return <ListSkeleton rows={3} className="p-10" />;
   }
 
   return <StudioShell projectId={params.id} />;

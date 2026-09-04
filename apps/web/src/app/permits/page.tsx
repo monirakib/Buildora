@@ -13,6 +13,7 @@ import { Navbar } from "@/components/landing/Navbar";
 import { formatBdt, landUseLabels } from "@/components/app/projectStatus";
 import { useRegisterAiContext } from "@/lib/useRegisterAiContext";
 import { surfaceClass } from "@/components/ui/surface";
+import { ListSkeleton } from "@/components/ui/Skeleton";
 
 const inputClass =
   "block w-full rounded-xl border border-stone-300/80 bg-white/70 px-4 py-2.5 text-sm text-stone-900 placeholder-stone-400 backdrop-blur transition outline-none focus:border-amber-500 focus:bg-white/90 focus:ring-2 focus:ring-amber-400/30 dark:border-white/15 dark:bg-white/5 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:bg-white/10";
@@ -44,13 +45,13 @@ export default function PermitsPage() {
 
       <main className="flex-1 px-5 pt-28 pb-16 sm:px-8">
         <div className="mx-auto w-full max-w-3xl">
-          <p className="text-sm font-bold tracking-[0.2em] text-amber-800 uppercase dark:text-amber-400">
+          <p className="animate-rise-in text-[0.7rem] font-bold tracking-[0.22em] text-stone-500 uppercase dark:text-slate-400">
             Permit toolkit
           </p>
-          <h1 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">
+          <h1 className="display-title animate-rise-in [animation-delay:70ms] mt-2 text-4xl sm:text-5xl">
             Know the rules before you build
           </h1>
-          <p className="mt-3 text-stone-600 dark:text-slate-400">
+          <p className="animate-rise-in [animation-delay:140ms] mt-3 text-stone-600 dark:text-slate-400">
             Check what your plot allows, estimate the RAJUK permit fee, and see the ECPS process end
             to end. Buildora guides you through RAJUK&apos;s system, it doesn&apos;t replace it.
           </p>
@@ -128,14 +129,10 @@ function DapChecker() {
         />
       </div>
 
-      {error && (
-        <p className="mt-4 rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-medium text-rose-800 dark:bg-rose-400/15 dark:text-rose-300">
-          {error}
-        </p>
-      )}
+      {error && <p className="mt-4 alert alert-danger">{error}</p>}
 
       {loading ? (
-        <p className="mt-4 text-sm text-stone-500 dark:text-slate-500">Loading…</p>
+        <ListSkeleton rows={3} className="mt-4" />
       ) : zones.length === 0 ? (
         <p className="mt-4 text-sm text-stone-600 dark:text-slate-400">
           No zone matched, try a different spelling, or ask a supervisor to add your area.
@@ -243,7 +240,7 @@ function FeeCalculator() {
         <button
           type="submit"
           disabled={busy}
-          className="rounded-xl bg-amber-400 px-5 py-2.5 text-sm font-bold text-stone-950 transition hover:bg-amber-300 disabled:opacity-60"
+          className="rounded-xl btn-primary px-5 py-2.5 text-sm disabled:opacity-60"
         >
           {busy ? "Calculating…" : "Estimate fee"}
         </button>
@@ -253,11 +250,7 @@ function FeeCalculator() {
         Tip: 1 katha ≈ {KATHA_TO_SQM} m² of plot; total floor area ≈ floors × footprint.
       </p>
 
-      {error && (
-        <p className="mt-4 rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-medium text-rose-800 dark:bg-rose-400/15 dark:text-rose-300">
-          {error}
-        </p>
-      )}
+      {error && <p className="mt-4 alert alert-danger">{error}</p>}
 
       {estimate && (
         <div className="mt-5 rounded-2xl border border-amber-400/40 bg-amber-400/10 p-5">
@@ -308,13 +301,8 @@ function EcpsGuide() {
     })();
   }, []);
 
-  if (loading) return <p className="text-sm text-stone-500 dark:text-slate-500">Loading…</p>;
-  if (error)
-    return (
-      <p className="rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-medium text-rose-800 dark:bg-rose-400/15 dark:text-rose-300">
-        {error}
-      </p>
-    );
+  if (loading) return <ListSkeleton rows={3} />;
+  if (error) return <p className="alert alert-danger">{error}</p>;
 
   return (
     <ol className="flex flex-col gap-4">

@@ -29,6 +29,7 @@ import { useSession } from "@/store/useSession";
 import { Navbar } from "@/components/landing/Navbar";
 import { formatBdt, formatDate, landUseLabels } from "@/components/app/projectStatus";
 import { surfaceClass } from "@/components/ui/surface";
+import { ListSkeleton } from "@/components/ui/Skeleton";
 
 const inputClass =
   "block w-full rounded-xl border border-stone-300/80 bg-white/70 px-4 py-2.5 text-sm text-stone-900 placeholder-stone-400 backdrop-blur transition outline-none focus:border-amber-500 focus:bg-white/90 focus:ring-2 focus:ring-amber-400/30 dark:border-white/15 dark:bg-white/5 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:bg-white/10";
@@ -37,8 +38,7 @@ const labelClass = "mb-1.5 block text-sm font-semibold";
 
 const cardClass = `${surfaceClass} p-5 sm:p-6`;
 
-const smallButton =
-  "rounded-full border border-stone-300 px-3 py-1 text-xs font-bold text-stone-700 transition hover:bg-stone-100 disabled:opacity-60 dark:border-white/20 dark:text-slate-200 dark:hover:bg-white/10";
+const smallButton = "rounded-full btn-secondary px-3 py-1 text-xs disabled:opacity-60";
 
 type Tab = "dap" | "fees" | "ecps" | "applications";
 
@@ -67,7 +67,9 @@ export default function AdminPermitsPage() {
       <div className="flex min-h-screen flex-col">
         <Navbar />
         <main className="flex-1 px-5 pt-28 pb-16 sm:px-8">
-          <p className="text-center text-sm text-stone-500 dark:text-slate-500">Loading…</p>
+          <p className="text-center text-sm text-stone-500 dark:text-slate-500 loading-dots">
+            Loading
+          </p>
         </main>
       </div>
     );
@@ -86,13 +88,13 @@ export default function AdminPermitsPage() {
 
       <main className="flex-1 px-5 pt-28 pb-16 sm:px-8">
         <div className="mx-auto w-full max-w-3xl">
-          <p className="text-sm font-bold tracking-[0.2em] text-amber-800 uppercase dark:text-amber-400">
+          <p className="animate-rise-in text-[0.7rem] font-bold tracking-[0.22em] text-stone-500 uppercase dark:text-slate-400">
             Supervisor
           </p>
-          <h1 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">
+          <h1 className="display-title animate-rise-in [animation-delay:70ms] mt-2 text-4xl sm:text-5xl">
             Permit reference data
           </h1>
-          <p className="mt-3 text-stone-600 dark:text-slate-400">
+          <p className="animate-rise-in [animation-delay:140ms] mt-3 text-stone-600 dark:text-slate-400">
             These records power the public DAP checker, fee calculator, and ECPS guide.
           </p>
 
@@ -193,11 +195,7 @@ function DapZonesAdmin({ token }: { token: string }) {
 
   return (
     <div className="flex flex-col gap-5">
-      {error && (
-        <p className="rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-medium text-rose-800 dark:bg-rose-400/15 dark:text-rose-300">
-          {error}
-        </p>
-      )}
+      {error && <p className="alert alert-danger">{error}</p>}
 
       <div className={cardClass}>
         <ul className="divide-y divide-black/10 text-sm dark:divide-white/10">
@@ -320,7 +318,7 @@ function DapZonesAdmin({ token }: { token: string }) {
           <button
             type="submit"
             disabled={busy}
-            className="rounded-full bg-amber-400 px-6 py-2.5 text-sm font-bold text-stone-950 transition hover:bg-amber-300 disabled:opacity-60"
+            className="rounded-full btn-primary px-6 py-2.5 text-sm disabled:opacity-60"
           >
             {busy ? "Saving…" : editingId ? "Save changes" : "Add zone"}
           </button>
@@ -406,11 +404,7 @@ function FeeRulesAdmin({ token }: { token: string }) {
 
   return (
     <div className="flex flex-col gap-5">
-      {error && (
-        <p className="rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-medium text-rose-800 dark:bg-rose-400/15 dark:text-rose-300">
-          {error}
-        </p>
-      )}
+      {error && <p className="alert alert-danger">{error}</p>}
 
       <div className={cardClass}>
         <ul className="divide-y divide-black/10 text-sm dark:divide-white/10">
@@ -507,7 +501,7 @@ function FeeRulesAdmin({ token }: { token: string }) {
           <button
             type="submit"
             disabled={busy}
-            className="rounded-full bg-amber-400 px-6 py-2.5 text-sm font-bold text-stone-950 transition hover:bg-amber-300 disabled:opacity-60"
+            className="rounded-full btn-primary px-6 py-2.5 text-sm disabled:opacity-60"
           >
             {busy ? "Saving…" : editingId ? "Save changes" : "Add rate"}
           </button>
@@ -602,11 +596,7 @@ function EcpsStepsAdmin({ token }: { token: string }) {
 
   return (
     <div className="flex flex-col gap-5">
-      {error && (
-        <p className="rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-medium text-rose-800 dark:bg-rose-400/15 dark:text-rose-300">
-          {error}
-        </p>
-      )}
+      {error && <p className="alert alert-danger">{error}</p>}
 
       <div className={cardClass}>
         <ul className="divide-y divide-black/10 text-sm dark:divide-white/10">
@@ -697,7 +687,7 @@ function EcpsStepsAdmin({ token }: { token: string }) {
           <button
             type="submit"
             disabled={busy}
-            className="rounded-full bg-amber-400 px-6 py-2.5 text-sm font-bold text-stone-950 transition hover:bg-amber-300 disabled:opacity-60"
+            className="rounded-full btn-primary px-6 py-2.5 text-sm disabled:opacity-60"
           >
             {busy ? "Saving…" : editingId ? "Save changes" : "Add step"}
           </button>
@@ -759,14 +749,10 @@ function PermitApplicationsAdmin({ token }: { token: string }) {
 
   return (
     <div className="flex flex-col gap-4">
-      {error && (
-        <p className="rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-medium text-rose-800 dark:bg-rose-400/15 dark:text-rose-300">
-          {error}
-        </p>
-      )}
+      {error && <p className="alert alert-danger">{error}</p>}
 
       {loading ? (
-        <p className="text-sm text-stone-500 dark:text-slate-500">Loading…</p>
+        <ListSkeleton rows={3} />
       ) : applications.length === 0 ? (
         <div className={`${cardClass} text-sm text-stone-600 dark:text-slate-400`}>
           Nothing waiting on confirmation.

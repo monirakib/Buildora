@@ -10,6 +10,7 @@ import {
   type ProfessionalProfile,
 } from "@buildora/shared";
 import { askAi, isAiConfigured } from "../services/ai";
+import { screenNarrative } from "../services/aiGuard";
 import { findZoneForArea } from "../services/dapZones";
 import { fenced, sanitizeForPrompt, TRUNCATE } from "../services/aiSafety";
 import { FeeRule } from "../models/FeeRule";
@@ -94,7 +95,7 @@ Rules: do not invent any number that is not above. Do not use the words "quote",
       messages: [{ role: "user", content: prompt }],
       maxTokens: 400,
     });
-    return answer.text || null;
+    return screenNarrative(answer.text);
   } catch (err) {
     // A missing paragraph is a much smaller loss than a failed check list.
     console.error("[coach] narrative unavailable:", err instanceof Error ? err.message : err);
@@ -368,9 +369,13 @@ Rules:
 
   try {
     const answer = await askAi({ messages: [{ role: "user", content: prompt }], maxTokens: 500 });
-    if (!answer.text) throw new Error("Empty draft");
+    // Unlike the coach's narrative, this letter *is* the whole response — there
+    // is nothing to fall back to — so a dropped draft is an error, not a quiet
+    // omission.
+    const letter = screenNarrative(answer.text);
+    if (!letter) throw new Error("Couldn't draft the letter, try again");
     return res.json({
-      data: { draft: { coverLetter: answer.text, usedPortfolioTitles } },
+      data: { draft: { coverLetter: letter, usedPortfolioTitles } },
     });
   } catch (err) {
     return res.status(502).json({

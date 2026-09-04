@@ -55,13 +55,9 @@ export function ShareSection({ projectId, token }: { projectId: string; token: s
 
   return (
     <section>
-      <h2 className="text-xl font-extrabold tracking-tight">Share progress</h2>
+      <h2 className="display-title text-2xl">Share progress</h2>
       <div className={`mt-4 ${cardClass}`}>
-        {error && (
-          <p className="mb-4 rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-medium text-rose-800 dark:bg-rose-400/15 dark:text-rose-300">
-            {error}
-          </p>
-        )}
+        {error && <p className="mb-4 alert alert-danger">{error}</p>}
 
         <p className="text-sm text-stone-600 dark:text-slate-400">
           A read-only page for family or investors. It shows which stage the build has reached and
@@ -99,7 +95,7 @@ export function ShareSection({ projectId, token }: { projectId: string; token: s
                 type="button"
                 disabled={busy}
                 onClick={() => run(() => enableProjectShare(token, projectId, true))}
-                className="inline-flex items-center gap-1.5 rounded-full border border-stone-300 px-5 py-2 text-sm font-bold text-stone-700 transition hover:bg-stone-100 disabled:opacity-60 dark:border-white/20 dark:text-slate-200 dark:hover:bg-white/10"
+                className="inline-flex items-center gap-1.5 rounded-full btn-secondary px-5 py-2 text-sm disabled:opacity-60"
               >
                 <RefreshCw className="h-3.5 w-3.5" /> New link
               </button>
@@ -114,7 +110,7 @@ export function ShareSection({ projectId, token }: { projectId: string; token: s
             type="button"
             disabled={busy}
             onClick={() => run(() => enableProjectShare(token, projectId))}
-            className="mt-4 rounded-full bg-amber-400 px-6 py-2.5 text-sm font-bold text-stone-950 transition hover:bg-amber-300 disabled:opacity-60"
+            className="mt-4 rounded-full btn-primary px-6 py-2.5 text-sm disabled:opacity-60"
           >
             {busy ? "Creating…" : "Create a share link"}
           </button>

@@ -25,7 +25,7 @@ export const eyebrowClass =
   "text-[0.68rem] font-bold tracking-[0.16em] text-stone-500 uppercase dark:text-slate-400";
 
 export const inputClass =
-  "block w-full rounded-xl border border-stone-300/80 bg-white/70 px-3.5 py-2 text-sm text-stone-900 placeholder-stone-400 transition outline-none focus:border-amber-500 focus:bg-white focus:ring-2 focus:ring-amber-400/30 dark:border-white/15 dark:bg-white/5 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:bg-white/10";
+  "block w-full rounded-xl border border-stone-300/80 bg-white/70 px-4 py-2.5 text-sm text-stone-900 placeholder-stone-400 backdrop-blur transition outline-none focus:border-amber-500 focus:bg-white/90 focus:ring-2 focus:ring-amber-400/30 dark:border-white/15 dark:bg-white/5 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:bg-white/10";
 
 /**
  * Card surface — now shared with the rest of the app rather than defined here.
@@ -34,7 +34,7 @@ export const inputClass =
 export const cardClass = surfaceClass;
 
 export const primaryButtonClass =
-  "inline-flex items-center justify-center gap-2 rounded-full bg-amber-400 px-5 py-2 text-sm font-bold text-stone-950 shadow-lg shadow-amber-500/20 transition hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none";
+  "inline-flex items-center justify-center gap-2 rounded-full btn-primary px-5 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none";
 
 export const ghostButtonClass =
   "inline-flex items-center justify-center gap-2 rounded-full border border-stone-300/80 bg-white/60 px-4 py-2 text-sm font-bold text-stone-700 transition hover:bg-white disabled:opacity-40 dark:border-white/15 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10";

@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { Building2, Check, Lock } from "lucide-react";
 import type { PublicProgress } from "@buildora/shared";
 import { API_BASE_URL } from "@/lib/api";
+import { ListSkeleton } from "@/components/ui/Skeleton";
 
 /**
  * The public progress page.
@@ -37,7 +38,7 @@ export default function PublicProgressPage() {
   if (loading) {
     return (
       <main className="grid min-h-screen place-items-center bg-stone-100 dark:bg-[#05070C]">
-        <p className="text-sm text-stone-500 dark:text-slate-500">Loading…</p>
+        <ListSkeleton rows={3} />
       </main>
     );
   }

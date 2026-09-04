@@ -100,10 +100,7 @@ function VerifyEmailInner() {
                 someone to a login screen they didn't ask for. */}
             {sessionToken ? (
               <div className="mt-7 flex flex-wrap justify-center gap-3">
-                <Link
-                  href="/dashboard"
-                  className="rounded-full bg-amber-400 px-6 py-2.5 text-sm font-bold text-stone-950 shadow-lg transition hover:scale-[1.03] hover:bg-amber-300"
-                >
+                <Link href="/dashboard" className="rounded-full btn-primary px-6 py-2.5 text-sm">
                   Go to dashboard
                 </Link>
                 <Link
@@ -121,10 +118,7 @@ function VerifyEmailInner() {
                   will catch up on its own.
                 </p>
                 <div className="mt-7 flex justify-center">
-                  <Link
-                    href="/auth"
-                    className="rounded-full bg-amber-400 px-6 py-2.5 text-sm font-bold text-stone-950 shadow-lg transition hover:scale-[1.03] hover:bg-amber-300"
-                  >
+                  <Link href="/auth" className="rounded-full btn-primary px-6 py-2.5 text-sm">
                     Sign in here
                   </Link>
                 </div>
@@ -143,10 +137,7 @@ function VerifyEmailInner() {
             </h1>
             <p className="mt-2 text-sm text-stone-600 dark:text-slate-400">{state.message}</p>
             <div className="mt-7 flex flex-wrap justify-center gap-3">
-              <Link
-                href="/account"
-                className="rounded-full bg-amber-400 px-6 py-2.5 text-sm font-bold text-stone-950 shadow-lg transition hover:scale-[1.03] hover:bg-amber-300"
-              >
+              <Link href="/account" className="rounded-full btn-primary px-6 py-2.5 text-sm">
                 Send myself a new one
               </Link>
             </div>
