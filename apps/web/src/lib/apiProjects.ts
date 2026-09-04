@@ -334,3 +334,17 @@ export async function deleteProjectDocument(
     headers: authed(token),
   });
 }
+
+/** PATCH /api/projects/:id/cover — set the cover photograph (owner only). */
+export async function setProjectCover(
+  token: string,
+  id: string,
+  coverImageUrl: string
+): Promise<Project> {
+  const res = await request<{ data: { project: Project } }>(`/api/projects/${id}/cover`, {
+    method: "PATCH",
+    headers: authed(token),
+    body: JSON.stringify({ coverImageUrl }),
+  });
+  return res.data.project;
+}

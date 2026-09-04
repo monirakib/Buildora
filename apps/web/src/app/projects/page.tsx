@@ -20,8 +20,9 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { ListSkeleton } from "@/components/ui/Skeleton";
 import { Alert } from "@/components/ui/Alert";
 import { ArrowRight, FolderKanban, Plus } from "lucide-react";
+import { imageAt } from "@/lib/imageUrl";
 
-const cardClass = `block ${surfaceClass} ${surfaceHoverClass} p-5 sm:p-6`;
+const cardClass = `group block overflow-hidden ${surfaceClass} ${surfaceHoverClass} p-5 sm:p-6`;
 
 export default function ProjectsPage() {
   const router = useRouter();
@@ -103,10 +104,28 @@ export default function ProjectsPage() {
                 }
               />
             ) : (
-              <Stagger as="ul" className="flex flex-col gap-4" dependencies={[projects]}>
+              <Stagger as="ul" className="grid gap-5 sm:grid-cols-2" dependencies={[projects]}>
                 {projects.map((p) => (
                   <li key={p.id}>
                     <Link href={`/projects/${p.id}`} className={cardClass}>
+                      {/* The cover, or a warm placeholder, above the details. */}
+                      <div className="zoom-media relative -mx-5 -mt-5 mb-5 aspect-[21/9] overflow-hidden rounded-t-3xl sm:-mx-6 sm:-mt-6">
+                        {p.coverImageUrl ? (
+                          /* eslint-disable-next-line @next/next/no-img-element -- Cloudinary-hosted */
+                          <img
+                            src={imageAt(p.coverImageUrl, 1200)}
+                            alt=""
+                            loading="lazy"
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <div className="grid h-full w-full place-items-center bg-linear-to-br from-amber-300/50 via-stone-200/60 to-sky-200/50 dark:from-amber-400/20 dark:via-white/5 dark:to-sky-400/10">
+                            <span className="display-title text-5xl text-stone-900/20 dark:text-white/15">
+                              {p.title.charAt(0).toUpperCase()}
+                            </span>
+                          </div>
+                        )}
+                      </div>
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <p className="truncate text-lg font-bold">{p.title}</p>

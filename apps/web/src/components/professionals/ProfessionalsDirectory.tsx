@@ -17,6 +17,8 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { surfaceClass, surfaceHoverClass } from "@/components/ui/surface";
 import { PendingBadge, VerifiedBadge } from "@/components/app/VerifiedBadge";
 import { Stars } from "@/components/app/Stars";
+import { ArrowRight } from "lucide-react";
+import { imageAt } from "@/lib/imageUrl";
 import { professionalCopy } from "./roleCopy";
 
 const filterLabel =
@@ -37,61 +39,68 @@ function ProfessionalCard({ p, basePath }: { p: PublicProfessional; basePath: st
   return (
     <Link
       href={`/${basePath}/${p.id}`}
-      className={`group flex flex-col p-5 ${surfaceClass} ${surfaceHoverClass}`}
+      className={`group flex flex-col overflow-hidden ${surfaceClass} ${surfaceHoverClass}`}
     >
-      <div className="flex items-center gap-3">
-        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-amber-400 text-lg font-extrabold text-stone-950">
-          {initials(p.name)}
-        </span>
-        <div className="min-w-0">
-          <p className="truncate font-bold">{p.name}</p>
-          {p.company && (
-            <p className="truncate text-sm text-stone-600 dark:text-slate-400">{p.company}</p>
-          )}
-        </div>
-      </div>
-
-      {p.specialties && (
-        <p className="mt-4 line-clamp-2 text-sm text-stone-600 dark:text-slate-400">
-          {p.specialties}
-        </p>
-      )}
-
-      <div className="mt-3">
-        <Stars rating={p.ratingAvg} count={p.ratingCount} />
-      </div>
-
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <VerifiedBadge status={p.verificationStatus} />
-        <PendingBadge status={p.verificationStatus} />
-        {p.practiceDistrict && (
-          <span className="rounded-full bg-stone-500/10 px-2.5 py-1 text-xs font-semibold text-stone-600 dark:bg-white/10 dark:text-slate-300">
-            {p.practiceDistrict}
-          </span>
-        )}
-        {typeof p.yearsExperience === "number" && (
-          <span className="rounded-full bg-stone-500/10 px-2.5 py-1 text-xs font-semibold text-stone-600 dark:bg-white/10 dark:text-slate-300">
-            {p.yearsExperience} yrs exp
-          </span>
-        )}
-      </div>
-
-      {p.expertise && p.expertise.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1.5">
-          {p.expertise.slice(0, 3).map((e) => (
-            <span
-              key={e}
-              className="rounded-full bg-amber-400/15 px-2.5 py-0.5 text-xs font-semibold text-amber-700 dark:text-amber-300"
-            >
-              {e}
+      {/* The portrait, 4:5, or an initials block in the same frame when the
+          professional has not added a photo yet. */}
+      <div className="zoom-media relative aspect-4/5 w-full overflow-hidden">
+        {p.avatarUrl ? (
+          /* eslint-disable-next-line @next/next/no-img-element -- Cloudinary-hosted */
+          <img
+            src={imageAt(p.avatarUrl, 640)}
+            alt={p.name}
+            loading="lazy"
+            decoding="async"
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <div className="grid h-full w-full place-items-center bg-linear-to-br from-amber-300/60 to-stone-300/60 dark:from-amber-400/25 dark:to-white/5">
+            <span className="grid h-24 w-24 place-items-center rounded-3xl bg-amber-400 text-3xl font-extrabold text-stone-950">
+              {initials(p.name)}
             </span>
-          ))}
+          </div>
+        )}
+        <div className="absolute top-3 left-3 flex flex-wrap items-center gap-1.5">
+          <VerifiedBadge status={p.verificationStatus} />
+          <PendingBadge status={p.verificationStatus} />
         </div>
-      )}
+      </div>
 
-      <span className="mt-5 inline-block text-sm font-bold text-amber-700 dark:text-amber-400">
-        View profile →
-      </span>
+      <div className="flex flex-1 flex-col p-5">
+        <p className="truncate text-lg font-extrabold tracking-tight">{p.name}</p>
+        {p.company && (
+          <p className="truncate text-sm text-stone-600 dark:text-slate-400">{p.company}</p>
+        )}
+        {p.specialties && (
+          <p className="mt-2 line-clamp-2 text-sm text-stone-600 dark:text-slate-400">
+            {p.specialties}
+          </p>
+        )}
+
+        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-stone-500 dark:text-slate-400">
+          <Stars rating={p.ratingAvg} count={p.ratingCount} />
+          {p.practiceDistrict && <span>{p.practiceDistrict}</span>}
+          {typeof p.yearsExperience === "number" && <span>{p.yearsExperience} yrs</span>}
+        </div>
+
+        {p.expertise && p.expertise.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {p.expertise.slice(0, 3).map((e) => (
+              <span
+                key={e}
+                className="rounded-full bg-amber-400/15 px-2.5 py-0.5 text-xs font-semibold text-amber-700 dark:text-amber-300"
+              >
+                {e}
+              </span>
+            ))}
+          </div>
+        )}
+
+        <span className="mt-auto inline-flex items-center gap-1 pt-4 text-sm font-bold text-amber-700 dark:text-amber-400">
+          View profile
+          <ArrowRight className="btn-arrow h-4 w-4" />
+        </span>
+      </div>
     </Link>
   );
 }

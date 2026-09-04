@@ -481,9 +481,7 @@ export function Navbar({ showGetStarted = true }: { showGetStarted?: boolean }) 
                 />
               </svg>
             </span>
-            <span className="text-lg font-extrabold tracking-tight text-stone-900 dark:text-white">
-              Buildora
-            </span>
+            <span className="text-lg font-extrabold tracking-tight text-white">Buildora</span>
           </a>
         </div>
 

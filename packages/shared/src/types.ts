@@ -775,6 +775,8 @@ export interface Project {
   hasLift?: boolean;
   hasBasement?: boolean;
   hasRooftopAmenities?: boolean;
+  /** Cover photograph, uploaded by the owner. The plot map stands in when absent. */
+  coverImageUrl?: string;
   // ---- Preferences & readiness ----
   /** e.g. "Modern", "Traditional", "Minimalist". */
   designStyle?: string;
@@ -1193,6 +1195,7 @@ export interface DashboardProjectRow {
   areaName: string;
   status: ProjectStatus;
   updatedAt: string;
+  coverImageUrl?: string;
 }
 
 /** A dated thing coming up: a meeting, a milestone target, a tender deadline. */

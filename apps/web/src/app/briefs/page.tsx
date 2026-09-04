@@ -8,6 +8,8 @@ import { listOpenBriefs } from "@/lib/apiProjects";
 import { useSession } from "@/store/useSession";
 import { Navbar } from "@/components/landing/Navbar";
 import { Stagger } from "@/components/Stagger";
+import { ArrowRight } from "lucide-react";
+import { imageAt } from "@/lib/imageUrl";
 import { buildingTypeLabels, formatBdt, formatDate } from "@/components/app/projectStatus";
 import { useRegisterAiContext } from "@/lib/useRegisterAiContext";
 import { surfaceClass, surfaceHoverClass } from "@/components/ui/surface";
@@ -16,7 +18,7 @@ import { ListSkeleton } from "@/components/ui/Skeleton";
 const inputClass =
   "block w-full rounded-xl border border-stone-300/80 bg-white/70 px-4 py-2.5 text-sm text-stone-900 placeholder-stone-400 backdrop-blur transition outline-none focus:border-amber-500 focus:bg-white/90 focus:ring-2 focus:ring-amber-400/30 dark:border-white/15 dark:bg-white/5 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:bg-white/10";
 
-const cardClass = `block ${surfaceClass} ${surfaceHoverClass} p-5 sm:p-6`;
+const cardClass = `group block overflow-hidden ${surfaceClass} ${surfaceHoverClass} p-5 sm:p-6`;
 
 const PROFESSIONAL_ROLES: UserRole[] = [
   UserRole.ARCHITECT,
@@ -103,10 +105,32 @@ export default function BriefsPage() {
               </p>
             ) : (
               <>
-                <Stagger as="ul" className="flex flex-col gap-4" dependencies={[result.items]}>
+                <Stagger
+                  as="ul"
+                  className="grid gap-5 sm:grid-cols-2"
+                  dependencies={[result.items]}
+                >
                   {result.items.map((p) => (
                     <li key={p.id}>
                       <Link href={`/projects/${p.id}`} className={cardClass}>
+                        {/* The owner's cover photograph, or a warm placeholder. */}
+                        <div className="zoom-media relative -mx-5 -mt-5 mb-5 aspect-[21/9] overflow-hidden rounded-t-3xl sm:-mx-6 sm:-mt-6">
+                          {p.coverImageUrl ? (
+                            /* eslint-disable-next-line @next/next/no-img-element -- Cloudinary-hosted */
+                            <img
+                              src={imageAt(p.coverImageUrl, 1200)}
+                              alt=""
+                              loading="lazy"
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <div className="grid h-full w-full place-items-center bg-linear-to-br from-amber-300/50 via-stone-200/60 to-sky-200/50 dark:from-amber-400/20 dark:via-white/5 dark:to-sky-400/10">
+                              <span className="display-title text-5xl text-stone-900/20 dark:text-white/15">
+                                {p.title.charAt(0).toUpperCase()}
+                              </span>
+                            </div>
+                          )}
+                        </div>
                         <div className="flex items-start justify-between gap-3">
                           <p className="text-lg font-bold">{p.title}</p>
                           <span className="shrink-0 text-xs text-stone-500 dark:text-slate-500">
@@ -121,8 +145,9 @@ export default function BriefsPage() {
                         <p className="mt-3 line-clamp-3 text-sm text-stone-700 dark:text-slate-300">
                           {p.description}
                         </p>
-                        <span className="mt-4 inline-block text-sm font-bold text-amber-700 dark:text-amber-400">
-                          View & propose →
+                        <span className="mt-4 inline-flex items-center gap-1 text-sm font-bold text-amber-700 dark:text-amber-400">
+                          View & propose
+                          <ArrowRight className="btn-arrow h-4 w-4" />
                         </span>
                       </Link>
                     </li>

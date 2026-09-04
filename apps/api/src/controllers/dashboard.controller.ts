@@ -106,6 +106,7 @@ function toRow(doc: {
   areaName: string;
   status: ProjectStatus;
   updatedAt: Date;
+  coverImageUrl?: string;
 }): DashboardProjectRow {
   return {
     id: String(doc._id),
@@ -113,10 +114,11 @@ function toRow(doc: {
     areaName: doc.areaName,
     status: doc.status,
     updatedAt: doc.updatedAt.toISOString(),
+    coverImageUrl: doc.coverImageUrl,
   };
 }
 
-const projectSelect = "title areaName status updatedAt";
+const projectSelect = "title areaName status updatedAt coverImageUrl";
 
 /** Upcoming meetings for whichever side of the table the caller sits on. */
 async function meetingsFor(field: "landOwner" | "architect", me: string) {

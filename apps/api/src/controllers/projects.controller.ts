@@ -163,6 +163,7 @@ export function toProjectDto(
     unitsPerFloor: doc.unitsPerFloor,
     bedroomsPerUnit: doc.bedroomsPerUnit,
     parkingSpaces: doc.parkingSpaces,
+    coverImageUrl: doc.coverImageUrl,
     hasLift: doc.hasLift,
     hasBasement: doc.hasBasement,
     hasRooftopAmenities: doc.hasRooftopAmenities,
@@ -457,4 +458,33 @@ export async function deleteProject(req: Request, res: Response) {
   await Proposal.deleteMany({ project: doc._id });
   await doc.deleteOne();
   return res.json({ data: { deleted: true } });
+}
+
+const coverSchema = z.object({
+  coverImageUrl: z.url("Upload the image first, then send its URL"),
+});
+
+/**
+ * PATCH /api/projects/:id/cover — the owner sets the cover photograph.
+ *
+ * Separate from the brief update on purpose: the brief locks once an
+ * architect is engaged, but a cover is presentation, not scope, and an owner
+ * should be able to swap the site photo at any stage of the build.
+ */
+export async function setProjectCover(req: Request, res: Response) {
+  const doc = await findProjectOr404(req.params.id!, res);
+  if (!doc) return;
+  if (String(doc.owner) !== req.auth!.sub) {
+    return res.status(404).json({ error: { message: "Project not found" } });
+  }
+  const parsed = coverSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res
+      .status(400)
+      .json({ error: { message: parsed.error.issues[0]?.message ?? "Invalid input" } });
+  }
+  doc.coverImageUrl = parsed.data.coverImageUrl;
+  await doc.save();
+  await doc.populate(withRefs);
+  return res.json({ data: { project: toProjectDto(doc) } });
 }

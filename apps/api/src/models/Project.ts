@@ -35,6 +35,7 @@ export interface ProjectDoc {
   unitsPerFloor?: number;
   bedroomsPerUnit?: number;
   parkingSpaces?: number;
+  coverImageUrl?: string;
   hasLift?: boolean;
   hasBasement?: boolean;
   hasRooftopAmenities?: boolean;
@@ -104,6 +105,8 @@ const projectSchema = new Schema<ProjectDoc>(
     unitsPerFloor: { type: Number, min: 1, max: 20 },
     bedroomsPerUnit: { type: Number, min: 1, max: 20 },
     parkingSpaces: { type: Number, min: 0, max: 200 },
+    /** Cover photograph chosen by the owner; the plot map stands in when absent. */
+    coverImageUrl: { type: String, trim: true },
     hasLift: { type: Boolean },
     hasBasement: { type: Boolean },
     hasRooftopAmenities: { type: Boolean },

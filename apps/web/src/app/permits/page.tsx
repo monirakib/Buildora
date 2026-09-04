@@ -1,5 +1,4 @@
 "use client";
-
 import { useEffect, useState } from "react";
 import {
   KATHA_TO_SQM,
@@ -14,13 +13,13 @@ import { formatBdt, landUseLabels } from "@/components/app/projectStatus";
 import { useRegisterAiContext } from "@/lib/useRegisterAiContext";
 import { surfaceClass } from "@/components/ui/surface";
 import { ListSkeleton } from "@/components/ui/Skeleton";
+import { Band, BandHeading } from "@/components/ui/Band";
+import { Reveal } from "@/components/landing/Reveal";
 
 const inputClass =
   "block w-full rounded-xl border border-stone-300/80 bg-white/70 px-4 py-2.5 text-sm text-stone-900 placeholder-stone-400 backdrop-blur transition outline-none focus:border-amber-500 focus:bg-white/90 focus:ring-2 focus:ring-amber-400/30 dark:border-white/15 dark:bg-white/5 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:bg-white/10";
 
 const cardClass = `${surfaceClass} p-5 sm:p-6`;
-
-type Tab = "dap" | "fees" | "ecps";
 
 /**
  * The public permit toolkit: DAP zone checker, RAJUK fee calculator, and the
@@ -28,57 +27,63 @@ type Tab = "dap" | "fees" | "ecps";
  * — nothing here is hardcoded.
  */
 export default function PermitsPage() {
-  const [tab, setTab] = useState<Tab>("dap");
-
   // Lets the floating assistant know the user is on the permit tools.
   useRegisterAiContext({ page: "permits", label: "Permit tools" });
-
-  const tabs: { id: Tab; label: string }[] = [
-    { id: "dap", label: "DAP zone checker" },
-    { id: "fees", label: "RAJUK fee calculator" },
-    { id: "ecps", label: "ECPS guide" },
-  ];
 
   return (
     <div className="flex min-h-screen flex-col">
       <Navbar />
 
-      <main className="flex-1 px-5 pt-28 pb-16 sm:px-8">
-        <div className="mx-auto w-full max-w-3xl">
-          <p className="animate-rise-in text-[0.7rem] font-bold tracking-[0.22em] text-stone-500 uppercase dark:text-slate-400">
-            Permit toolkit
-          </p>
-          <h1 className="display-title animate-rise-in [animation-delay:70ms] mt-2 text-4xl sm:text-5xl">
-            Know the rules before you build
-          </h1>
-          <p className="animate-rise-in [animation-delay:140ms] mt-3 text-stone-600 dark:text-slate-400">
-            Check what your plot allows, estimate the RAJUK permit fee, and see the ECPS process end
-            to end. Buildora guides you through RAJUK&apos;s system, it doesn&apos;t replace it.
-          </p>
+      {/* One question per band, in the order a permit actually happens: what
+          the plot allows, what the permit costs, how the application runs. */}
+      <main className="flex-1 pt-16">
+        <Band tone="ground" className="pb-8 sm:pb-10 lg:pb-12">
+          <BandHeading
+            as="h1"
+            eyebrow="Permit toolkit"
+            title="Know the rules before you build."
+            lead="Check what your plot allows, estimate the RAJUK permit fee, and see the ECPS process end to end. Buildora guides you through RAJUK's system; it does not replace it."
+          />
+        </Band>
 
-          <div className="mt-8 flex flex-wrap gap-2">
-            {tabs.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setTab(t.id)}
-                className={`rounded-full px-5 py-2 text-sm font-bold transition ${
-                  tab === t.id
-                    ? "bg-amber-400 text-stone-950"
-                    : "border border-stone-300 text-stone-700 hover:bg-stone-100 dark:border-white/20 dark:text-slate-200 dark:hover:bg-white/10"
-                }`}
-              >
-                {t.label}
-              </button>
-            ))}
+        <Band tone="band" id="dap">
+          <Reveal>
+            <BandHeading
+              eyebrow="Step one"
+              title="What does your plot allow?"
+              lead="Every locality in Dhaka sits in a DAP zone with its own land use, floor-area ratio and height limit. Search yours."
+            />
+          </Reveal>
+          <div className="mx-auto mt-12 max-w-3xl">
+            <DapChecker />
           </div>
+        </Band>
 
-          <div className="mt-6">
-            {tab === "dap" && <DapChecker />}
-            {tab === "fees" && <FeeCalculator />}
-            {tab === "ecps" && <EcpsGuide />}
+        <Band tone="ground" id="fees">
+          <Reveal>
+            <BandHeading
+              eyebrow="Step two"
+              title="What will the permit cost?"
+              lead="RAJUK charges by land area, floors and building type. The rates here are the ones the platform administrators keep current."
+            />
+          </Reveal>
+          <div className="mx-auto mt-12 max-w-3xl">
+            <FeeCalculator />
           </div>
-        </div>
+        </Band>
+
+        <Band tone="band" id="ecps">
+          <Reveal>
+            <BandHeading
+              eyebrow="Step three"
+              title="How the application runs."
+              lead="ECPS is RAJUK's online permit system. These are its steps, in order, with what each one needs from you."
+            />
+          </Reveal>
+          <div className="mx-auto mt-12 max-w-3xl">
+            <EcpsGuide />
+          </div>
+        </Band>
       </main>
     </div>
   );

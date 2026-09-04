@@ -8,6 +8,7 @@ import {
   listOpenBriefs,
   postBrief,
   updateProject,
+  setProjectCover,
   updateProjectStatus,
   PROFESSIONAL_ROLES,
 } from "../controllers/projects.controller";
@@ -80,6 +81,7 @@ projectsRouter.get("/mine", listMyProjects);
 projectsRouter.get("/briefs", requireRole(...PROFESSIONAL_ROLES), listOpenBriefs);
 projectsRouter.get("/:id", getProject);
 projectsRouter.patch("/:id", requireRole(UserRole.LAND_OWNER), requireVerified, updateProject);
+projectsRouter.patch("/:id/cover", requireRole(UserRole.LAND_OWNER), setProjectCover);
 projectsRouter.delete("/:id", requireRole(UserRole.LAND_OWNER), requireVerified, deleteProject);
 projectsRouter.post("/:id/post", requireRole(UserRole.LAND_OWNER), requireVerified, postBrief);
 projectsRouter.patch(

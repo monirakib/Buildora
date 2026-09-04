@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { CountUp } from "./CountUp";
 import { Reveal } from "./Reveal";
+import { Band, BandHeading } from "@/components/ui/Band";
+import { surfaceClass, surfaceHoverClass } from "@/components/ui/surface";
+import { EscrowMeter } from "./EscrowMeter";
 
 export { HowItWorks } from "./HowItWorks";
 
@@ -144,151 +147,64 @@ export function Statement() {
 
 export { Showcase } from "./Showcase";
 
-/* ---------- Features (bento grid) ---------- */
+/* ---------- Features (one claim per band) ---------- */
 
-/** Shared shell for every bento tile — hover lifts it and warms the border. */
-const tileClass =
-  "group spotlight relative flex h-full flex-col overflow-hidden rounded-3xl border border-stone-200 bg-white p-7 shadow-sm transition-[translate,border-color,box-shadow,background-color] duration-300 ease-out hover:-translate-y-1 hover:border-amber-400/60 hover:shadow-xl dark:border-white/10 dark:bg-white/5 dark:shadow-none dark:hover:bg-white/10";
+/** A large feature tile on a band: glass, generous padding, hover lift. */
+const tileClass = `group relative flex h-full flex-col overflow-hidden p-8 ${surfaceClass} ${surfaceHoverClass}`;
 
 /** Icon chip in the tile's top-left corner. */
 function TileIcon({ children }: { children: React.ReactNode }) {
   return (
-    <div className="grid h-11 w-11 place-items-center rounded-xl bg-stone-900 text-amber-400 transition duration-300 group-hover:scale-110 group-hover:rotate-3 dark:bg-white/10 dark:text-amber-300">
+    <div className="grid h-12 w-12 place-items-center rounded-2xl bg-stone-900 text-amber-400 transition duration-300 group-hover:scale-110 group-hover:rotate-3 dark:bg-white/10 dark:text-amber-300">
       {children}
     </div>
   );
 }
 
-/** Little credential chip used in the verified tile. */
-function CredChip({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="rounded-full border border-stone-200 px-3 py-1 text-xs font-bold text-stone-600 dark:border-white/15 dark:text-slate-300">
-      {children}
-    </span>
-  );
-}
+/** The professional portraits: a photo, the role, and the badge they earn. */
+const professionals = [
+  { src: "/landing/drafting.jpg", role: "Architects", check: "IAB member, NID checked" },
+  {
+    src: "/landing/site-crane.jpg",
+    role: "Structural engineers",
+    check: "IEB member, NID checked",
+  },
+  { src: "/landing/crew-review.jpg", role: "Contractors", check: "RAJUK enlisted, NID checked" },
+];
 
+/**
+ * Three claims, three screens: who you build with, how the money is held,
+ * and the tools around the build. Each band makes one point at full size
+ * instead of six points in a grid.
+ */
 export function Features() {
   return (
-    <section id="features" className="mx-auto max-w-6xl scroll-mt-24 px-5 py-24 sm:px-8 sm:py-32">
-      <Reveal>
-        <p className="text-sm font-bold tracking-[0.2em] text-amber-800 uppercase dark:text-amber-400">
-          The platform
-        </p>
-        <h2 className="mt-3 max-w-2xl text-3xl font-extrabold tracking-tight sm:text-5xl">
-          Everything your build needs
-        </h2>
-        <p className="mt-4 max-w-2xl text-lg text-stone-600 dark:text-slate-400">
-          One trusted home for the entire journey, from an empty plot to the occupancy certificate.
-        </p>
-      </Reveal>
-
-      {/* Bento layout: [verified verified escrow] / [permit design escrow→bidding] /
-          [diary diary bidding] — spans only kick in at lg; below that it stacks. */}
-      <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {/* --- Verified professionals (wide) --- */}
-        <Reveal className="sm:col-span-2" delay={0}>
-          <div className={tileClass}>
-            <div className="flex flex-wrap items-start justify-between gap-6">
-              <div className="max-w-sm">
-                <TileIcon>{icons.shield}</TileIcon>
-                <h3 className="mt-5 text-lg font-bold">Verified professionals</h3>
-                <p className="mt-2 text-sm leading-relaxed text-stone-600 dark:text-slate-400">
-                  Architects, engineers, and contractors screened through NID, IAB/IEB membership,
-                  and RAJUK registration checks, reviewed by a human supervisor.
-                </p>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <CredChip>NID checked</CredChip>
-                  <CredChip>IAB / IEB member</CredChip>
-                  <CredChip>RAJUK enlisted</CredChip>
-                </div>
-              </div>
-
-              {/* Mini visual: overlapping avatars + the verified badge */}
-              <div className="flex flex-col items-center gap-3 self-center">
-                <div className="flex -space-x-3">
-                  {["NR", "AK", "SJ"].map((who, i) => (
-                    <span
-                      key={who}
-                      className={`grid h-13 w-13 place-items-center rounded-full border-2 border-white text-xs font-extrabold transition duration-300 group-hover:-translate-y-1 dark:border-stone-800 ${
-                        i === 2
-                          ? "bg-amber-400 text-stone-950"
-                          : "bg-stone-200 text-stone-600 dark:bg-white/15 dark:text-slate-200"
-                      }`}
-                      style={{ transitionDelay: `${i * 60}ms` }}
-                    >
-                      {who}
-                    </span>
-                  ))}
-                </div>
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-bold text-emerald-700 dark:bg-emerald-400/15 dark:text-emerald-300">
-                  <svg
-                    viewBox="0 0 24 24"
-                    className="h-3.5 w-3.5"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M20 6 9 17l-5-5" />
-                  </svg>
-                  Platform Verified
-                </span>
-              </div>
-            </div>
-          </div>
+    <div id="features" className="scroll-mt-24">
+      {/* ---- Claim 1: verified people ---- */}
+      <Band tone="ground">
+        <Reveal>
+          <BandHeading
+            eyebrow="The platform"
+            title="Build with people who have been checked."
+            lead="Every architect, engineer and contractor is screened against NID, IAB or IEB membership, and RAJUK registration, then reviewed by a human supervisor before they earn the badge."
+          />
         </Reveal>
-
-        {/* --- Escrow (milestone bars fill on hover) --- */}
-        <Reveal delay={110}>
-          <div className={tileClass}>
-            <TileIcon>{icons.escrow}</TileIcon>
-            <h3 className="mt-5 text-lg font-bold">Escrow-protected payments</h3>
-            <p className="mt-2 text-sm leading-relaxed text-stone-600 dark:text-slate-400">
-              Funds release only at approved milestones, via bKash, Nagad, or bank.
-            </p>
-            <div className="mt-auto flex flex-col gap-3 pt-6">
-              {[
-                { label: "Design", w: "w-[30%]", d: "delay-0" },
-                { label: "Structure", w: "w-[40%]", d: "delay-150" },
-                { label: "Finishing", w: "w-[30%]", d: "delay-300" },
-              ].map((m) => (
-                <div key={m.label}>
-                  <div className="flex justify-between text-xs font-bold text-stone-500 dark:text-slate-400">
-                    <span>{m.label}</span>
-                    <span className="opacity-0 transition-opacity duration-500 group-hover:opacity-100">
-                      released ✓
-                    </span>
-                  </div>
-                  {/* Bar fills to 100% on hover, staggered — “tranches releasing” */}
-                  <div className="mt-1 h-2 rounded-full bg-stone-200 dark:bg-white/10">
-                    <div
-                      className={`h-2 rounded-full bg-amber-500 transition-[width] duration-700 ease-out dark:bg-amber-400 ${m.w} ${m.d} group-hover:w-full`}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </Reveal>
-
-        {/* --- Permits (checklist ticks in on hover) --- */}
-        <Reveal delay={0}>
-          <div className={tileClass}>
-            <TileIcon>{icons.permit}</TileIcon>
-            <h3 className="mt-5 text-lg font-bold">RAJUK permits, guided</h3>
-            <p className="mt-2 text-sm leading-relaxed text-stone-600 dark:text-slate-400">
-              Zone checks, fee calculators, and ECPS tracking from day one.
-            </p>
-            <ul className="mt-auto flex flex-col gap-2.5 pt-6">
-              {["DAP zone checked", "Fees calculated", "ECPS submitted"].map((item, i) => (
-                <li key={item} className="flex items-center gap-2.5 text-sm font-semibold">
-                  <span className="grid h-5 w-5 place-items-center rounded-full border border-stone-300 transition-colors duration-300 group-hover:border-amber-500 group-hover:bg-amber-400/15 dark:border-white/20 dark:group-hover:border-amber-400">
+        <div className="mt-14 grid gap-5 sm:grid-cols-3">
+          {professionals.map((p, i) => (
+            <Reveal key={p.role} delay={i * 110}>
+              <figure className="group zoom-media relative aspect-4/5 overflow-hidden rounded-3xl">
+                {/* eslint-disable-next-line @next/next/no-img-element -- local asset */}
+                <img
+                  src={p.src}
+                  alt={p.role}
+                  loading="lazy"
+                  className="h-full w-full object-cover"
+                />
+                <figcaption className="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/75 via-black/30 to-transparent p-6 pt-20 text-white">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/90 px-2.5 py-1 text-[0.68rem] font-bold tracking-wide uppercase">
                     <svg
                       viewBox="0 0 24 24"
-                      className="h-3 w-3 scale-0 text-amber-700 transition-transform duration-300 group-hover:scale-100 dark:text-amber-400"
-                      style={{ transitionDelay: `${i * 120}ms` }}
+                      className="h-3 w-3"
                       fill="none"
                       stroke="currentColor"
                       strokeWidth="3"
@@ -297,84 +213,143 @@ export function Features() {
                     >
                       <path d="M20 6 9 17l-5-5" />
                     </svg>
+                    Platform Verified
                   </span>
-                  {item}
-                </li>
-              ))}
-            </ul>
-          </div>
+                  <p className="mt-3 text-2xl font-extrabold tracking-tight">{p.role}</p>
+                  <p className="mt-1 text-sm text-white/75">{p.check}</p>
+                </figcaption>
+              </figure>
+            </Reveal>
+          ))}
+        </div>
+      </Band>
+
+      {/* ---- Claim 2: the money ---- */}
+      <Band tone="dark">
+        <Reveal>
+          <BandHeading
+            dark
+            eyebrow="Escrow"
+            title="Every taka waits for a signature."
+            lead="Funds sit in escrow and release tranche by tranche, only when an engineer has inspected the work and signed it off. Nobody is paid on a promise."
+          />
+        </Reveal>
+        <Reveal delay={120}>
+          <EscrowMeter />
+        </Reveal>
+        <Reveal delay={200}>
+          <p className="mt-10 text-center text-sm font-semibold text-white/50">
+            bKash · Nagad · bank transfer · cards, through SSLCommerz
+          </p>
+        </Reveal>
+      </Band>
+
+      {/* ---- Claim 3: the tools ---- */}
+      <Band tone="band">
+        <Reveal>
+          <BandHeading
+            eyebrow="Around the build"
+            title="Everything else your build needs."
+            lead="Permits, design, bidding and the daily site record, in the same place as the people and the money."
+          />
         </Reveal>
 
-        {/* --- Design studio (blueprint that inks amber on hover) --- */}
-        <Reveal delay={110}>
-          <div className={tileClass}>
-            <TileIcon>{icons.design}</TileIcon>
-            <h3 className="mt-5 text-lg font-bold">Design studio</h3>
-            <p className="mt-2 text-sm leading-relaxed text-stone-600 dark:text-slate-400">
-              Concept briefs, floor plans, and 3D previews, with revision rounds built in.
-            </p>
-            {/* Tiny floor plan; strokes warm to amber on hover */}
-            <svg
-              viewBox="0 0 120 64"
-              className="mt-auto w-full pt-6 text-stone-300 transition-colors duration-500 group-hover:text-amber-500 dark:text-white/20 dark:group-hover:text-amber-400"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-            >
-              <rect x="6" y="4" width="108" height="56" rx="2" />
-              <path d="M48 4v24M48 40v20M6 34h28M62 34h52M84 34v26" />
-              {/* Door swing arc */}
-              <path d="M48 28a12 12 0 0 1 12 12" strokeDasharray="3 3" />
-            </svg>
-          </div>
-        </Reveal>
-
-        {/* --- Bidding (bars race up on hover) --- */}
-        <Reveal delay={220}>
-          <div className={tileClass}>
-            <TileIcon>{icons.bidding}</TileIcon>
-            <h3 className="mt-5 text-lg font-bold">Transparent bidding</h3>
-            <p className="mt-2 text-sm leading-relaxed text-stone-600 dark:text-slate-400">
-              Post your BOQ and compare contractor bids side by side.
-            </p>
-            <div className="mt-auto flex items-end gap-3 pt-6">
-              {[
-                { h: "h-10", hover: "group-hover:h-14", tone: "bg-stone-300 dark:bg-white/15" },
-                { h: "h-16", hover: "group-hover:h-20", tone: "bg-stone-300 dark:bg-white/15" },
-                {
-                  h: "h-12",
-                  hover: "group-hover:h-24",
-                  tone: "bg-amber-500 dark:bg-amber-400",
-                },
-              ].map((bar, i) => (
-                <div key={i} className="flex flex-1 flex-col items-center gap-1.5">
-                  <div
-                    className={`w-full rounded-t-lg transition-[height] duration-500 ease-out ${bar.h} ${bar.hover} ${bar.tone}`}
-                    style={{ transitionDelay: `${i * 90}ms` }}
-                  />
-                  <span className="text-xs font-bold text-stone-500 dark:text-slate-400">
-                    Bid {String.fromCharCode(65 + i)}
-                  </span>
-                </div>
-              ))}
+        <div className="mt-14 grid gap-5 sm:grid-cols-2">
+          {/* --- Permits (checklist ticks in on hover) --- */}
+          <Reveal delay={0}>
+            <div className={tileClass}>
+              <TileIcon>{icons.permit}</TileIcon>
+              <h3 className="mt-6 text-2xl font-extrabold tracking-tight">RAJUK permits, guided</h3>
+              <p className="mt-2 text-base leading-relaxed text-stone-600 dark:text-slate-400">
+                Zone checks, fee calculators, and ECPS tracking from day one. Buildora guides you
+                through RAJUK&apos;s system; it never replaces it.
+              </p>
+              <ul className="mt-auto flex flex-col gap-3 pt-8">
+                {["DAP zone checked", "Fees calculated", "ECPS submitted"].map((item, i) => (
+                  <li key={item} className="flex items-center gap-3 text-sm font-semibold">
+                    <span className="grid h-6 w-6 place-items-center rounded-full border border-stone-300 transition-colors duration-300 group-hover:border-amber-500 group-hover:bg-amber-400/15 dark:border-white/20 dark:group-hover:border-amber-400">
+                      <svg
+                        viewBox="0 0 24 24"
+                        className="h-3.5 w-3.5 scale-0 text-amber-700 transition-transform duration-300 group-hover:scale-100 dark:text-amber-400"
+                        style={{ transitionDelay: `${i * 120}ms` }}
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="3"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M20 6 9 17l-5-5" />
+                      </svg>
+                    </span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
             </div>
-          </div>
-        </Reveal>
+          </Reveal>
 
-        {/* --- Site diary (wide, live log rows) --- */}
-        <Reveal className="sm:col-span-2" delay={0}>
-          <div className={tileClass}>
-            <div className="flex flex-wrap items-start justify-between gap-6">
-              <div className="max-w-sm">
-                <TileIcon>{icons.diary}</TileIcon>
-                <h3 className="mt-5 text-lg font-bold">Live site diary</h3>
-                <p className="mt-2 text-sm leading-relaxed text-stone-600 dark:text-slate-400">
-                  Daily work logs, photos, attendance, and weather from your site, visible from
-                  anywhere, any time.
-                </p>
+          {/* --- Design studio (blueprint that inks amber on hover) --- */}
+          <Reveal delay={110}>
+            <div className={tileClass}>
+              <TileIcon>{icons.design}</TileIcon>
+              <h3 className="mt-6 text-2xl font-extrabold tracking-tight">Design studio</h3>
+              <p className="mt-2 text-base leading-relaxed text-stone-600 dark:text-slate-400">
+                Concept briefs, floor plans, and a 3D studio with nearly seven hundred models, with
+                three revision rounds built into every contract.
+              </p>
+              <svg
+                viewBox="0 0 120 64"
+                className="mt-auto w-full pt-8 text-stone-300 transition-colors duration-500 group-hover:text-amber-500 dark:text-white/20 dark:group-hover:text-amber-400"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+              >
+                <rect x="6" y="4" width="108" height="56" rx="2" />
+                <path d="M48 4v24M48 40v20M6 34h28M62 34h52M84 34v26" />
+                <path d="M48 28a12 12 0 0 1 12 12" strokeDasharray="3 3" />
+              </svg>
+            </div>
+          </Reveal>
+
+          {/* --- Bidding (bars race up on hover) --- */}
+          <Reveal delay={0}>
+            <div className={tileClass}>
+              <TileIcon>{icons.bidding}</TileIcon>
+              <h3 className="mt-6 text-2xl font-extrabold tracking-tight">Sealed-bid tendering</h3>
+              <p className="mt-2 text-base leading-relaxed text-stone-600 dark:text-slate-400">
+                Post your bill of quantities and compare contractor bids side by side. Nobody sees
+                another bid until the deadline passes.
+              </p>
+              <div className="mt-auto flex items-end gap-4 pt-8">
+                {[
+                  { h: "h-12", hover: "group-hover:h-16", tone: "bg-stone-300 dark:bg-white/15" },
+                  { h: "h-20", hover: "group-hover:h-24", tone: "bg-stone-300 dark:bg-white/15" },
+                  { h: "h-14", hover: "group-hover:h-28", tone: "bg-amber-500 dark:bg-amber-400" },
+                ].map((bar, i) => (
+                  <div key={i} className="flex flex-1 flex-col items-center gap-2">
+                    <div
+                      className={`w-full rounded-t-xl transition-[height] duration-500 ease-out ${bar.h} ${bar.hover} ${bar.tone}`}
+                      style={{ transitionDelay: `${i * 90}ms` }}
+                    />
+                    <span className="text-xs font-bold text-stone-500 dark:text-slate-400">
+                      Bid {String.fromCharCode(65 + i)}
+                    </span>
+                  </div>
+                ))}
               </div>
-              {/* Mini visual: recent log entries */}
-              <ul className="flex min-w-56 flex-1 flex-col gap-2.5 self-center sm:max-w-xs">
+            </div>
+          </Reveal>
+
+          {/* --- Site diary (live log rows) --- */}
+          <Reveal delay={110}>
+            <div className={tileClass}>
+              <TileIcon>{icons.diary}</TileIcon>
+              <h3 className="mt-6 text-2xl font-extrabold tracking-tight">Live site diary</h3>
+              <p className="mt-2 text-base leading-relaxed text-stone-600 dark:text-slate-400">
+                Daily work logs, photos, attendance, and the weather on your site, visible from
+                anywhere.
+              </p>
+              <ul className="mt-auto flex flex-col gap-2.5 pt-8">
                 {[
                   { day: "Day 42", note: "Slab casting, 14 workers" },
                   { day: "Day 41", note: "Rebar inspection passed" },
@@ -394,10 +369,10 @@ export function Features() {
                 ))}
               </ul>
             </div>
-          </div>
-        </Reveal>
-      </div>
-    </section>
+          </Reveal>
+        </div>
+      </Band>
+    </div>
   );
 }
 

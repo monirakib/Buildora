@@ -19,7 +19,7 @@ export function StatusScreen({
 }) {
   return (
     <main className="flex min-h-screen flex-1 items-center justify-center px-5 py-24 sm:px-8">
-      <div className="w-full max-w-lg rounded-3xl border border-white/50 bg-white/55 p-8 text-center shadow-xl shadow-black/5 backdrop-blur-xl sm:p-10 dark:border-white/10 dark:bg-white/5">
+      <div className="animate-rise-in w-full max-w-lg rounded-3xl border border-white/50 bg-white/55 p-8 text-center shadow-xl shadow-black/5 backdrop-blur-xl sm:p-10 dark:border-white/10 dark:bg-white/5">
         <span className="grid h-14 w-14 mx-auto place-items-center rounded-2xl bg-amber-400 text-stone-950">
           <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" aria-hidden="true">
             <path
@@ -32,10 +32,10 @@ export function StatusScreen({
           </svg>
         </span>
 
-        <p className="mt-6 text-sm font-bold tracking-[0.2em] text-amber-800 uppercase dark:text-amber-400">
+        <p className="mt-6 text-[0.7rem] font-bold tracking-[0.22em] text-stone-500 uppercase dark:text-slate-400">
           {code}
         </p>
-        <h1 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">{title}</h1>
+        <h1 className="display-title mt-2 text-4xl sm:text-5xl">{title}</h1>
         <p className="mt-3 text-stone-600 dark:text-slate-400">{message}</p>
 
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">

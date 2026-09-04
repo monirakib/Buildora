@@ -36,6 +36,7 @@ import {
 } from "@/components/app/projectStatus";
 import { timeAgo } from "@/components/admin/format";
 import { fetchDashboardSummary } from "@/lib/apiDashboard";
+import { imageAt } from "@/lib/imageUrl";
 import { gsap, prefersReducedMotion, useGSAP } from "@/lib/gsap";
 
 /** "Good morning" / "afternoon" / "evening", from the visitor's own clock. */
@@ -367,6 +368,17 @@ export default function DashboardPage() {
                         {summary.projects.map((p) => (
                           <li key={p.id}>
                             <Link href={`/projects/${p.id}`} className={rowClass}>
+                              <span className="h-14 w-20 shrink-0 overflow-hidden rounded-xl bg-linear-to-br from-amber-300/50 to-stone-200/60 dark:from-amber-400/20 dark:to-white/5">
+                                {p.coverImageUrl && (
+                                  /* eslint-disable-next-line @next/next/no-img-element -- Cloudinary-hosted */
+                                  <img
+                                    src={imageAt(p.coverImageUrl, 320)}
+                                    alt=""
+                                    loading="lazy"
+                                    className="h-full w-full object-cover"
+                                  />
+                                )}
+                              </span>
                               <div className="min-w-0 flex-1">
                                 <p className="truncate text-lg font-semibold">{p.title}</p>
                                 <p className="mt-0.5 text-sm text-stone-500 dark:text-slate-400">

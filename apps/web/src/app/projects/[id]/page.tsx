@@ -54,6 +54,7 @@ import { EstimateSection } from "@/components/project/EstimateSection";
 import { ShareSection } from "@/components/project/ShareSection";
 import { ProjectProgress } from "@/components/project/hub/ProjectProgress";
 import { ProjectTabs, type TabDescriptor } from "@/components/project/hub/ProjectTabs";
+import { ProjectCover } from "@/components/project/ProjectCover";
 import { OverviewTab } from "@/components/project/hub/OverviewTab";
 import {
   computeProjectProgress,
@@ -390,6 +391,10 @@ export default function ProjectDetailPage() {
               {payNotice.message}
             </p>
           )}
+
+          {/* The cover photograph, or the plot map, sets the scene above the
+              header. Owners change it in place. */}
+          <ProjectCover project={project} token={token} editable={isOwner} onChange={setProject} />
 
           {/* Header — identity, progress, actions. Stays put on every tab so
               the project's overall state is never more than a glance away. */}
