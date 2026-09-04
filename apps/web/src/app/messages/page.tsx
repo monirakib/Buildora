@@ -293,13 +293,11 @@ function MessagesInner() {
 
       <main className="flex-1 px-5 pt-28 pb-10 sm:px-8">
         <div className="mx-auto flex h-[calc(100vh-11rem)] w-full max-w-5xl flex-col">
-          <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">Messages</h1>
+          <h1 className="display-title animate-rise-in [animation-delay:70ms] text-3xl sm:text-4xl">
+            Messages
+          </h1>
 
-          {error && (
-            <p className="mt-3 rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-medium text-rose-800 dark:bg-rose-400/15 dark:text-rose-300">
-              {error}
-            </p>
-          )}
+          {error && <p className="mt-3 alert alert-danger">{error}</p>}
 
           <div className="mt-5 flex min-h-0 flex-1 gap-4">
             {/* Inbox — hidden on mobile while a thread is open */}
@@ -307,7 +305,9 @@ function MessagesInner() {
               className={`${activeId ? "hidden md:flex" : "flex"} w-full flex-col overflow-y-auto rounded-2xl border border-white/50 bg-white/55 p-3 backdrop-blur-xl md:w-80 dark:border-white/10 dark:bg-white/5`}
             >
               {loading ? (
-                <p className="p-3 text-sm text-stone-500 dark:text-slate-500">Loading…</p>
+                <p className="p-3 text-sm text-stone-500 dark:text-slate-500 loading-dots">
+                  Loading
+                </p>
               ) : conversations.length === 0 ? (
                 <p className="p-3 text-sm text-stone-600 dark:text-slate-400">
                   No conversations yet. Open one from a project or an accepted request.
@@ -497,7 +497,7 @@ function MessagesInner() {
                     <button
                       type="submit"
                       disabled={sending || !draft.trim()}
-                      className="shrink-0 rounded-xl bg-amber-400 px-5 py-2.5 text-sm font-bold text-stone-950 transition hover:bg-amber-300 disabled:opacity-60"
+                      className="shrink-0 rounded-xl btn-primary px-5 py-2.5 text-sm disabled:opacity-60"
                     >
                       Send
                     </button>

@@ -12,7 +12,7 @@ import { listTenderBids, submitBid } from "../controllers/bids.controller";
 import { bidAnalysis } from "../controllers/bidAnalysis.controller";
 import { requireAuth } from "../middleware/auth";
 import { requireVerified } from "../middleware/verified";
-import { aiInlineLimit } from "../middleware/aiRateLimit";
+import { aiDailyBudget, aiInlineLimit } from "../middleware/aiRateLimit";
 
 export const tendersRouter = Router();
 
@@ -41,5 +41,5 @@ tendersRouter.post("/:id/bids", requireVerified, submitBid);
 // - the contractor's own check answers in bands, never absolute benchmarks;
 // - the owner's analysis carries real figures including their guide rates.
 // Each is gated to its own side. See the controllers for why.
-tendersRouter.post("/:id/bid-check", aiInlineLimit, bidSanityCheck);
-tendersRouter.post("/:id/bid-analysis", aiInlineLimit, bidAnalysis);
+tendersRouter.post("/:id/bid-check", aiInlineLimit, aiDailyBudget, bidSanityCheck);
+tendersRouter.post("/:id/bid-analysis", aiInlineLimit, aiDailyBudget, bidAnalysis);

@@ -16,6 +16,7 @@ import {
   type RotationScope,
 } from "@/lib/apiKeys";
 import { surfaceClass } from "@/components/ui/surface";
+import { ListSkeleton } from "@/components/ui/Skeleton";
 
 const cardClass = `${surfaceClass} p-5`;
 
@@ -153,7 +154,7 @@ export default function AdminKeysPage() {
         )}
 
         {loading ? (
-          <p className="text-sm text-stone-500 dark:text-stone-400">Loading…</p>
+          <ListSkeleton rows={3} />
         ) : (
           <div className="grid gap-4 sm:grid-cols-2">
             {SCOPES.map((s) => {
@@ -208,7 +209,7 @@ export default function AdminKeysPage() {
                       busyScope === s.value
                     }
                     onClick={() => handleStart(s.value)}
-                    className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-amber-400 px-4 py-2.5 text-sm font-extrabold text-stone-950 transition hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="mt-4 flex w-full items-center justify-center gap-2 btn-primary rounded-xl px-4 py-2.5 text-sm font-extrabold disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <RefreshCw className="h-4 w-4" />
                     {busyScope === s.value
@@ -300,7 +301,7 @@ export default function AdminKeysPage() {
                           type="button"
                           disabled={busyRun === r._id}
                           onClick={() => handleResume(r._id)}
-                          className="rounded-full border border-stone-300 px-4 py-1.5 text-xs font-bold text-stone-700 transition hover:bg-stone-100 disabled:opacity-50 dark:border-white/20 dark:text-stone-200"
+                          className="rounded-full btn-secondary px-4 py-1.5 text-xs disabled:opacity-50 dark:border-white/20 dark:text-stone-200"
                         >
                           {busyRun === r._id ? "Resuming…" : "Resume"}
                         </button>

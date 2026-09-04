@@ -9,6 +9,7 @@ import {
   type PricingProvenance,
 } from "@buildora/shared";
 import { askAi, isAiConfigured } from "../services/ai";
+import { screenNarrative } from "../services/aiGuard";
 import { refreshEstimate } from "../services/estimateLadder";
 import { compareMedians, currentCategoryMedians } from "../services/marketDrift";
 import { refreshInBackgroundIfDue } from "../services/priceRefresh";
@@ -170,7 +171,7 @@ Do not invent numbers that are not above. Do not give advice about hiring. Never
 
   try {
     const answer = await askAi({ messages: [{ role: "user", content: prompt }], maxTokens: 500 });
-    return answer.text || undefined;
+    return screenNarrative(answer.text) ?? undefined;
   } catch (err) {
     // A missing narrative is a much smaller loss than a failed estimate, so
     // this never propagates.

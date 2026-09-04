@@ -213,9 +213,9 @@ export function AccountShell({
       </aside>
 
       {/* ================= Content plane ================= */}
-      {/* pt-24 clears the fixed navbar; the left padding tracks the sidebar. */}
+      {/* pt-28 clears the fixed navbar; the left padding tracks the sidebar. */}
       <div
-        className={`min-w-0 pb-16 pt-24 transition-[padding] duration-300 ${
+        className={`min-w-0 pb-16 pt-28 transition-[padding] duration-300 ${
           collapsed ? "lg:pl-19" : "lg:pl-64"
         }`}
       >

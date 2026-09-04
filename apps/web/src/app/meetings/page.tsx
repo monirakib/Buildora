@@ -29,6 +29,7 @@ import { useSession } from "@/store/useSession";
 import { Navbar } from "@/components/landing/Navbar";
 import { SlotPicker } from "@/components/meetings/SlotPicker";
 import { surfaceBodyClass, surfaceClass, surfaceHeaderClass } from "@/components/ui/surface";
+import { ListSkeleton } from "@/components/ui/Skeleton";
 
 const inputClass =
   "block w-full rounded-xl border border-stone-300/80 bg-white/70 px-4 py-2.5 text-sm text-stone-900 placeholder-stone-400 backdrop-blur transition outline-none focus:border-amber-500 focus:bg-white/90 focus:ring-2 focus:ring-amber-400/30 dark:border-white/15 dark:bg-white/5 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:bg-white/10";
@@ -36,8 +37,7 @@ const inputClass =
 const smallButtonClass =
   "rounded-full border border-stone-300/80 px-4 py-1.5 text-xs font-bold transition hover:border-amber-400/60 disabled:opacity-60 dark:border-white/15";
 
-const primaryButtonClass =
-  "rounded-full bg-amber-400 px-4 py-1.5 text-xs font-bold text-stone-950 transition hover:bg-amber-300 disabled:opacity-60";
+const primaryButtonClass = "rounded-full btn-primary px-4 py-1.5 text-xs disabled:opacity-60";
 
 const statusStyles: Record<MeetingStatus, string> = {
   [MeetingStatus.CONFIRMED]: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
@@ -98,17 +98,17 @@ export default function MeetingsPage() {
         <div className="mx-auto w-full max-w-3xl">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
-              <p className="text-sm font-bold tracking-[0.2em] text-amber-800 uppercase dark:text-amber-400">
+              <p className="animate-rise-in text-[0.7rem] font-bold tracking-[0.22em] text-stone-500 uppercase dark:text-slate-400">
                 Meetings
               </p>
-              <h1 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">
+              <h1 className="display-title animate-rise-in [animation-delay:70ms] mt-2 text-4xl sm:text-5xl">
                 {isArchitect ? "Your client meetings" : "Meetings with architects"}
               </h1>
             </div>
             {isArchitect && (
               <Link
                 href="/meetings/availability"
-                className="rounded-full bg-amber-400 px-5 py-2.5 text-sm font-bold text-stone-950 shadow-lg transition hover:bg-amber-300"
+                className="rounded-full btn-primary px-5 py-2.5 text-sm"
               >
                 Set your hours
               </Link>
@@ -116,11 +116,9 @@ export default function MeetingsPage() {
           </div>
 
           {loading ? (
-            <p className="mt-8 text-sm text-stone-500 dark:text-slate-500">Loading…</p>
+            <ListSkeleton rows={3} className="mt-8" />
           ) : error ? (
-            <p className="mt-8 rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-medium text-rose-800 dark:bg-rose-400/15 dark:text-rose-300">
-              {error}
-            </p>
+            <p className="mt-8 alert alert-danger">{error}</p>
           ) : meetings.length === 0 ? (
             <div className={`mt-8 ${surfaceClass}`}>
               <div className="p-8 text-center">
@@ -132,7 +130,7 @@ export default function MeetingsPage() {
                 {!isArchitect && (
                   <Link
                     href="/architects"
-                    className="mt-4 inline-block rounded-full bg-amber-400 px-6 py-2.5 text-sm font-bold text-stone-950 transition hover:bg-amber-300"
+                    className="mt-4 inline-block rounded-full btn-primary px-6 py-2.5 text-sm"
                   >
                     Find an architect
                   </Link>
@@ -470,11 +468,7 @@ function MeetingCard({
           />
         )}
 
-        {error && (
-          <p className="mt-3 rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-medium text-rose-800 dark:bg-rose-400/15 dark:text-rose-300">
-            {error}
-          </p>
-        )}
+        {error && <p className="mt-3 alert alert-danger">{error}</p>}
       </div>
     </article>
   );

@@ -1,13 +1,17 @@
 import type { Metadata, Viewport } from "next";
 import { Manrope } from "next/font/google";
 import "./globals.css";
-import { AmbientBackground } from "@/components/AmbientBackground";
 import { CursorGlow } from "@/components/CursorGlow";
 import { SessionSync } from "@/components/SessionSync";
 import { PageTransition } from "@/components/PageTransition";
 import { AssistantWidget } from "@/components/assistant/AssistantWidget";
 import { CallProvider } from "@/components/call/CallProvider";
 import { SkipToContent } from "@/components/SkipToContent";
+import { AmbientBackground } from "@/components/AmbientBackground";
+import { InteractionEffects } from "@/components/InteractionEffects";
+import { SplashScreen } from "@/components/SplashScreen";
+import { Toaster } from "@/components/ui/Toaster";
+import { CartDrawer } from "@/components/market/CartDrawer";
 import { APP_NAME, APP_TAGLINE } from "@buildora/shared";
 import { siteUrl } from "@/lib/site";
 
@@ -60,22 +64,28 @@ export const viewport: Viewport = {
 };
 
 /** Applies the persisted theme before first paint to avoid a flash. */
-const themeScript = `try{if(localStorage.getItem("buildora-theme")==="night")document.documentElement.classList.add("dark")}catch(e){}`;
+/**
+ * Runs before first paint. Two jobs: apply the persisted theme so night mode
+ * never flashes light, and mark the document for the welcome screen when this
+ * browser session has not seen it yet (see components/SplashScreen).
+ */
+const themeScript = `try{if(localStorage.getItem("buildora-theme")==="night")document.documentElement.classList.add("dark")}catch(e){}try{if(!sessionStorage.getItem("buildora-welcomed"))document.documentElement.classList.add("splash")}catch(e){}`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={manrope.variable} suppressHydrationWarning>
-      {/* The day canvas is a warm off-white, not stone-50: the glass panels are
-          only 30% white, so on a near-white page they had nothing to stand out
-          against. A few shades deeper and every card reads as a card. */}
       <body className="min-h-screen bg-[#f5f2ec] font-sans text-stone-900 antialiased transition-colors duration-500 dark:bg-[#060a15] dark:text-slate-100">
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        <SplashScreen />
         <SkipToContent />
         <AmbientBackground />
         <CursorGlow />
         <SessionSync />
         <AssistantWidget />
         <CallProvider />
+        <InteractionEffects />
+        <Toaster />
+        <CartDrawer />
         <PageTransition>{children}</PageTransition>
       </body>
     </html>

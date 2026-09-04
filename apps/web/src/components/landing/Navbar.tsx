@@ -9,6 +9,7 @@ import { logoutUser } from "@/lib/api";
 import { useSession } from "@/store/useSession";
 import { useNotifications } from "@/store/useNotifications";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
+import { CartButton } from "@/components/market/CartButton";
 import { ThemeToggle } from "./ThemeToggle";
 import { avatarAt } from "@/lib/imageUrl";
 
@@ -129,7 +130,9 @@ function MegaMenuItem({ group }: { group: (typeof megaMenu)[number] }) {
         onMouseDown={(e) => e.preventDefault()}
         className="flex cursor-default items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold text-white/80 transition group-hover:text-white group-focus-within:text-white"
       >
-        {group.label}
+        <span className="link-slide">
+          <span data-text={group.label}>{group.label}</span>
+        </span>
         {/* Chevron flips while the panel is open */}
         <svg
           viewBox="0 0 24 24"
@@ -169,9 +172,7 @@ function MegaMenuItem({ group }: { group: (typeof megaMenu)[number] }) {
                   }}
                   className="rounded-xl px-3 py-2.5 transition hover:bg-white/5"
                 >
-                  <span className="block text-sm font-bold text-white transition group-hover:text-white">
-                    {l.label}
-                  </span>
+                  <span className="block text-sm font-bold text-white">{l.label}</span>
                   <span className="mt-0.5 block text-xs text-white/50">{l.desc}</span>
                 </a>
               ) : (
@@ -480,7 +481,9 @@ export function Navbar({ showGetStarted = true }: { showGetStarted?: boolean }) 
                 />
               </svg>
             </span>
-            <span className="text-lg font-extrabold tracking-tight text-white">Buildora</span>
+            <span className="text-lg font-extrabold tracking-tight text-stone-900 dark:text-white">
+              Buildora
+            </span>
           </a>
         </div>
 
@@ -494,6 +497,8 @@ export function Navbar({ showGetStarted = true }: { showGetStarted?: boolean }) 
 
         <div className="flex items-center gap-2 sm:gap-3">
           <ThemeToggle />
+          {/* Land owners buy, so only they carry a cart. */}
+          {loggedIn && user?.role === UserRole.LAND_OWNER && <CartButton />}
           {/* Bell only exists for a signed-in user — it renders null otherwise */}
           {loggedIn && <NotificationBell tone="dark" />}
           {loggedIn && user ? (
@@ -503,7 +508,7 @@ export function Navbar({ showGetStarted = true }: { showGetStarted?: boolean }) 
               <a
                 href="/#cta"
                 onClick={onAnchorClick}
-                className="hidden rounded-full bg-amber-400 px-5 py-2 text-sm font-bold text-stone-950 shadow-lg transition hover:scale-[1.03] hover:bg-amber-300 sm:block"
+                className="hidden rounded-full btn-primary px-5 py-2 text-sm sm:block"
               >
                 Get started
               </a>

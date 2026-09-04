@@ -59,3 +59,49 @@ export const aiInlineLimit = rateLimit({
 export function aiChatLimitByAudience(req: Request, res: Response, next: NextFunction) {
   return req.auth ? aiChatLimit(req, res, next) : aiGuestLimit(req, res, next);
 }
+
+/* ------------------------------------------------------------ daily caps ---- */
+
+/**
+ * The per-minute limits above stop a stuck button. They do not stop a patient
+ * one: ten a minute, kept up for an afternoon, is several hundred calls from a
+ * single account — and the thing being protected is a *daily* free-tier quota,
+ * so the ceiling that matters has to be daily too.
+ *
+ * Two of them, and both are needed:
+ *
+ * - a per-person cap, so no single account can drink the day's quota; and
+ * - a platform cap, because forty people each politely inside their own limit
+ *   still adds up to more than the free tier allows. Without it, the platform
+ *   ceiling is "however many users we have", which is not a ceiling.
+ *
+ * The platform bucket keys every request to the same string on purpose — one
+ * shared counter for the whole site.
+ */
+const DAY_MS = 24 * 60 * 60_000;
+
+/** Enough for a full day of real use, far short of what a script would want. */
+export const aiUserDailyLimit = rateLimit({
+  windowMs: DAY_MS,
+  max: 120,
+  keyBy: byUser,
+  message: "You've used today's AI help on this account. It resets tomorrow.",
+});
+
+/**
+ * The whole platform's daily budget, shared. Set below the free tiers' combined
+ * ceiling so a busy day degrades into "try again tomorrow" rather than into a
+ * provider cutting us off mid-demo.
+ */
+export const aiPlatformDailyLimit = rateLimit({
+  windowMs: DAY_MS,
+  max: 1500,
+  keyBy: () => "platform",
+  message: "Buildora's AI features have hit today's shared limit. They'll be back tomorrow.",
+});
+
+/**
+ * Both daily caps as one thing to mount, since no route wants one without the
+ * other. Express takes an array of middleware wherever it takes one.
+ */
+export const aiDailyBudget = [aiUserDailyLimit, aiPlatformDailyLimit];

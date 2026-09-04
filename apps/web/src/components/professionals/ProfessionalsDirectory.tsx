@@ -13,6 +13,8 @@ import {
 import { listProfessionals } from "@/lib/api";
 import { Navbar } from "@/components/landing/Navbar";
 import { Stagger } from "@/components/Stagger";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { surfaceClass, surfaceHoverClass } from "@/components/ui/surface";
 import { PendingBadge, VerifiedBadge } from "@/components/app/VerifiedBadge";
 import { Stars } from "@/components/app/Stars";
 import { professionalCopy } from "./roleCopy";
@@ -20,7 +22,7 @@ import { professionalCopy } from "./roleCopy";
 const filterLabel =
   "mb-1.5 block text-xs font-bold tracking-wider text-stone-500 uppercase dark:text-slate-400";
 const filterControl =
-  "block w-full rounded-xl border border-stone-300/80 bg-white/70 px-3 py-2 text-sm text-stone-900 backdrop-blur transition outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-400/30 disabled:opacity-50 dark:border-white/15 dark:bg-white/5 dark:text-slate-100 [color-scheme:light] dark:[color-scheme:dark]";
+  "block w-full rounded-xl border border-stone-300/80 bg-white/70 px-4 py-2.5 text-sm text-stone-900 placeholder-stone-400 backdrop-blur transition outline-none focus:border-amber-500 focus:bg-white/90 focus:ring-2 focus:ring-amber-400/30 dark:border-white/15 dark:bg-white/5 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:bg-white/10";
 
 /** Initials avatar from a name, e.g. "Imran Khan" → "IK". */
 function initials(name: string) {
@@ -35,7 +37,7 @@ function ProfessionalCard({ p, basePath }: { p: PublicProfessional; basePath: st
   return (
     <Link
       href={`/${basePath}/${p.id}`}
-      className="group flex flex-col rounded-2xl border border-white/50 bg-white/55 p-5 shadow-xl shadow-black/5 backdrop-blur-xl transition hover:-translate-y-0.5 hover:border-amber-400/60 dark:border-white/10 dark:bg-white/5"
+      className={`group flex flex-col p-5 ${surfaceClass} ${surfaceHoverClass}`}
     >
       <div className="flex items-center gap-3">
         <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-amber-400 text-lg font-extrabold text-stone-950">
@@ -194,15 +196,15 @@ export function ProfessionalsDirectory({ role }: { role: UserRole }) {
 
       <main className="flex-1 px-5 pt-28 pb-16 sm:px-8">
         <div className="mx-auto w-full max-w-5xl">
-          <p className="text-sm font-bold tracking-[0.2em] text-amber-800 uppercase dark:text-amber-400">
-            {copy.kicker}
-          </p>
-          <h1 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl capitalize">
-            {includeUnverified ? `All ${copy.plural}` : `Verified ${copy.plural}`}
-          </h1>
-          <p className="mt-3 max-w-xl text-stone-600 dark:text-slate-400">
-            {includeUnverified ? copy.unverifiedBody : copy.verifiedBody}
-          </p>
+          <PageHeader
+            eyebrow={copy.kicker}
+            title={
+              <span className="capitalize">
+                {includeUnverified ? `All ${copy.plural}` : `Verified ${copy.plural}`}
+              </span>
+            }
+            description={includeUnverified ? copy.unverifiedBody : copy.verifiedBody}
+          />
 
           {/* Search */}
           <div className="relative mt-8 max-w-md">
@@ -230,7 +232,7 @@ export function ProfessionalsDirectory({ role }: { role: UserRole }) {
           </div>
 
           {/* ---- Filters ---- */}
-          <div className="mt-6 rounded-2xl border border-white/50 bg-white/55 p-5 backdrop-blur-xl dark:border-white/10 dark:bg-white/5">
+          <div className={`mt-6 p-5 ${surfaceClass}`}>
             {/* Specialisation — the wizard's own expertise chips, so ticking one
                 matches exactly what this profession selected on their profile. */}
             <p className="text-xs font-bold tracking-wider text-stone-500 uppercase dark:text-slate-400">
@@ -371,9 +373,7 @@ export function ProfessionalsDirectory({ role }: { role: UserRole }) {
             {loading ? (
               <p className="text-sm text-stone-500 dark:text-slate-500">Loading {copy.plural}…</p>
             ) : error ? (
-              <p className="rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-medium text-rose-800 dark:bg-rose-400/15 dark:text-rose-300">
-                {error}
-              </p>
+              <p className="alert alert-danger">{error}</p>
             ) : items.length === 0 ? (
               <p className="text-sm text-stone-500 dark:text-slate-500">
                 {search || filtersOn

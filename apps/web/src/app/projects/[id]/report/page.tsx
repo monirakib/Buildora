@@ -15,6 +15,7 @@ import { getProject } from "@/lib/apiProjects";
 import { getProjectBuild } from "@/lib/apiBuild";
 import { useSession } from "@/store/useSession";
 import { formatBdt, formatDate } from "@/components/app/projectStatus";
+import { ListSkeleton } from "@/components/ui/Skeleton";
 
 /**
  * The printable inspection report.
@@ -67,7 +68,7 @@ export default function InspectionReportPage() {
   }, [mounted, token, user, router, load]);
 
   if (!mounted || loading) {
-    return <p className="p-10 text-center text-sm text-stone-500">Loading…</p>;
+    return <ListSkeleton rows={3} className="p-10" />;
   }
   if (!project) {
     return <p className="p-10 text-center text-sm text-stone-500">Project not found.</p>;

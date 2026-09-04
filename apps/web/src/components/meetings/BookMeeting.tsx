@@ -139,7 +139,7 @@ export function BookMeeting({
         </p>
         <Link
           href="/auth"
-          className="mt-4 inline-block rounded-full bg-amber-400 px-6 py-2.5 text-sm font-bold text-stone-950 transition hover:bg-amber-300"
+          className="mt-4 inline-block rounded-full btn-primary px-6 py-2.5 text-sm"
         >
           Sign in to book
         </Link>
@@ -170,7 +170,7 @@ export function BookMeeting({
   return (
     <div>
       {booked && (
-        <div className="mb-5 rounded-xl bg-emerald-100 px-4 py-3 text-sm font-medium text-emerald-800 dark:bg-emerald-400/15 dark:text-emerald-300">
+        <div className="mb-5 alert alert-success">
           {booked.pending ? (
             <>
               Time held for {booked.when}. {architectName} still has to agree to the place you
@@ -266,11 +266,7 @@ export function BookMeeting({
         />
       </div>
 
-      {error && (
-        <p className="mt-4 rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-medium text-rose-800 dark:bg-rose-400/15 dark:text-rose-300">
-          {error}
-        </p>
-      )}
+      {error && <p className="mt-4 alert alert-danger">{error}</p>}
 
       <button
         type="button"
@@ -282,7 +278,7 @@ export function BookMeeting({
             venueChoice === "PROPOSE" &&
             venuePlace.trim().length < 3)
         }
-        className="mt-5 rounded-full bg-amber-400 px-8 py-3 text-sm font-bold text-stone-950 shadow-lg transition hover:scale-[1.02] hover:bg-amber-300 disabled:scale-100 disabled:opacity-60"
+        className="mt-5 rounded-full btn-primary px-8 py-3 text-sm disabled:opacity-60"
       >
         {saving ? "Booking…" : startAt ? `Book ${dhakaTimeLabel(startAt)}` : "Pick a time first"}
       </button>

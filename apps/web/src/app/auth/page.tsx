@@ -322,18 +322,15 @@ export default function AuthPage() {
             /* Already signed in — no need to show the form again */
             <div className={`${glassCardClass} p-8 text-center`}>
               <div className="relative z-10">
-                <p className="text-sm font-bold tracking-[0.2em] text-amber-800 uppercase dark:text-amber-400">
+                <p className="animate-rise-in text-[0.7rem] font-bold tracking-[0.22em] text-stone-500 uppercase dark:text-slate-400">
                   Signed in
                 </p>
-                <h1 className="mt-3 text-2xl font-extrabold tracking-tight">
+                <h1 className="display-title animate-rise-in [animation-delay:70ms] mt-3 text-3xl">
                   Welcome back, {user.name.split(" ")[0]}
                 </h1>
                 <p className="mt-2 text-sm text-stone-600 dark:text-slate-400">{user.email}</p>
                 <div className="mt-8 flex flex-col gap-3">
-                  <Link
-                    href="/dashboard"
-                    className="rounded-full bg-amber-400 px-8 py-3 text-sm font-bold text-stone-950 shadow-lg transition hover:scale-[1.02] hover:bg-amber-300"
-                  >
+                  <Link href="/dashboard" className="rounded-full btn-primary px-8 py-3 text-sm">
                     Go to dashboard
                   </Link>
                   <button
@@ -348,10 +345,10 @@ export default function AuthPage() {
             </div>
           ) : (
             <>
-              <p className="text-sm font-bold tracking-[0.2em] text-amber-800 uppercase dark:text-amber-400">
+              <p className="animate-rise-in text-[0.7rem] font-bold tracking-[0.22em] text-stone-500 uppercase dark:text-slate-400">
                 {copy.kicker}
               </p>
-              <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-stone-900 [text-shadow:0_1px_10px_rgba(255,255,255,0.6)] sm:text-4xl dark:text-white dark:[text-shadow:0_1px_12px_rgba(0,0,0,0.5)]">
+              <h1 className="display-title mt-3 text-4xl text-stone-900 [text-shadow:0_1px_10px_rgba(255,255,255,0.6)] sm:text-5xl dark:text-white dark:[text-shadow:0_1px_12px_rgba(0,0,0,0.5)]">
                 {copy.title}
               </h1>
               <p className="mt-3 font-medium text-stone-800 [text-shadow:0_1px_8px_rgba(255,255,255,0.7)] dark:text-slate-200 dark:[text-shadow:0_1px_10px_rgba(0,0,0,0.5)]">
@@ -699,11 +696,7 @@ export default function AuthPage() {
                       </div>
                     )}
 
-                    {error && (
-                      <p className="rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-medium text-rose-800 dark:bg-rose-400/15 dark:text-rose-300">
-                        {error}
-                      </p>
-                    )}
+                    {error && <p className="alert alert-danger">{error}</p>}
 
                     {mode === "pro" && (
                       <p className="rounded-xl border border-amber-500/25 bg-amber-400/10 px-4 py-2.5 text-xs font-medium text-stone-700 dark:border-amber-300/15 dark:text-slate-300">
@@ -715,7 +708,7 @@ export default function AuthPage() {
                     <button
                       type="submit"
                       disabled={loading}
-                      className="mt-1 rounded-full bg-amber-400 px-8 py-3 text-sm font-bold text-stone-950 shadow-lg transition hover:scale-[1.02] hover:bg-amber-300 disabled:scale-100 disabled:opacity-60"
+                      className="mt-1 rounded-full btn-primary px-8 py-3 text-sm disabled:opacity-60"
                     >
                       {loading ? "Please wait…" : isSignup ? "Create account" : "Log in"}
                     </button>

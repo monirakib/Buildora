@@ -1173,6 +1173,90 @@ export interface MarketOrder {
   createdAt: string;
 }
 
+/* ---------- Dashboard ---------- */
+
+/** One headline figure on the dashboard. `unit: "bdt"` renders as money. */
+export interface DashboardStat {
+  key: string;
+  label: string;
+  value: number;
+  unit?: "count" | "bdt";
+  /** A qualifier under the number, e.g. "across 3 projects". */
+  hint?: string;
+  href?: string;
+}
+
+/** A project row on the dashboard: enough to recognise it and jump in. */
+export interface DashboardProjectRow {
+  id: string;
+  title: string;
+  areaName: string;
+  status: ProjectStatus;
+  updatedAt: string;
+}
+
+/** A dated thing coming up: a meeting, a milestone target, a tender deadline. */
+export interface DashboardUpcoming {
+  id: string;
+  title: string;
+  detail: string;
+  at: string;
+  href: string;
+}
+
+/** Something waiting on the viewer, with where to go to deal with it. */
+export interface DashboardAttention {
+  key: string;
+  label: string;
+  count: number;
+  href: string;
+}
+
+/**
+ * Everything the dashboard shows, in one round trip. Computed per role on the
+ * server from the real collections, so every number is one the user could
+ * verify by clicking through.
+ */
+export interface DashboardSummary {
+  firstName: string;
+  role: UserRole;
+  /** One sentence about the most pressing thing, e.g. "Two proposals are waiting on you." */
+  headline: string;
+  stats: DashboardStat[];
+  projects: DashboardProjectRow[];
+  upcoming: DashboardUpcoming[];
+  attention: DashboardAttention[];
+  /** The newest notifications, as the activity feed. */
+  activity: AppNotification[];
+}
+
+/** One line in a land owner's cart: a live product and how many of it. */
+export interface CartLine {
+  product: Product;
+  quantity: number;
+}
+
+/**
+ * The buyer's cart. Lives in the database rather than the browser so it
+ * follows them between devices, and so a listing that is paused or deleted
+ * while it sits in the cart simply drops out on the next read.
+ */
+export interface Cart {
+  items: CartLine[];
+  /** Total units across every line, for the badge on the cart button. */
+  count: number;
+  subtotalBdt: number;
+}
+
+/** What checkout needs beyond the cart itself. One address for every line. */
+export interface CartCheckoutInput {
+  deliveryAddress: string;
+  phone: string;
+  note?: string;
+  /** The build the materials are for, when there is one. */
+  projectId?: string;
+}
+
 /* ---------- Notifications ---------- */
 
 /**

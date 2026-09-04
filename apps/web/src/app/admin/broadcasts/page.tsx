@@ -251,7 +251,7 @@ export default function AdminBroadcastsPage() {
               </p>
             )}
             {sent && (
-              <p className="rounded-xl bg-emerald-100 px-3.5 py-2.5 text-sm font-semibold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
+              <p className="alert alert-success">
                 Sent to {sent.recipients} {sent.recipients === 1 ? "person" : "people"}.
               </p>
             )}
@@ -259,7 +259,7 @@ export default function AdminBroadcastsPage() {
             <button
               type="submit"
               disabled={!canSend}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-amber-400 px-4 py-3 text-sm font-extrabold text-stone-950 transition hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex w-full items-center justify-center gap-2 btn-primary rounded-xl px-4 py-3 text-sm font-extrabold disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Send className="h-4 w-4" />
               {sending ? "Sending…" : "Send announcement"}
@@ -310,7 +310,9 @@ export default function AdminBroadcastsPage() {
             <h2 className="text-sm font-extrabold text-stone-900 dark:text-white">Sent</h2>
 
             {loadingHistory ? (
-              <p className="mt-4 text-sm text-stone-500 dark:text-stone-400">Loading…</p>
+              <p className="mt-4 text-sm text-stone-500 dark:text-stone-400 loading-dots">
+                Loading
+              </p>
             ) : history.length === 0 ? (
               <p className="mt-4 text-sm text-stone-500 dark:text-stone-400">
                 Nothing sent yet. Your announcements will be listed here.

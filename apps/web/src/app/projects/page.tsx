@@ -15,6 +15,11 @@ import {
   projectStatusStyles,
 } from "@/components/app/projectStatus";
 import { surfaceClass, surfaceHoverClass } from "@/components/ui/surface";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { ListSkeleton } from "@/components/ui/Skeleton";
+import { Alert } from "@/components/ui/Alert";
+import { ArrowRight, FolderKanban, Plus } from "lucide-react";
 
 const cardClass = `block ${surfaceClass} ${surfaceHoverClass} p-5 sm:p-6`;
 
@@ -55,46 +60,48 @@ export default function ProjectsPage() {
 
       <main className="flex-1 px-5 pt-28 pb-16 sm:px-8">
         <div className="mx-auto w-full max-w-4xl">
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <p className="text-sm font-bold tracking-[0.2em] text-amber-800 uppercase dark:text-amber-400">
-                Projects
-              </p>
-              <h1 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">
-                {isLandOwner ? "Your projects" : "Projects you're engaged on"}
-              </h1>
-            </div>
-            {isLandOwner && (
-              <Link
-                href="/projects/new"
-                className="rounded-full bg-amber-400 px-6 py-2.5 text-sm font-bold text-stone-950 transition hover:bg-amber-300"
-              >
-                + New project
-              </Link>
-            )}
-          </div>
+          <PageHeader
+            eyebrow="Projects"
+            title={isLandOwner ? "Your projects" : "Projects you're engaged on"}
+            description={
+              isLandOwner
+                ? "Every build you have posted, from brief to handover."
+                : "The briefs you have won and the builds you are working on."
+            }
+            actions={
+              isLandOwner ? (
+                <Link href="/projects/new" className="btn-primary px-6 py-2.5 text-sm">
+                  <Plus className="h-4 w-4" />
+                  New project
+                </Link>
+              ) : undefined
+            }
+          />
 
           <div className="mt-8">
             {loading ? (
-              <p className="text-sm text-stone-500 dark:text-slate-500">Loading…</p>
+              <ListSkeleton rows={3} />
             ) : error ? (
-              <p className="rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-medium text-rose-800 dark:bg-rose-400/15 dark:text-rose-300">
-                {error}
-              </p>
+              <Alert>{error}</Alert>
             ) : projects.length === 0 ? (
-              <div className="rounded-2xl border border-white/50 bg-white/55 p-8 text-center backdrop-blur-xl dark:border-white/10 dark:bg-white/5">
-                <p className="text-stone-600 dark:text-slate-400">
-                  {isLandOwner
-                    ? "No projects yet, post your first brief and let architects come to you."
-                    : "You're not engaged on any projects yet. Browse the open briefs to pitch."}
-                </p>
-                <Link
-                  href={isLandOwner ? "/projects/new" : "/briefs"}
-                  className="mt-5 inline-block rounded-full bg-amber-400 px-6 py-2.5 text-sm font-bold text-stone-950 transition hover:bg-amber-300"
-                >
-                  {isLandOwner ? "Post a brief" : "Browse open briefs"}
-                </Link>
-              </div>
+              <EmptyState
+                icon={<FolderKanban className="h-7 w-7" />}
+                title={isLandOwner ? "No projects yet" : "Nothing on your desk yet"}
+                description={
+                  isLandOwner
+                    ? "Post your first brief and let verified architects come to you."
+                    : "Browse the open briefs and send a proposal to get started."
+                }
+                action={
+                  <Link
+                    href={isLandOwner ? "/projects/new" : "/briefs"}
+                    className="btn-primary px-6 py-2.5 text-sm"
+                  >
+                    {isLandOwner ? "Post a brief" : "Browse open briefs"}
+                    <ArrowRight className="btn-arrow h-4 w-4" />
+                  </Link>
+                }
+              />
             ) : (
               <Stagger as="ul" className="flex flex-col gap-4" dependencies={[projects]}>
                 {projects.map((p) => (

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { UserRole } from "@buildora/shared";
 import { useSession } from "@/store/useSession";
+import { ListSkeleton } from "@/components/ui/Skeleton";
 
 const PROFESSIONAL_ROLES: UserRole[] = [
   UserRole.ARCHITECT,
@@ -41,7 +42,7 @@ export default function ProfileRedirectPage() {
 
   return (
     <main className="grid min-h-screen place-items-center">
-      <p className="text-sm text-stone-500 dark:text-slate-500">Loading…</p>
+      <ListSkeleton rows={3} />
     </main>
   );
 }

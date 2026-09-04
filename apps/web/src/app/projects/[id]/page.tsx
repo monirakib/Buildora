@@ -319,7 +319,9 @@ export default function ProjectDetailPage() {
       <div className="flex min-h-screen flex-col">
         <Navbar />
         <main className="flex-1 px-5 pt-28 pb-16 sm:px-8">
-          <p className="text-center text-sm text-stone-500 dark:text-slate-500">Loading…</p>
+          <p className="text-center text-sm text-stone-500 dark:text-slate-500 loading-dots">
+            Loading
+          </p>
         </main>
       </div>
     );
@@ -330,9 +332,7 @@ export default function ProjectDetailPage() {
       <div className="flex min-h-screen flex-col">
         <Navbar />
         <main className="flex-1 px-5 pt-28 pb-16 sm:px-8">
-          <p className="mx-auto max-w-xl rounded-xl bg-rose-100 px-4 py-2.5 text-center text-sm font-medium text-rose-800 dark:bg-rose-400/15 dark:text-rose-300">
-            {error}
-          </p>
+          <p className="mx-auto max-w-xl alert alert-danger justify-center">{error}</p>
         </main>
       </div>
     );
@@ -348,9 +348,7 @@ export default function ProjectDetailPage() {
    * the same project, which is what makes the contact allowed.
    */
   const messagingTargets: UserRef[] = isOwner
-    ? [project.architect, project.engineer, project.contractor].filter(
-        (p): p is UserRef => !!p
-      )
+    ? [project.architect, project.engineer, project.contractor].filter((p): p is UserRef => !!p)
     : isAssignedArchitect || isAssignedEngineer || isAssignedContractor
       ? [project.owner]
       : [];
@@ -408,7 +406,7 @@ export default function ProjectDetailPage() {
                   {buildingTypeLabels[project.buildingType] ?? project.buildingType}
                 </p>
               </div>
-              <h1 className="mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">
+              <h1 className="display-title animate-rise-in [animation-delay:70ms] mt-3 text-4xl sm:text-5xl">
                 {project.title}
               </h1>
             </div>
@@ -422,7 +420,7 @@ export default function ProjectDetailPage() {
                     type="button"
                     disabled={busy}
                     onClick={handlePostDraft}
-                    className="rounded-full bg-amber-400 px-6 py-2.5 text-sm font-bold text-stone-950 transition hover:bg-amber-300 disabled:opacity-60"
+                    className="rounded-full btn-primary px-6 py-2.5 text-sm disabled:opacity-60"
                   >
                     Post brief to architects
                   </button>
@@ -432,7 +430,7 @@ export default function ProjectDetailPage() {
                     type="button"
                     disabled={busy}
                     onClick={() => handleAdvanceStatus(nextAction.to)}
-                    className="rounded-full bg-amber-400 px-6 py-2.5 text-sm font-bold text-stone-950 transition hover:bg-amber-300 disabled:opacity-60"
+                    className="rounded-full btn-primary px-6 py-2.5 text-sm disabled:opacity-60"
                   >
                     {nextAction.label}
                   </button>
@@ -443,7 +441,7 @@ export default function ProjectDetailPage() {
                     type="button"
                     disabled={busy}
                     onClick={() => handleMessage(target.id)}
-                    className="rounded-full border border-stone-300 px-6 py-2.5 text-sm font-bold text-stone-700 transition hover:bg-stone-100 disabled:opacity-60 dark:border-white/20 dark:text-slate-200 dark:hover:bg-white/10"
+                    className="rounded-full btn-secondary px-6 py-2.5 text-sm disabled:opacity-60"
                   >
                     Message {target.name.split(" ")[0]}
                   </button>
@@ -463,11 +461,7 @@ export default function ProjectDetailPage() {
               </div>
             )}
 
-            {error && (
-              <p className="rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-medium text-rose-800 dark:bg-rose-400/15 dark:text-rose-300">
-                {error}
-              </p>
-            )}
+            {error && <p className="alert alert-danger">{error}</p>}
           </header>
 
           <ProjectTabs tabs={tabDescriptors} current={tab} onSelect={selectTab} />
@@ -575,7 +569,7 @@ export default function ProjectDetailPage() {
                       <div>
                         <Link
                           href={`/projects/${project.id}/report`}
-                          className="inline-flex items-center gap-2 rounded-full border border-stone-300 px-5 py-2.5 text-sm font-bold text-stone-700 transition hover:bg-stone-100 dark:border-white/20 dark:text-slate-200 dark:hover:bg-white/10"
+                          className="inline-flex items-center gap-2 rounded-full btn-secondary px-5 py-2.5 text-sm"
                         >
                           <FileText className="h-4 w-4" /> Printable inspection report
                         </Link>

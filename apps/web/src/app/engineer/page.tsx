@@ -216,7 +216,9 @@ export default function EngineerConsolePage() {
       <div className="flex min-h-screen flex-col">
         <Navbar />
         <main className="flex-1 px-5 pt-28 pb-16 sm:px-8">
-          <p className="text-center text-sm text-stone-500 dark:text-slate-500">Loading…</p>
+          <p className="text-center text-sm text-stone-500 dark:text-slate-500 loading-dots">
+            Loading
+          </p>
         </main>
       </div>
     );
@@ -233,11 +235,7 @@ export default function EngineerConsolePage() {
       title={headings[section].title}
       subtitle={headings[section].subtitle}
     >
-      {error && (
-        <p className="mb-4 rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-medium text-rose-800 dark:bg-rose-400/15 dark:text-rose-300">
-          {error}
-        </p>
-      )}
+      {error && <p className="mb-4 alert alert-danger">{error}</p>}
 
       {loading ? (
         <p className="text-sm text-stone-500 dark:text-slate-500">Loading your work…</p>

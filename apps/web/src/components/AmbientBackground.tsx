@@ -1,12 +1,11 @@
 /**
  * The backdrop every page sits on.
  *
- * Four stacked layers, all painted with CSS — no images, no canvas, no JS:
+ * Three stacked layers, all painted with CSS — no images, no canvas, no JS:
  *
  *   1. three big colour washes that drift slowly past each other,
- *   2. a faint blueprint grid, faded out towards the edges,
- *   3. film grain, so the glass panels have something to frost,
- *   4. a vignette that darkens the rim and pushes content forward.
+ *   2. film grain, so the glass panels have something to frost,
+ *   3. a vignette that darkens the rim and pushes content forward.
  *
  * The colours come from the `--ambient-*` custom properties in globals.css,
  * which the `.dark` class re-points — so this markup renders once and works in
@@ -36,22 +35,7 @@ export function AmbientBackground() {
         style={{ background: "radial-gradient(closest-side, var(--ambient-c), transparent)" }}
       />
 
-      {/* ---- 2. Blueprint grid ----
-          Two 1px repeating gradients cross to make the ruling. The mask fades
-          it to nothing at the edges so it reads as texture, not as a table. */}
-      <div
-        className="absolute inset-0"
-        style={{
-          backgroundImage:
-            "linear-gradient(to right, var(--ambient-grid) 1px, transparent 1px)," +
-            "linear-gradient(to bottom, var(--ambient-grid) 1px, transparent 1px)",
-          backgroundSize: "56px 56px",
-          maskImage: "radial-gradient(80% 65% at 50% 30%, black, transparent)",
-          WebkitMaskImage: "radial-gradient(80% 65% at 50% 30%, black, transparent)",
-        }}
-      />
-
-      {/* ---- 3. Film grain ----
+      {/* ---- 2. Film grain ----
           An inline SVG turbulence filter, tiled. Same trick the verification
           wizard uses, so the two backdrops share a texture. */}
       <div
@@ -68,7 +52,7 @@ export function AmbientBackground() {
         }}
       />
 
-      {/* ---- 4. Vignette ---- */}
+      {/* ---- 3. Vignette ---- */}
       <div
         className="absolute inset-0"
         style={{

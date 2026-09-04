@@ -220,14 +220,10 @@ export function TenderSection({
 
   return (
     <section>
-      <h2 className="text-xl font-extrabold tracking-tight">Contractor bidding</h2>
+      <h2 className="display-title text-2xl">Contractor bidding</h2>
 
       <div className={`mt-4 ${cardClass}`}>
-        {error && (
-          <p className="mb-4 rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-medium text-rose-800 dark:bg-rose-400/15 dark:text-rose-300">
-            {error}
-          </p>
-        )}
+        {error && <p className="mb-4 alert alert-danger">{error}</p>}
 
         {/* Nothing yet ---------------------------------------------------- */}
         {!tender && !drafting && (
@@ -240,7 +236,7 @@ export function TenderSection({
               type="button"
               onClick={startDraft}
               disabled={busy}
-              className="mt-4 rounded-full bg-amber-400 px-6 py-2.5 text-sm font-bold text-stone-950 transition hover:bg-amber-300 disabled:opacity-60"
+              className="mt-4 rounded-full btn-primary px-6 py-2.5 text-sm disabled:opacity-60"
             >
               {busy ? "Building the BOQ…" : "Draft a tender"}
             </button>
@@ -419,7 +415,7 @@ export function TenderSection({
               <button
                 type="submit"
                 disabled={busy}
-                className="rounded-full bg-amber-400 px-6 py-2.5 text-sm font-bold text-stone-950 transition hover:bg-amber-300 disabled:opacity-60"
+                className="rounded-full btn-primary px-6 py-2.5 text-sm disabled:opacity-60"
               >
                 {busy ? "Saving…" : "Save draft"}
               </button>
@@ -461,7 +457,7 @@ export function TenderSection({
                   type="button"
                   disabled={busy}
                   onClick={() => run(() => publishTender(token, tender.id))}
-                  className="rounded-full bg-amber-400 px-6 py-2.5 text-sm font-bold text-stone-950 transition hover:bg-amber-300 disabled:opacity-60"
+                  className="rounded-full btn-primary px-6 py-2.5 text-sm disabled:opacity-60"
                 >
                   Publish for bidding
                 </button>
@@ -502,7 +498,7 @@ export function TenderSection({
                   type="button"
                   onClick={startDraft}
                   disabled={busy}
-                  className="mt-4 rounded-full bg-amber-400 px-6 py-2.5 text-sm font-bold text-stone-950 transition hover:bg-amber-300 disabled:opacity-60"
+                  className="mt-4 rounded-full btn-primary px-6 py-2.5 text-sm disabled:opacity-60"
                 >
                   {busy ? "Building the BOQ…" : "Draft a new tender"}
                 </button>
@@ -525,7 +521,7 @@ export function TenderSection({
                     type="button"
                     disabled={busy}
                     onClick={() => run(() => closeTender(token, tender.id))}
-                    className="rounded-full bg-amber-400 px-5 py-2 text-xs font-bold text-stone-950 transition hover:bg-amber-300 disabled:opacity-60"
+                    className="rounded-full btn-primary px-5 py-2 text-xs disabled:opacity-60"
                   >
                     Close bidding now
                   </button>

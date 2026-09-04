@@ -14,6 +14,7 @@ import {
   type SiteDiarySummary,
 } from "@buildora/shared";
 import { askAi, isAiConfigured } from "../services/ai";
+import { screenNarrative } from "../services/aiGuard";
 import { fenced, sanitizeForPrompt } from "../services/aiSafety";
 import {
   SiteDiaryEntry,
@@ -555,7 +556,7 @@ Do not invent any number that is not above. Do not estimate a completion date.`;
 
   try {
     const answer = await askAi({ messages: [{ role: "user", content: prompt }], maxTokens: 400 });
-    return answer.text || null;
+    return screenNarrative(answer.text);
   } catch (err) {
     console.error(
       "[sitediary] digest narrative unavailable:",

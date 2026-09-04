@@ -7,6 +7,10 @@ import { OrderStatus, PaymentPurpose, UserRole, type MarketOrder } from "@buildo
 import { listOrders, updateOrderStatus } from "@/lib/apiMarket";
 import { useSession } from "@/store/useSession";
 import { Navbar } from "@/components/landing/Navbar";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { ListSkeleton } from "@/components/ui/Skeleton";
+import { PackageOpen } from "lucide-react";
 import { formatDate } from "@/components/app/projectStatus";
 import { formatBdt, statusLabels, statusStyles } from "@/components/market/market";
 import { OrderTracker } from "@/components/market/OrderTracker";
@@ -137,7 +141,7 @@ export default function MarketOrdersPage() {
   if (!mounted || !user || (!isBuyer && !isSeller)) {
     return (
       <main className="grid min-h-screen place-items-center">
-        <p className="text-sm text-stone-500 dark:text-slate-500">Loading…</p>
+        <ListSkeleton rows={3} />
       </main>
     );
   }
@@ -148,20 +152,16 @@ export default function MarketOrdersPage() {
 
       <main className="flex-1 px-5 pt-28 pb-16 sm:px-8">
         <div className="mx-auto w-full max-w-4xl">
-          <Link
-            href="/marketplace"
-            className="text-sm font-semibold text-stone-500 transition hover:text-amber-700 dark:text-slate-400 dark:hover:text-amber-400"
-          >
-            ← Marketplace
-          </Link>
-          <h1 className="mt-4 text-3xl font-extrabold tracking-tight sm:text-4xl">
-            {isSeller ? "Incoming orders" : "Your orders"}
-          </h1>
-          <p className="mt-2 text-stone-600 dark:text-slate-400">
-            {isSeller
-              ? "Confirm, deliver, or cancel orders placed on your listings."
-              : "Everything you've ordered from the marketplace, newest first."}
-          </p>
+          <PageHeader
+            back={{ href: "/marketplace", label: "Marketplace" }}
+            eyebrow="Marketplace"
+            title={isSeller ? "Incoming orders" : "Your orders"}
+            description={
+              isSeller
+                ? "Confirm, deliver, or cancel orders placed on your listings."
+                : "Everything you've ordered from the marketplace, newest first."
+            }
+          />
 
           {notice && (
             <p
@@ -175,38 +175,32 @@ export default function MarketOrdersPage() {
             </p>
           )}
 
-          {error && (
-            <p className="mt-6 rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-medium text-rose-800 dark:bg-rose-400/15 dark:text-rose-300">
-              {error}
-            </p>
-          )}
+          {error && <p className="mt-6 alert alert-danger">{error}</p>}
 
           {loading ? (
-            <p className="mt-8 text-sm text-stone-500 dark:text-slate-500">Loading…</p>
+            <ListSkeleton rows={3} className="mt-8" />
           ) : orders.length === 0 ? (
-            <div className={`mt-8 text-center ${cardClass}`}>
-              <p className="font-bold">No orders yet</p>
-              <p className="mt-1 text-sm text-stone-600 dark:text-slate-400">
-                {isSeller ? (
-                  "Orders on your listings will appear here."
-                ) : (
-                  <>
-                    Browse the{" "}
-                    <Link
-                      href="/marketplace"
-                      className="text-amber-700 underline underline-offset-2 dark:text-amber-400"
-                    >
-                      marketplace
-                    </Link>{" "}
-                    and order materials for your site.
-                  </>
-                )}
-              </p>
-            </div>
+            <EmptyState
+              className="mt-8"
+              icon={<PackageOpen className="h-7 w-7" />}
+              title="No orders yet"
+              description={
+                isSeller
+                  ? "Orders on your listings will appear here the moment a buyer places one."
+                  : "Add materials to your cart from the marketplace and check out to see them here."
+              }
+              action={
+                isSeller ? undefined : (
+                  <Link href="/marketplace" className="btn-primary px-6 py-2.5 text-sm">
+                    Browse the marketplace
+                  </Link>
+                )
+              }
+            />
           ) : (
             <ul className="mt-8 flex flex-col gap-4">
               {orders.map((o) => (
-                <li key={o.id} className={cardClass}>
+                <li key={o.id} className={` animate-rise-in`}>
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <p className="font-bold">
@@ -281,7 +275,7 @@ export default function MarketOrdersPage() {
                             onChange={(e) =>
                               setConfirmForm((f) => ({ ...f, date: e.target.value }))
                             }
-                            className="rounded-xl border border-stone-300/80 bg-white/70 px-4 py-2.5 text-sm outline-none focus:border-amber-500 dark:border-white/15 dark:bg-white/5 dark:text-slate-100"
+                            className="block w-full rounded-xl border border-stone-300/80 bg-white/70 px-4 py-2.5 text-sm text-stone-900 placeholder-stone-400 backdrop-blur transition outline-none focus:border-amber-500 focus:bg-white/90 focus:ring-2 focus:ring-amber-400/30 dark:border-white/15 dark:bg-white/5 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:bg-white/10"
                           />
                         </label>
                         <label className="min-w-48 flex-1 text-sm">
@@ -298,7 +292,7 @@ export default function MarketOrdersPage() {
                             onChange={(e) =>
                               setConfirmForm((f) => ({ ...f, note: e.target.value }))
                             }
-                            className="w-full rounded-xl border border-stone-300/80 bg-white/70 px-4 py-2.5 text-sm outline-none focus:border-amber-500 dark:border-white/15 dark:bg-white/5 dark:text-slate-100"
+                            className="block w-full rounded-xl border border-stone-300/80 bg-white/70 px-4 py-2.5 text-sm text-stone-900 placeholder-stone-400 backdrop-blur transition outline-none focus:border-amber-500 focus:bg-white/90 focus:ring-2 focus:ring-amber-400/30 dark:border-white/15 dark:bg-white/5 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:bg-white/10"
                           />
                         </label>
                       </div>
@@ -313,14 +307,14 @@ export default function MarketOrdersPage() {
                           type="button"
                           disabled={busy || !confirmForm.date}
                           onClick={() => confirmWithDate(o)}
-                          className="rounded-full bg-amber-400 px-6 py-2.5 text-sm font-bold text-stone-950 transition hover:bg-amber-300 disabled:opacity-60"
+                          className="rounded-full btn-primary px-6 py-2.5 text-sm disabled:opacity-60"
                         >
                           {busy ? "Confirming…" : "Confirm order"}
                         </button>
                         <button
                           type="button"
                           onClick={() => setConfirming(null)}
-                          className="rounded-full border border-stone-300 px-6 py-2.5 text-sm font-bold text-stone-700 transition hover:bg-stone-100 dark:border-white/20 dark:text-slate-200"
+                          className="rounded-full btn-secondary px-6 py-2.5 text-sm"
                         >
                           Cancel
                         </button>

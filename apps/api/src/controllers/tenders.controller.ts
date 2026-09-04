@@ -15,6 +15,7 @@ import {
   type TenderItem,
 } from "@buildora/shared";
 import { askAi, isAiConfigured } from "../services/ai";
+import { screenNarrative } from "../services/aiGuard";
 import { bandFor, isOutlier, loadRates, matchRate, percentDiff } from "../services/bidAnalysis";
 import { refreshEstimate } from "../services/estimateLadder";
 import { BoqRate } from "../models/BoqRate";
@@ -646,7 +647,7 @@ You do not know and must never state the benchmark rate, the owner's estimate, o
 
   try {
     const answer = await askAi({ messages: [{ role: "user", content: prompt }], maxTokens: 350 });
-    return answer.text || null;
+    return screenNarrative(answer.text);
   } catch (err) {
     console.error("[bidcheck] narrative unavailable:", err instanceof Error ? err.message : err);
     return null;

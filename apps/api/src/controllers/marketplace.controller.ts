@@ -10,14 +10,11 @@ import {
   type MarketOrder as MarketOrderShape,
   type Paginated,
   type Product as ProductShape,
-  type ProfessionalProfile,
 } from "@buildora/shared";
 import { MarketOrder } from "../models/MarketOrder";
-import { Project } from "../models/Project";
-import { User } from "../models/User";
 import { Product } from "../models/Product";
 import { notify } from "../services/notifications";
-import { routeBetween } from "../services/routing";
+import { placeOrderFor } from "../services/orders";
 
 /* ---------- Shapes sent to the client ---------- */
 
@@ -121,20 +118,45 @@ export async function listProducts(req: Request, res: Response) {
     filter.$or = [{ name: rx }, { brand: rx }, { description: rx }];
   }
 
-  const [docs, total] = await Promise.all([
+  // Price band, for the sidebar slider. Either end may be absent.
+  const minPrice = Number(req.query.minPrice);
+  const maxPrice = Number(req.query.maxPrice);
+  if (Number.isFinite(minPrice) && minPrice > 0) {
+    filter.priceBdt = { ...(filter.priceBdt as object), $gte: minPrice };
+  }
+  if (Number.isFinite(maxPrice) && maxPrice > 0) {
+    filter.priceBdt = { ...(filter.priceBdt as object), $lte: maxPrice };
+  }
+
+  // Newest first unless the buyer asks for a price order. Ties on price fall
+  // back to newest so the order is stable between pages.
+  const sortParam = String(req.query.sort ?? "newest");
+  const sort: Record<string, 1 | -1> =
+    sortParam === "price_asc"
+      ? { priceBdt: 1, createdAt: -1 }
+      : sortParam === "price_desc"
+        ? { priceBdt: -1, createdAt: -1 }
+        : { createdAt: -1 };
+
+  const [docs, total, dearest] = await Promise.all([
     Product.find(filter)
-      .sort({ createdAt: -1 })
+      .sort(sort)
       .skip((page - 1) * pageSize)
       .limit(pageSize)
       .populate("seller", sellerSelect),
     Product.countDocuments(filter),
+    // The top of the price slider: the dearest active listing overall, not
+    // just within the current filter, so the slider does not shrink under the
+    // buyer as they narrow the results.
+    Product.findOne({ isActive: true }).sort({ priceBdt: -1 }).select("priceBdt"),
   ]);
 
-  const body: Paginated<ProductShape> = {
+  const body: Paginated<ProductShape> & { priceMaxBdt: number } = {
     items: docs.map(toProduct),
     total,
     page,
     pageSize,
+    priceMaxBdt: dearest?.priceBdt ?? 0,
   };
   return res.json({ data: body });
 }
@@ -208,31 +230,6 @@ export async function deleteProduct(req: Request, res: Response) {
 
 /* ---------- Orders ---------- */
 
-/**
- * Road distance from the seller's warehouse to the buyer's plot, if both ends
- * have coordinates and routing is configured. Returns null on anything missing
- * — an order without a distance is normal, not an error.
- */
-async function routeForOrder(projectId: string, buyerId: string, sellerId: unknown) {
-  if (!isValidObjectId(projectId)) return null;
-  const project = await Project.findById(projectId).select("owner location");
-  // Guard the ownership here too: a projectId is user input, and without this
-  // somebody could probe whether a stranger's plot has a pin.
-  if (!project || String(project.owner) !== buyerId) return null;
-  if (!project.location?.lat || !project.location?.lng) return null;
-
-  const seller = await User.findById(sellerId).select("profile.warehouseLocation");
-  const warehouse = (seller?.profile as ProfessionalProfile | undefined)?.warehouseLocation;
-  if (!warehouse?.lat || !warehouse?.lng) return null;
-
-  return (
-    (await routeBetween(
-      { lat: warehouse.lat, lng: warehouse.lng },
-      { lat: project.location.lat, lng: project.location.lng }
-    )) ?? null
-  );
-}
-
 const orderSchema = z.object({
   productId: z.string().min(1),
   quantity: z.coerce.number().int().min(1, "Order at least 1").max(100000),
@@ -264,51 +261,15 @@ export async function createOrder(req: Request, res: Response) {
     return res.status(404).json({ error: { message: "This product is no longer available" } });
   }
 
-  // Snapshot the road distance at order time, so the buyer keeps seeing it on
-  // the order afterwards. Deliberately stored rather than re-routed on every
-  // read: it burns one ORS call instead of one per page view, and the distance
-  // to a plot doesn't change.
-  const route = projectId ? await routeForOrder(projectId, req.auth!.sub, product.seller) : null;
-
-  const doc = await MarketOrder.create({
-    buyer: req.auth!.sub,
-    seller: product.seller,
-    product: product._id,
-    productSnapshot: {
-      name: product.name,
-      brand: product.brand,
-      unit: product.unit,
-      priceBdt: product.priceBdt,
-    },
+  const doc = await placeOrderFor({
+    buyerId: req.auth!.sub,
+    product,
     quantity,
-    totalBdt: product.priceBdt * quantity,
     deliveryAddress,
     phone,
     note,
-    project: route ? projectId : undefined,
-    deliveryDistanceKm: route?.distanceKm,
-    deliveryDurationMin: route?.durationMin,
-    // The timeline starts the moment the order does, so "placed at" is a
-    // recorded event rather than something inferred from createdAt.
-    timeline: [{ status: OrderStatus.PLACED, at: new Date() }],
+    projectId,
   });
-  await doc.populate([
-    { path: "buyer", select: "name phone" },
-    { path: "seller", select: "name profile.company" },
-  ]);
-
-  // The seller has an order to fulfil.
-  const buyer = doc.buyer as unknown as UserRef;
-  notify(String(product.seller), {
-    type: NotificationType.ORDER,
-    title: `New order, ${quantity} × ${product.name}`,
-    body: `${buyer.name} ordered ${quantity} ${product.unit}${quantity > 1 ? "s" : ""} for ৳ ${(
-      product.priceBdt * quantity
-    ).toLocaleString("en-US")}. Confirm it to start fulfilment.`,
-    link: "/marketplace/orders",
-    actorId: req.auth!.sub,
-  });
-
   return res.status(201).json({ data: { order: toOrder(doc) } });
 }
 

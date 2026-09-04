@@ -216,11 +216,7 @@ export function AssistantWidget() {
                 {!sending && actions.length > 0 && (
                   <SuggestedActions actions={actions} token={token ?? null} onDone={setError} />
                 )}
-                {error && (
-                  <p className="self-start rounded-2xl bg-rose-100 px-4 py-2.5 text-sm font-medium text-rose-800 dark:bg-rose-400/15 dark:text-rose-300">
-                    {error}
-                  </p>
-                )}
+                {error && <p className="self-start alert alert-danger rounded-2xl">{error}</p>}
               </div>
             )}
           </div>

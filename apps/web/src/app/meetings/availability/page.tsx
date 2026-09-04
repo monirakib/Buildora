@@ -123,7 +123,9 @@ export default function AvailabilityPage() {
       <div className="flex min-h-screen flex-col">
         <Navbar />
         <main className="flex-1 px-5 pt-28 sm:px-8">
-          <p className="mx-auto max-w-3xl text-sm text-stone-500 dark:text-slate-500">Loading…</p>
+          <p className="mx-auto max-w-3xl text-sm text-stone-500 dark:text-slate-500 loading-dots">
+            Loading
+          </p>
         </main>
       </div>
     );
@@ -135,10 +137,10 @@ export default function AvailabilityPage() {
 
       <main className="flex-1 px-5 pt-28 pb-16 sm:px-8">
         <div className="mx-auto w-full max-w-3xl">
-          <p className="text-sm font-bold tracking-[0.2em] text-amber-800 uppercase dark:text-amber-400">
+          <p className="animate-rise-in text-[0.7rem] font-bold tracking-[0.22em] text-stone-500 uppercase dark:text-slate-400">
             Meetings
           </p>
-          <h1 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">
+          <h1 className="display-title animate-rise-in [animation-delay:70ms] mt-2 text-4xl sm:text-5xl">
             When can clients book you?
           </h1>
           <p className="mt-3 text-sm text-stone-600 dark:text-slate-400">
@@ -234,7 +236,7 @@ export default function AvailabilityPage() {
               </div>
 
               {badBlock >= 0 && (
-                <p className="mt-4 rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-medium text-rose-800 dark:bg-rose-400/15 dark:text-rose-300">
+                <p className="mt-4 alert alert-danger">
                   One of your {WEEKDAY_LABELS[form.rules[badBlock]!.weekday]} blocks ends before it
                   starts.
                 </p>
@@ -295,7 +297,7 @@ export default function AvailabilityPage() {
                   min={todayInDhaka()}
                   value={newBlackout}
                   onChange={(e) => setNewBlackout(e.target.value)}
-                  className="rounded-xl border border-stone-300/80 bg-white/70 px-3 py-2 text-sm dark:border-white/15 dark:bg-white/5"
+                  className="block w-full rounded-xl border border-stone-300/80 bg-white/70 px-4 py-2.5 text-sm text-stone-900 placeholder-stone-400 backdrop-blur transition outline-none focus:border-amber-500 focus:bg-white/90 focus:ring-2 focus:ring-amber-400/30 dark:border-white/15 dark:bg-white/5 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:bg-white/10"
                 />
                 <button
                   type="button"
@@ -363,18 +365,14 @@ export default function AvailabilityPage() {
                 </p>
               )}
 
-              {error && (
-                <p className="mt-4 rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-medium text-rose-800 dark:bg-rose-400/15 dark:text-rose-300">
-                  {error}
-                </p>
-              )}
+              {error && <p className="mt-4 alert alert-danger">{error}</p>}
 
               <div className="mt-5 flex flex-wrap items-center gap-3">
                 <button
                   type="button"
                   onClick={handleSave}
                   disabled={saving || badBlock >= 0}
-                  className="rounded-full bg-amber-400 px-8 py-3 text-sm font-bold text-stone-950 shadow-lg transition hover:scale-[1.02] hover:bg-amber-300 disabled:scale-100 disabled:opacity-60"
+                  className="rounded-full btn-primary px-8 py-3 text-sm disabled:opacity-60"
                 >
                   {saving ? "Saving…" : "Save hours"}
                 </button>

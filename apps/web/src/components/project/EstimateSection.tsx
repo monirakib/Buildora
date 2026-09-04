@@ -67,13 +67,9 @@ export function EstimateSection({ projectId, token }: { projectId: string; token
 
   return (
     <section>
-      <h2 className="text-xl font-extrabold tracking-tight">Cost estimate</h2>
+      <h2 className="display-title text-2xl">Cost estimate</h2>
       <div className={`mt-4 ${cardClass}`}>
-        {error && (
-          <p className="mb-4 rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-medium text-rose-800 dark:bg-rose-400/15 dark:text-rose-300">
-            {error}
-          </p>
-        )}
+        {error && <p className="mb-4 alert alert-danger">{error}</p>}
 
         {!estimate ? (
           <p className="text-sm text-stone-600 dark:text-slate-400">
@@ -106,7 +102,7 @@ export function EstimateSection({ projectId, token }: { projectId: string; token
                 type="button"
                 disabled={busy}
                 onClick={() => void run()}
-                className="rounded-full border border-stone-300 px-5 py-2 text-sm font-bold text-stone-700 transition hover:bg-stone-100 disabled:opacity-60 dark:border-white/20 dark:text-slate-200 dark:hover:bg-white/10"
+                className="rounded-full btn-secondary px-5 py-2 text-sm disabled:opacity-60"
               >
                 Refresh
               </button>

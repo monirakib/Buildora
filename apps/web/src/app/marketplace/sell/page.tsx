@@ -17,6 +17,7 @@ import { Navbar } from "@/components/landing/Navbar";
 import { categoryLabels, formatBdt } from "@/components/market/market";
 import { VerifyNotice, useIsVerified } from "@/components/app/VerifyGate";
 import { surfaceClass } from "@/components/ui/surface";
+import { ListSkeleton } from "@/components/ui/Skeleton";
 
 const inputClass =
   "block w-full rounded-xl border border-stone-300/80 bg-white/70 px-4 py-2.5 text-sm text-stone-900 placeholder-stone-400 backdrop-blur transition outline-none focus:border-amber-500 focus:bg-white/90 focus:ring-2 focus:ring-amber-400/30 dark:border-white/15 dark:bg-white/5 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:bg-white/10";
@@ -170,7 +171,7 @@ export default function SellPage() {
   if (!mounted || !user || !isSeller) {
     return (
       <main className="grid min-h-screen place-items-center">
-        <p className="text-sm text-stone-500 dark:text-slate-500">Loading…</p>
+        <ListSkeleton rows={3} />
       </main>
     );
   }
@@ -187,16 +188,14 @@ export default function SellPage() {
           >
             ← Marketplace
           </Link>
-          <h1 className="mt-4 text-3xl font-extrabold tracking-tight sm:text-4xl">My listings</h1>
-          <p className="mt-2 text-stone-600 dark:text-slate-400">
+          <h1 className="display-title animate-rise-in [animation-delay:70ms] mt-4 text-4xl sm:text-5xl">
+            My listings
+          </h1>
+          <p className="animate-rise-in [animation-delay:140ms] mt-2 text-stone-600 dark:text-slate-400">
             What you list here is instantly visible to every land owner on the marketplace.
           </p>
 
-          {error && (
-            <p className="mt-6 rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-medium text-rose-800 dark:bg-rose-400/15 dark:text-rose-300">
-              {error}
-            </p>
-          )}
+          {error && <p className="mt-6 alert alert-danger">{error}</p>}
 
           {/* Existing listings stay visible and editable-looking below; only the
               create/edit form is replaced, since every write it makes is gated. */}
@@ -285,7 +284,7 @@ export default function SellPage() {
                 <button
                   type="submit"
                   disabled={busy || uploading}
-                  className="rounded-full bg-amber-400 px-6 py-2.5 text-sm font-bold text-stone-950 transition hover:bg-amber-300 disabled:opacity-60"
+                  className="rounded-full btn-primary px-6 py-2.5 text-sm disabled:opacity-60"
                 >
                   {busy ? "Saving…" : editingId ? "Save changes" : "List product"}
                 </button>
@@ -296,7 +295,7 @@ export default function SellPage() {
                       setEditingId(null);
                       setForm(emptyForm);
                     }}
-                    className="rounded-full border border-stone-300 px-5 py-2.5 text-sm font-bold text-stone-700 transition hover:border-stone-400 dark:border-white/20 dark:text-slate-200"
+                    className="rounded-full btn-secondary px-5 py-2.5 text-sm"
                   >
                     Cancel edit
                   </button>
@@ -307,7 +306,7 @@ export default function SellPage() {
 
           {/* Existing listings */}
           {loading ? (
-            <p className="mt-8 text-sm text-stone-500 dark:text-slate-500">Loading…</p>
+            <ListSkeleton rows={3} className="mt-8" />
           ) : products.length === 0 ? (
             <p className="mt-8 text-sm text-stone-600 dark:text-slate-400">
               No listings yet, add your first product above.

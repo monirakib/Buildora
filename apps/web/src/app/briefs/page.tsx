@@ -11,6 +11,7 @@ import { Stagger } from "@/components/Stagger";
 import { buildingTypeLabels, formatBdt, formatDate } from "@/components/app/projectStatus";
 import { useRegisterAiContext } from "@/lib/useRegisterAiContext";
 import { surfaceClass, surfaceHoverClass } from "@/components/ui/surface";
+import { ListSkeleton } from "@/components/ui/Skeleton";
 
 const inputClass =
   "block w-full rounded-xl border border-stone-300/80 bg-white/70 px-4 py-2.5 text-sm text-stone-900 placeholder-stone-400 backdrop-blur transition outline-none focus:border-amber-500 focus:bg-white/90 focus:ring-2 focus:ring-amber-400/30 dark:border-white/15 dark:bg-white/5 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:bg-white/10";
@@ -74,10 +75,10 @@ export default function BriefsPage() {
 
       <main className="flex-1 px-5 pt-28 pb-16 sm:px-8">
         <div className="mx-auto w-full max-w-4xl">
-          <p className="text-sm font-bold tracking-[0.2em] text-amber-800 uppercase dark:text-amber-400">
+          <p className="animate-rise-in text-[0.7rem] font-bold tracking-[0.22em] text-stone-500 uppercase dark:text-slate-400">
             Open briefs
           </p>
-          <h1 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">
+          <h1 className="display-title animate-rise-in [animation-delay:70ms] mt-2 text-4xl sm:text-5xl">
             Projects looking for professionals
           </h1>
 
@@ -93,11 +94,9 @@ export default function BriefsPage() {
 
           <div className="mt-6">
             {loading ? (
-              <p className="text-sm text-stone-500 dark:text-slate-500">Loading…</p>
+              <ListSkeleton rows={3} />
             ) : error ? (
-              <p className="rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-medium text-rose-800 dark:bg-rose-400/15 dark:text-rose-300">
-                {error}
-              </p>
+              <p className="alert alert-danger">{error}</p>
             ) : !result || result.items.length === 0 ? (
               <p className="rounded-2xl border border-white/50 bg-white/55 p-8 text-center text-stone-600 backdrop-blur-xl dark:border-white/10 dark:bg-white/5 dark:text-slate-400">
                 No open briefs right now, check back soon.
@@ -136,7 +135,7 @@ export default function BriefsPage() {
                       type="button"
                       disabled={page <= 1}
                       onClick={() => setPage((p) => p - 1)}
-                      className="rounded-full border border-stone-300 px-4 py-1.5 font-bold text-stone-700 transition hover:bg-stone-100 disabled:opacity-40 dark:border-white/20 dark:text-slate-200 dark:hover:bg-white/10"
+                      className="btn-secondary px-4 py-1.5 disabled:opacity-40"
                     >
                       ← Prev
                     </button>
@@ -147,7 +146,7 @@ export default function BriefsPage() {
                       type="button"
                       disabled={page >= totalPages}
                       onClick={() => setPage((p) => p + 1)}
-                      className="rounded-full border border-stone-300 px-4 py-1.5 font-bold text-stone-700 transition hover:bg-stone-100 disabled:opacity-40 dark:border-white/20 dark:text-slate-200 dark:hover:bg-white/10"
+                      className="btn-secondary px-4 py-1.5 disabled:opacity-40"
                     >
                       Next →
                     </button>

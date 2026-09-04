@@ -9,6 +9,7 @@ import { PriceSheetSection } from "@/components/admin/PriceSheetSection";
 import { timeAgo } from "@/components/admin/format";
 import { getPricingStatus, triggerPriceRefresh } from "@/lib/apiAdmin";
 import { surfaceClass } from "@/components/ui/surface";
+import { ListSkeleton } from "@/components/ui/Skeleton";
 
 const cardClass = `${surfaceClass} p-5`;
 
@@ -129,7 +130,7 @@ export default function AdminPricingPage() {
               type="button"
               disabled={refreshing}
               onClick={handleRefresh}
-              className="flex shrink-0 items-center gap-2 rounded-xl bg-amber-400 px-4 py-2.5 text-sm font-extrabold text-stone-950 transition hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex shrink-0 items-center gap-2 btn-primary rounded-xl px-4 py-2.5 text-sm font-extrabold disabled:cursor-not-allowed disabled:opacity-50"
             >
               <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
               {refreshing ? "Fetching prices & recalculating…" : "Refresh prices now"}
@@ -148,7 +149,7 @@ export default function AdminPricingPage() {
             Recent refreshes
           </h2>
           {loading ? (
-            <p className="mt-3 text-sm text-stone-500 dark:text-stone-400">Loading…</p>
+            <ListSkeleton rows={3} className="mt-3" />
           ) : runs.length === 0 ? (
             <p className="mt-3 text-sm text-stone-500 dark:text-stone-400">
               No refresh has run yet — press the button above to start the first one.

@@ -52,7 +52,7 @@ export function OverviewTab({
 
       {/* Phase cards --------------------------------------------------- */}
       <section>
-        <h2 className="text-xl font-extrabold tracking-tight">Where the project stands</h2>
+        <h2 className="display-title text-2xl">Where the project stands</h2>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           {(Object.keys(progress.phases) as PhaseKey[]).map((key) => {
             const phase = progress.phases[key];
@@ -125,7 +125,7 @@ export function OverviewTab({
 
       {/* The brief ----------------------------------------------------- */}
       <section>
-        <h2 className="text-xl font-extrabold tracking-tight">The brief</h2>
+        <h2 className="display-title text-2xl">The brief</h2>
         <div className={`mt-4 ${cardClass}`}>
           <p className="text-sm whitespace-pre-line text-stone-700 dark:text-slate-300">
             {project.description}
@@ -168,7 +168,7 @@ export function OverviewTab({
 
       {/* Who's on it --------------------------------------------------- */}
       <section>
-        <h2 className="text-xl font-extrabold tracking-tight">Your team</h2>
+        <h2 className="display-title text-2xl">Your team</h2>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <Participant role="Land owner" person={project.owner} />
           <Participant

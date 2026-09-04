@@ -5,10 +5,25 @@ import helmet from "helmet";
 import { allowedOrigins } from "./config/origins";
 import { REFRESH_HEADER } from "./middleware/csrf";
 import { errorHandler, notFoundHandler } from "./middleware/error";
+import { rateLimit } from "./middleware/rateLimit";
 import { apiRouter } from "./routes";
 
 export function createApp() {
   const app = express();
+
+  /**
+   * In production this API sits behind Render's load balancer, so every request
+   * arrives from the proxy's address and `req.ip` is that address for everyone.
+   * Without this line the rate limiters keyed by IP — login, signup, the guest
+   * assistant, the baseline below — would all share a single bucket for the
+   * entire internet: ten failed logins from anyone would lock out everyone.
+   *
+   * `1` means "trust exactly one hop". It takes the last entry in
+   * X-Forwarded-For, which the proxy sets itself, so a client can't pick its own
+   * identity by sending the header. Trusting `true` instead would let anyone do
+   * exactly that and walk straight through every limit.
+   */
+  app.set("trust proxy", 1);
 
   app.use(helmet());
   // The allowlist is a function rather than a string so more than one origin
@@ -42,6 +57,29 @@ export function createApp() {
   // JSON — without this parser those callbacks arrive with an empty body and
   // every payment looks like it failed.
   app.use(express.urlencoded({ extended: false }));
+
+  /**
+   * A floor under everything.
+   *
+   * The specific limits live next to the routes that need them — login, the
+   * model calls, uploads — because each has its own reason for the number it
+   * picked. This one has no opinion about any endpoint; it just means that no
+   * part of the API can be hit thousands of times a minute from one address,
+   * including the parts nobody thought to limit.
+   *
+   * The ceiling is deliberately high. The web app polls (the inbox, the
+   * notification bell) and a university lab shares one public IP, so a
+   * conservative number here would lock out a room full of legitimate users —
+   * and this is a flood stop, not a fairness mechanism.
+   */
+  app.use(
+    "/api",
+    rateLimit({
+      windowMs: 60_000,
+      max: 600,
+      message: "Too many requests from this connection, slow down a moment",
+    })
+  );
 
   app.use("/api", apiRouter);
 

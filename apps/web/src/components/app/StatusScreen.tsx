@@ -53,5 +53,4 @@ export function StatusScreen({
 }
 
 /** The primary action button, so the callers don't repeat the class string. */
-export const actionClass =
-  "rounded-xl bg-amber-400 px-5 py-2.5 text-sm font-bold text-stone-950 shadow-lg shadow-amber-400/25 transition hover:bg-amber-300";
+export const actionClass = "btn-primary rounded-xl px-5 py-2.5 text-sm";

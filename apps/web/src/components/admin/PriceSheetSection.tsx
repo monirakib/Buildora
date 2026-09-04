@@ -22,6 +22,7 @@ import {
 import { useSession } from "@/store/useSession";
 import { bdtFull, statusLabel, timeAgo } from "@/components/admin/format";
 import { surfaceClass } from "@/components/ui/surface";
+import { ListSkeleton } from "@/components/ui/Skeleton";
 
 /**
  * The weekly price sheet.
@@ -282,7 +283,7 @@ export function PriceSheetSection({ onChanged }: { onChanged?: () => void }) {
               type="button"
               disabled={importing}
               onClick={() => fileInput.current?.click()}
-              className="flex items-center gap-2 rounded-xl bg-amber-400 px-4 py-2.5 text-sm font-extrabold text-stone-950 transition hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex items-center gap-2 btn-primary rounded-xl px-4 py-2.5 text-sm font-extrabold disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Upload className="h-4 w-4" />
               {importing ? "Importing & repricing…" : "Upload CSV"}
@@ -460,7 +461,7 @@ export function PriceSheetSection({ onChanged }: { onChanged?: () => void }) {
               <button
                 type="submit"
                 disabled={saving}
-                className="rounded-xl bg-amber-400 px-4 py-2.5 text-sm font-extrabold text-stone-950 transition hover:bg-amber-300 disabled:opacity-50"
+                className="btn-primary rounded-xl px-4 py-2.5 text-sm font-extrabold disabled:opacity-50"
               >
                 {saving ? "Adding…" : "Add to the sheet"}
               </button>
@@ -469,7 +470,7 @@ export function PriceSheetSection({ onChanged }: { onChanged?: () => void }) {
         )}
 
         {loading ? (
-          <p className="mt-4 text-sm text-stone-500 dark:text-stone-400">Loading…</p>
+          <ListSkeleton rows={3} className="mt-4" />
         ) : items.length === 0 ? (
           <p className="mt-4 text-sm text-stone-500 dark:text-stone-400">
             The sheet is empty. Upload a CSV or add items one at a time — until then the estimator

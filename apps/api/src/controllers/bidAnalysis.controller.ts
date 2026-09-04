@@ -14,6 +14,7 @@ import {
   type BidRiskFlag,
 } from "@buildora/shared";
 import { askAi, isAiConfigured } from "../services/ai";
+import { screenNarrative } from "../services/aiGuard";
 import { percentDiff } from "../services/bidAnalysis";
 import { Bid } from "../models/Bid";
 import { CostEstimateSnapshot } from "../models/CostEstimateSnapshot";
@@ -287,7 +288,7 @@ Rules:
 
   try {
     const answer = await askAi({ messages: [{ role: "user", content: prompt }], maxTokens: 500 });
-    return answer.text || null;
+    return screenNarrative(answer.text);
   } catch (err) {
     console.error("[bidanalysis] narrative unavailable:", err instanceof Error ? err.message : err);
     return null;

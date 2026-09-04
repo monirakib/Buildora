@@ -100,21 +100,17 @@ export function ReviewCard({
         value={comment}
         onChange={(e) => setComment(e.target.value)}
         placeholder="How was working with them? (optional)"
-        className="mt-3 block w-full rounded-xl border border-stone-300/80 bg-white/70 px-4 py-2.5 text-sm text-stone-900 placeholder-stone-400 backdrop-blur transition outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-400/30 dark:border-white/15 dark:bg-white/5 dark:text-slate-100 dark:placeholder-slate-500"
+        className="mt-3 field"
       />
 
-      {error && (
-        <p className="mt-2 rounded-xl bg-rose-100 px-4 py-2 text-sm font-medium text-rose-800 dark:bg-rose-400/15 dark:text-rose-300">
-          {error}
-        </p>
-      )}
+      {error && <p className="mt-2 alert alert-danger py-2">{error}</p>}
 
       <div className="mt-3 flex gap-3">
         <button
           type="button"
           onClick={save}
           disabled={saving || rating < 1}
-          className="rounded-full bg-amber-400 px-6 py-2 text-sm font-bold text-stone-950 transition hover:bg-amber-300 disabled:opacity-50"
+          className="rounded-full btn-primary px-6 py-2 text-sm disabled:opacity-50"
         >
           {saving ? "Saving…" : existing ? "Update review" : "Submit review"}
         </button>

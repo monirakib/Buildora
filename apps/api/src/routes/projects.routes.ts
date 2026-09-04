@@ -63,7 +63,7 @@ import { acceptHandover, getHandover, saveHandover } from "../controllers/handov
 import { requireAuth } from "../middleware/auth";
 import { requireRole } from "../middleware/roles";
 import { requireVerified } from "../middleware/verified";
-import { aiInlineLimit } from "../middleware/aiRateLimit";
+import { aiDailyBudget, aiInlineLimit } from "../middleware/aiRateLimit";
 
 export const projectsRouter = Router();
 
@@ -106,6 +106,7 @@ projectsRouter.post(
   "/:id/proposal-draft",
   requireRole(UserRole.ARCHITECT),
   aiInlineLimit,
+  aiDailyBudget,
   draftProposal
 );
 
@@ -116,7 +117,7 @@ projectsRouter.get("/:id/contract", getProjectContract);
 projectsRouter.get("/:id/ecps", getEcpsApplication);
 projectsRouter.post("/:id/ecps", startEcpsApplication);
 projectsRouter.get("/:id/disputes", listProjectDisputes);
-projectsRouter.post("/:id/estimate", estimateProject);
+projectsRouter.post("/:id/estimate", aiInlineLimit, aiDailyBudget, estimateProject);
 projectsRouter.get("/:id/attendance", listAttendance);
 projectsRouter.post("/:id/attendance", checkIn);
 projectsRouter.post("/:id/attendance/:checkInId/out", checkOut);
@@ -133,7 +134,7 @@ projectsRouter.post("/:id/ecps/advance", advanceEcpsApplication);
 projectsRouter.get("/:id/floor-plans", listFloorPlans);
 // Before the /:level routes, or "advice" would be parsed as a floor number.
 // Rate limited because it spends the same free-tier quota as everything else AI.
-projectsRouter.post("/:id/floor-plans/advice", aiInlineLimit, floorPlanAdvice);
+projectsRouter.post("/:id/floor-plans/advice", aiInlineLimit, aiDailyBudget, floorPlanAdvice);
 projectsRouter.put("/:id/floor-plans/:level", requireVerified, saveFloorPlan);
 projectsRouter.delete("/:id/floor-plans/:level", requireVerified, deleteFloorPlan);
 
@@ -161,7 +162,7 @@ projectsRouter.get("/:id/build", getProjectBuild);
 // Site diary — one entry per day, weather-stamped. `/forecast` before
 // `/:entryId` so the literal path isn't swallowed by the parameter.
 projectsRouter.get("/:id/diary/forecast", getSiteForecast);
-projectsRouter.get("/:id/diary/digest", aiInlineLimit, getDiaryDigest);
+projectsRouter.get("/:id/diary/digest", aiInlineLimit, aiDailyBudget, getDiaryDigest);
 projectsRouter.get("/:id/diary", listSiteDiary);
 projectsRouter.post("/:id/diary", createSiteDiaryEntry);
 projectsRouter.patch("/:id/diary/:entryId", updateSiteDiaryEntry);

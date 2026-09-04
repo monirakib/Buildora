@@ -19,6 +19,7 @@ import { uploadDocument } from "@/lib/api";
 import { formatDate } from "@/components/app/projectStatus";
 import { PermitDocumentChecklist } from "./PermitDocumentChecklist";
 import { surfaceClass } from "@/components/ui/surface";
+import { ListSkeleton } from "@/components/ui/Skeleton";
 
 const cardClass = `${surfaceClass} p-5 sm:p-6`;
 
@@ -82,21 +83,17 @@ export function PermitApplicationsSection({
 
   return (
     <section>
-      <h2 className="text-xl font-extrabold tracking-tight">RAJUK permit applications</h2>
+      <h2 className="display-title text-2xl">RAJUK permit applications</h2>
       <p className="mt-1 text-sm text-stone-600 dark:text-slate-400">
         Track your real Planning Permit and Construction Permit filings here. Buildora has no
         connection to RAJUK's system — this records what you tell us, which an admin can confirm
         against the documents you upload.
       </p>
 
-      {error && (
-        <p className="mt-4 rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-medium text-rose-800 dark:bg-rose-400/15 dark:text-rose-300">
-          {error}
-        </p>
-      )}
+      {error && <p className="mt-4 alert alert-danger">{error}</p>}
 
       {loading ? (
-        <p className="mt-4 text-sm text-stone-500 dark:text-slate-500">Loading…</p>
+        <ListSkeleton rows={3} className="mt-4" />
       ) : (
         <div className="mt-4 grid gap-4 lg:grid-cols-2">
           {Object.values(PermitType).map((permitType) => (
@@ -217,11 +214,7 @@ function PermitTypeCard({
         )}
       </div>
 
-      {error && (
-        <p className="mt-3 rounded-xl bg-rose-100 px-4 py-2.5 text-sm font-medium text-rose-800 dark:bg-rose-400/15 dark:text-rose-300">
-          {error}
-        </p>
-      )}
+      {error && <p className="mt-3 alert alert-danger">{error}</p>}
 
       {!application ? (
         <div className="mt-3">
@@ -233,7 +226,7 @@ function PermitTypeCard({
               type="button"
               disabled={busy}
               onClick={start}
-              className="mt-3 rounded-full bg-amber-400 px-5 py-2.5 text-sm font-bold text-stone-950 transition hover:bg-amber-300 disabled:opacity-60"
+              className="mt-3 rounded-full btn-primary px-5 py-2.5 text-sm disabled:opacity-60"
             >
               {busy ? "Starting…" : "Start tracking"}
             </button>
@@ -267,7 +260,7 @@ function PermitTypeCard({
                   type="button"
                   disabled={busy}
                   onClick={() => saveField({ referenceNumber })}
-                  className="shrink-0 rounded-xl bg-amber-400 px-4 py-2.5 text-sm font-bold text-stone-950 transition hover:bg-amber-300 disabled:opacity-60"
+                  className="shrink-0 rounded-xl btn-primary px-4 py-2.5 text-sm disabled:opacity-60"
                 >
                   Save
                 </button>

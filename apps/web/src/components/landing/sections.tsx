@@ -148,7 +148,7 @@ export { Showcase } from "./Showcase";
 
 /** Shared shell for every bento tile — hover lifts it and warms the border. */
 const tileClass =
-  "group relative flex h-full flex-col overflow-hidden rounded-3xl border border-stone-200 bg-white p-7 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-amber-400/60 hover:shadow-xl dark:border-white/10 dark:bg-white/5 dark:shadow-none dark:hover:bg-white/10";
+  "group spotlight relative flex h-full flex-col overflow-hidden rounded-3xl border border-stone-200 bg-white p-7 shadow-sm transition-[translate,border-color,box-shadow,background-color] duration-300 ease-out hover:-translate-y-1 hover:border-amber-400/60 hover:shadow-xl dark:border-white/10 dark:bg-white/5 dark:shadow-none dark:hover:bg-white/10";
 
 /** Icon chip in the tile's top-left corner. */
 function TileIcon({ children }: { children: React.ReactNode }) {
@@ -521,10 +521,7 @@ export function CtaSection() {
           </p>
 
           <div className="mt-10 flex flex-wrap items-center gap-4">
-            <Link
-              href="/auth"
-              className="rounded-full bg-amber-400 px-8 py-3.5 text-sm font-bold text-stone-950 shadow-xl transition hover:scale-[1.03] hover:bg-amber-300"
-            >
+            <Link href="/auth" className="rounded-full btn-primary px-8 py-3.5 text-sm">
               Start your project
             </Link>
             <Link
@@ -583,7 +580,7 @@ export function Footer() {
               <li key={l.label}>
                 <Link
                   href={l.href}
-                  className="text-sm font-semibold text-stone-700 transition hover:text-amber-700 dark:text-slate-300 dark:hover:text-amber-400"
+                  className="link-underline text-sm font-semibold text-stone-700 transition hover:text-amber-700 dark:text-slate-300 dark:hover:text-amber-400"
                 >
                   {l.label}
                 </Link>
@@ -601,7 +598,7 @@ export function Footer() {
               <li key={l.label}>
                 <Link
                   href={l.href}
-                  className="text-sm font-semibold text-stone-700 transition hover:text-amber-700 dark:text-slate-300 dark:hover:text-amber-400"
+                  className="link-underline text-sm font-semibold text-stone-700 transition hover:text-amber-700 dark:text-slate-300 dark:hover:text-amber-400"
                 >
                   {l.label}
                 </Link>
